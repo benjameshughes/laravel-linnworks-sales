@@ -112,13 +112,10 @@
                         </div>
                     </div>
 
-                    {{-- Connect Buttons --}}
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <flux:button wire:click="quickConnect" type="button" color="blue" icon="bolt">
-                            Quick Connect (Automated)
-                        </flux:button>
-                        <flux:button wire:click="showConnectionForm" type="button" variant="outline" icon="link">
-                            Manual Setup
+                    {{-- Connect Button --}}
+                    <div>
+                        <flux:button wire:click="showConnectionForm" type="button" color="blue" icon="link">
+                            Connect to Linnworks
                         </flux:button>
                     </div>
                 @endif
@@ -126,7 +123,7 @@
         </x-card>
 
 
-        {{-- Manual Connection Form --}}
+        {{-- Connection Form --}}
         @if($showForm)
             <x-card>
                 <div class="flex items-center justify-between mb-6">

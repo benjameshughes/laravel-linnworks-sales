@@ -31,17 +31,6 @@ class LinnworksSettings extends Component
         $this->reset(['applicationId', 'applicationSecret', 'accessToken']);
     }
 
-    public function quickConnect()
-    {
-        $installUrl = $this->installationUrl;
-        if (!$installUrl) {
-            session()->flash('error', 'Failed to generate installation URL. Please check your configuration.');
-            return;
-        }
-        
-        // Redirect directly to Linnworks installation URL
-        return redirect()->away($installUrl['install_url']);
-    }
 
     public function hideConnectionForm()
     {
@@ -49,36 +38,6 @@ class LinnworksSettings extends Component
         $this->reset(['applicationId', 'applicationSecret', 'accessToken']);
     }
 
-    #[Computed]
-    public function installationUrl()
-    {
-        try {
-            $user = auth()->user();
-            if (!$user) {
-                return null;
-            }
-
-            $applicationId = config('linnworks.application_id');
-            if (!$applicationId) {
-                return null;
-            }
-
-            // Generate tracking parameter with user ID
-            $tracking = 'user_' . $user->id;
-
-            // Generate installation URL with tracking
-            $installUrl = "https://apps.linnworks.net/Authorization/Authorize/{$applicationId}?Tracking={$tracking}";
-
-            return [
-                'install_url' => $installUrl,
-                'tracking' => $tracking,
-                'user_id' => $user->id,
-            ];
-        } catch (\Exception $e) {
-            // Handle error gracefully
-        }
-        return null;
-    }
 
     public function connect()
     {
