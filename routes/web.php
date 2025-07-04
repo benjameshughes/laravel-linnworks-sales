@@ -19,8 +19,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('linnworks/install-url', [LinnworksCallbackController::class, 'getInstallationUrl'])->name('linnworks.install.url');
 });
 
-// Public callback endpoint (no auth middleware)
+// Public callback endpoints (no auth middleware)
 Route::post('linnworks/callback', [LinnworksCallbackController::class, 'handleCallback'])->name('linnworks.callback');
+Route::get('linnworks/callback', [LinnworksCallbackController::class, 'testCallback'])->name('linnworks.callback.test');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');

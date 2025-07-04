@@ -19,12 +19,20 @@ class LinnworksCallbackController extends Controller
      */
     public function handleCallback(Request $request): Response
     {
+        // Log everything for debugging
+        Log::info('Linnworks installation callback received', [
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'payload' => $request->all(),
+            'raw_content' => $request->getContent(),
+            'headers' => $request->headers->all(),
+            'ip' => $request->ip(),
+        ]);
+
+        // Return OK immediately for debugging
+        return response('OK', 200);
+
         try {
-            // Log the callback for debugging
-            Log::info('Linnworks installation callback received', [
-                'payload' => $request->all(),
-                'headers' => $request->headers->all(),
-            ]);
 
             // Validate required parameters
             $token = $request->input('Token');
@@ -125,5 +133,19 @@ class LinnworksCallbackController extends Controller
             'tracking' => $tracking,
             'user_id' => $user->id,
         ];
+    }
+
+    /**
+     * Test callback endpoint accessibility
+     */
+    public function testCallback(Request $request): Response
+    {
+        return response()->json([
+            'status' => 'OK',
+            'message' => 'Callback endpoint is accessible',
+            'timestamp' => now()->toISOString(),
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+        ]);
     }
 }
