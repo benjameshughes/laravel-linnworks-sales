@@ -86,6 +86,11 @@ class LinnworksOAuthService
                 'user_id' => $connection->user_id,
                 'status' => $response->status(),
                 'response' => $response->body(),
+                'request_data' => [
+                    'ApplicationId' => $connection->application_id,
+                    'ApplicationSecret' => '***hidden***',
+                    'Token' => '***hidden***',
+                ],
             ]);
 
             return false;
