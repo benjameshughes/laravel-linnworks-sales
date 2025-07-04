@@ -20,20 +20,16 @@ class LinnworksCallbackController extends Controller
      */
     public function handleCallback(Request $request): Response
     {
-        // Log everything for debugging
-        Log::info('Linnworks installation callback received', [
-            'method' => $request->method(),
-            'url' => $request->fullUrl(),
-            'payload' => $request->all(),
-            'raw_content' => $request->getContent(),
-            'headers' => $request->headers->all(),
-            'ip' => $request->ip(),
-        ]);
-
-        // Return OK immediately for debugging
-        return response('OK', 200);
-
         try {
+            // Log everything for debugging
+            Log::info('Linnworks installation callback received', [
+                'method' => $request->method(),
+                'url' => $request->fullUrl(),
+                'payload' => $request->all(),
+                'raw_content' => $request->getContent(),
+                'headers' => $request->headers->all(),
+                'ip' => $request->ip(),
+            ]);
 
             // Validate required parameters
             $token = $request->input('Token');
