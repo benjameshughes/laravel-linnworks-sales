@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\LinnworksOAuthService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
@@ -110,7 +111,7 @@ class LinnworksCallbackController extends Controller
     /**
      * Generate installation URL with automatic callback
      */
-    public function getInstallationUrl(Request $request): array
+    public function getInstallationUrl(Request $request): JsonResponse
     {
         $user = Auth::user();
         if (!$user) {
@@ -128,17 +129,17 @@ class LinnworksCallbackController extends Controller
         // Generate installation URL with tracking
         $installUrl = "https://apps.linnworks.net/Authorization/Authorize/{$applicationId}?Tracking={$tracking}";
 
-        return [
+        return response()->json([
             'install_url' => $installUrl,
             'tracking' => $tracking,
             'user_id' => $user->id,
-        ];
+        ]);
     }
 
     /**
      * Test callback endpoint accessibility
      */
-    public function testCallback(Request $request): Response
+    public function testCallback(Request $request): JsonResponse
     {
         return response()->json([
             'status' => 'OK',
