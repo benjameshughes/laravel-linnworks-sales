@@ -38,7 +38,10 @@ class LinnworksCallbackController extends Controller
                     'token' => $token ? 'present' : 'missing',
                     'applicationId' => $applicationId ? 'present' : 'missing',
                 ]);
-                return response('Missing required parameters', 400);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Missing required parameters'
+                ], 400);
             }
 
             // Extract our user ID from tracking parameter
@@ -51,7 +54,10 @@ class LinnworksCallbackController extends Controller
                 Log::error('Invalid tracking parameter in Linnworks callback', [
                     'tracking' => $tracking,
                 ]);
-                return response('Invalid tracking parameter', 400);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid tracking parameter'
+                ], 400);
             }
 
             // For most apps, we don't need the secret for the callback
@@ -76,8 +82,8 @@ class LinnworksCallbackController extends Controller
                 'connection_test' => $testResult ? 'success' : 'failed',
             ]);
 
-            // Return success response
-            return response('Installation successful', 200);
+            // Return simple 200 OK response that Linnworks expects
+            return response('OK', 200);
 
         } catch (\Exception $e) {
             Log::error('Error processing Linnworks callback', [
@@ -85,7 +91,11 @@ class LinnworksCallbackController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response('Internal server error', 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Internal server error',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
