@@ -53,87 +53,92 @@ class LinnworksOAuthService
     }
 
     /**
-     * Refresh session token for a connection
+     * Get session token using the installation token
      */
     public function refreshSession(LinnworksConnection $connection): bool
     {
         try {
+            // Step 1: Use installation token to get session token
             $response = Http::post("{$this->baseUrl}/api/Auth/AuthorizeByApplication", [
                 'ApplicationId' => $connection->application_id,
                 'ApplicationSecret' => $connection->application_secret,
-                'Token' => $connection->access_token,
+                'Token' => $connection->access_token, // This is the installation token
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
                 
+                // Step 2: Store the session token and server info
                 $connection->update([
-                    'session_token' => $data['Token'],
+                    'session_token' => $data['Token'], // This is the actual session token for API calls
                     'server_location' => $data['Server'],
                     'session_expires_at' => Carbon::now()->addHours(2), // Sessions typically last 2 hours
                     'application_data' => $data,
+                    'status' => 'active',
                 ]);
 
-                Log::info('Linnworks session refreshed successfully', [
+                Log::info('Linnworks session token obtained successfully', [
                     'user_id' => $connection->user_id,
                     'server' => $data['Server'],
+                    'session_token' => substr($data['Token'], 0, 10) . '...',
                 ]);
 
                 return true;
             }
 
-            Log::error('Failed to refresh Linnworks session', [
+            Log::error('Failed to get Linnworks session token', [
                 'user_id' => $connection->user_id,
                 'status' => $response->status(),
                 'response' => $response->body(),
-                'request_data' => [
-                    'ApplicationId' => $connection->application_id,
-                    'ApplicationSecret' => '***hidden***',
-                    'Token' => '***hidden***',
-                ],
+                'url' => "{$this->baseUrl}/api/Auth/AuthorizeByApplication",
             ]);
 
             return false;
         } catch (Exception $e) {
-            Log::error('Error refreshing Linnworks session: ' . $e->getMessage(), [
+            Log::error('Error getting Linnworks session token: ' . $e->getMessage(), [
                 'user_id' => $connection->user_id,
+                'trace' => $e->getTraceAsString(),
             ]);
             return false;
         }
     }
 
     /**
-     * Test connection validity
+     * Test connection validity by getting session token and testing API
      */
     public function testConnection(LinnworksConnection $connection): bool
     {
-        if ($connection->needsNewSession()) {
-            if (!$this->refreshSession($connection)) {
-                return false;
-            }
+        // Step 1: Get a session token using the installation token
+        if (!$this->refreshSession($connection)) {
+            Log::error('Failed to get session token for connection test', [
+                'user_id' => $connection->user_id,
+            ]);
+            return false;
         }
 
+        // Step 2: Test the session token with a simple API call
         try {
-            // Test with a simple API call
             $response = Http::withHeaders([
                 'Authorization' => $connection->session_token,
             ])->post("{$connection->server_location}/api/Auth/Ping");
 
             if ($response->successful()) {
-                Log::info('Linnworks connection test successful', [
+                Log::info('Linnworks connection test successful - session token works', [
                     'user_id' => $connection->user_id,
+                    'server' => $connection->server_location,
                 ]);
                 return true;
             }
 
-            Log::warning('Linnworks connection test failed', [
+            Log::warning('Linnworks session token test failed', [
                 'user_id' => $connection->user_id,
                 'status' => $response->status(),
+                'response' => $response->body(),
             ]);
 
             return false;
         } catch (Exception $e) {
-            Log::error('Error testing Linnworks connection: ' . $e->getMessage(), [
+            Log::error('Error testing Linnworks session token: ' . $e->getMessage(), [
                 'user_id' => $connection->user_id,
             ]);
             return false;
