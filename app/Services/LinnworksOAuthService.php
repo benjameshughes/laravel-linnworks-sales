@@ -58,12 +58,22 @@ class LinnworksOAuthService
     public function refreshSession(LinnworksConnection $connection): bool
     {
         try {
-            // Step 1: Use installation token to get session token
-            $response = Http::post("{$this->baseUrl}/api/Auth/AuthorizeByApplication", [
+            $requestData = [
                 'ApplicationId' => $connection->application_id,
                 'ApplicationSecret' => $connection->application_secret,
                 'Token' => $connection->access_token, // This is the installation token
+            ];
+            
+            Log::info('Attempting Linnworks session token exchange', [
+                'url' => "{$this->baseUrl}/api/Auth/AuthorizeByApplication",
+                'app_id' => $connection->application_id,
+                'has_secret' => !empty($connection->application_secret),
+                'has_token' => !empty($connection->access_token),
+                'token_length' => strlen($connection->access_token),
             ]);
+            
+            // Step 1: Use installation token to get session token
+            $response = Http::asForm()->post("{$this->baseUrl}/api/Auth/AuthorizeByApplication", $requestData);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -90,7 +100,13 @@ class LinnworksOAuthService
                 'user_id' => $connection->user_id,
                 'status' => $response->status(),
                 'response' => $response->body(),
+                'response_headers' => $response->headers(),
                 'url' => "{$this->baseUrl}/api/Auth/AuthorizeByApplication",
+                'request_data' => [
+                    'ApplicationId' => $connection->application_id,
+                    'has_secret' => !empty($connection->application_secret),
+                    'has_token' => !empty($connection->access_token),
+                ],
             ]);
 
             return false;
@@ -118,9 +134,12 @@ class LinnworksOAuthService
 
         // Step 2: Test the session token with a simple API call
         try {
+            // Use HTTPS and a different test endpoint
+            $serverUrl = str_replace('http://', 'https://', $connection->server_location);
+            
             $response = Http::withHeaders([
                 'Authorization' => $connection->session_token,
-            ])->post("{$connection->server_location}/api/Auth/Ping");
+            ])->get("{$serverUrl}/api/Inventory/GetStockLocations");
 
             if ($response->successful()) {
                 Log::info('Linnworks connection test successful - session token works', [
@@ -203,7 +222,7 @@ class LinnworksOAuthService
      */
     public function getConnectionStatus(int $userId): array
     {
-        $connection = $this->getActiveConnection($userId);
+        $connection = LinnworksConnection::forUser($userId)->first();
         
         if (!$connection) {
             return [

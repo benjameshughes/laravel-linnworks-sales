@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Services\LinnworksApiService;
+use App\Jobs\ProcessLinnworksOrders;
+use Carbon\Carbon;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+
+class FetchLinnworksOrders implements ShouldQueue
+{
+    use Queueable, InteractsWithQueue, SerializesModels;
+
+    public int $tries = 3;
+    public int $maxExceptions = 2;
+    public int $timeout = 300; // 5 minutes
+
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(
+        public Carbon $fromDate,
+        public Carbon $toDate,
+        public string $orderType = 'both', // 'open', 'processed', 'both'
+        public int $batchSize = 100
+    ) {
+        $this->onQueue('linnworks');
+    }
+
+    /**
+     * Execute the job.
+     */
+    public function handle(LinnworksApiService $linnworksService): void
+    {
+        Log::info('Starting Linnworks orders fetch job', [
+            'from' => $this->fromDate->toDateString(),
+            'to' => $this->toDate->toDateString(),
+            'type' => $this->orderType,
+            'batch_size' => $this->batchSize
+        ]);
+
+        if (!$linnworksService->isConfigured()) {
+            Log::error('Linnworks API not configured, cannot fetch orders');
+            $this->fail('Linnworks API is not configured');
+            return;
+        }
+
+        $allOrders = collect();
+
+        try {
+            // Fetch open orders if requested
+            if ($this->orderType === 'open' || $this->orderType === 'both') {
+                Log::info('Fetching open orders from Linnworks');
+                $openOrders = $linnworksService->getRecentOpenOrders(
+                    $this->fromDate->diffInDays($this->toDate)
+                );
+                $allOrders = $allOrders->merge($openOrders);
+                Log::info('Fetched open orders', ['count' => $openOrders->count()]);
+            }
+
+            // Fetch processed orders if requested
+            if ($this->orderType === 'processed' || $this->orderType === 'both') {
+                Log::info('Fetching processed orders from Linnworks');
+                
+                // Paginate through processed orders
+                $pageNumber = 1;
+                do {
+                    $processedOrders = $linnworksService->getProcessedOrders(
+                        $this->fromDate,
+                        $this->toDate,
+                        $pageNumber,
+                        $this->batchSize
+                    );
+                    
+                    $allOrders = $allOrders->merge($processedOrders);
+                    Log::info('Fetched processed orders page', [
+                        'page' => $pageNumber,
+                        'count' => $processedOrders->count()
+                    ]);
+                    
+                    $pageNumber++;
+                    
+                    // Continue if we got a full page
+                } while ($processedOrders->count() === $this->batchSize);
+            }
+
+            Log::info('Total orders fetched from Linnworks', ['total' => $allOrders->count()]);
+
+            // Dispatch processing jobs in batches
+            $chunks = $allOrders->chunk(50); // Process 50 orders per job
+            
+            foreach ($chunks as $index => $chunk) {
+                ProcessLinnworksOrders::dispatch($chunk->toArray())
+                    ->onQueue('linnworks-processing')
+                    ->delay(now()->addSeconds($index * 2)); // Stagger jobs by 2 seconds
+            }
+
+            Log::info('Dispatched processing jobs', ['jobs_count' => $chunks->count()]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch orders from Linnworks', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $this->fail($e);
+        }
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('FetchLinnworksOrders job failed', [
+            'from' => $this->fromDate->toDateString(),
+            'to' => $this->toDate->toDateString(),
+            'error' => $exception->getMessage()
+        ]);
+    }
+}

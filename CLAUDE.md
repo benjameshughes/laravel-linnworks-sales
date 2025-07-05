@@ -217,3 +217,4 @@ Follow Laravel and PHP best practices when working with this codebase:
 - Don't use `flux:table`, check for a reusable blade component for a table and use that
 - Using zinc for the colour of dark mode
 - Flux buttons have an icon prop. Use that instead of adding icons in tag
+- Flux buttons have an icon prop, use that

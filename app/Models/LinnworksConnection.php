@@ -20,6 +20,7 @@ class LinnworksConnection extends Model
         'server_location',
         'session_expires_at',
         'is_active',
+        'status',
         'application_data',
     ];
 

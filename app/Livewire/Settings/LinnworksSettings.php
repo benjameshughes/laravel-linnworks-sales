@@ -61,7 +61,9 @@ class LinnworksSettings extends Component
                 $this->showForm = false;
                 $this->reset(['applicationId', 'applicationSecret', 'accessToken']);
             } else {
-                session()->flash('error', 'Connection created but failed to establish session. Please check your credentials.');
+                // Get more detailed error info
+                $status = $oauthService->getConnectionStatus(auth()->id());
+                session()->flash('error', 'Connection created but test failed: ' . ($status['message'] ?? 'Unknown error'));
             }
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to connect to Linnworks: ' . $e->getMessage());
@@ -89,10 +91,21 @@ class LinnworksSettings extends Component
             return;
         }
 
+        // Add debugging info
+        \Log::info('Testing connection', [
+            'user_id' => auth()->id(),
+            'connection_id' => $connection->id,
+            'has_session_token' => !empty($connection->session_token),
+            'has_server_location' => !empty($connection->server_location),
+            'session_expires_at' => $connection->session_expires_at?->toDateTimeString(),
+            'needs_refresh' => $connection->needsNewSession(),
+        ]);
+
         if ($oauthService->testConnection($connection)) {
             session()->flash('success', 'Connection test successful!');
         } else {
-            session()->flash('error', 'Connection test failed. Please check your settings.');
+            $status = $oauthService->getConnectionStatus(auth()->id());
+            session()->flash('error', 'Test failed: ' . ($status['message'] ?? 'Unknown error'));
         }
     }
 
@@ -106,10 +119,17 @@ class LinnworksSettings extends Component
             return;
         }
 
+        \Log::info('Refreshing session', [
+            'user_id' => auth()->id(),
+            'connection_id' => $connection->id,
+            'current_session_token' => substr($connection->session_token ?? '', 0, 10) . '...',
+            'access_token' => substr($connection->access_token, 0, 10) . '...',
+        ]);
+
         if ($oauthService->refreshSession($connection)) {
             session()->flash('success', 'Session refreshed successfully!');
         } else {
-            session()->flash('error', 'Failed to refresh session. Please check your settings.');
+            session()->flash('error', 'Failed to refresh session. Check logs for details.');
         }
     }
 

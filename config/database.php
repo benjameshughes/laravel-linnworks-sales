@@ -42,6 +42,14 @@ return [
             'synchronous' => null,
         ],
 
+        // Explicit testing database connection
+        'testing' => [
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+            'foreign_key_constraints' => true,
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),

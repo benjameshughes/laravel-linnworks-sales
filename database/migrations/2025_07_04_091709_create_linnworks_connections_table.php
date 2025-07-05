@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('server_location')->nullable();
             $table->timestamp('session_expires_at')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->string('status')->default('pending');
             $table->json('application_data')->nullable();
             $table->timestamps();
             

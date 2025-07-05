@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Dashboard;
 
-use App\Models\OrderItem;
 use App\Models\Order;
 use Carbon\Carbon;
 use Livewire\Component;
@@ -18,6 +17,7 @@ class ProductAnalytics extends Component
     public string $sortBy = 'revenue';
     public string $sortDirection = 'desc';
     public ?string $selectedProduct = null;
+    public ?string $selectedCategory = null;
 
     public function mount()
     {
@@ -37,28 +37,79 @@ class ProductAnalytics extends Component
     #[Computed]
     public function products()
     {
-        return OrderItem::select('sku', 'title', 'category')
-            ->selectRaw('SUM(quantity) as total_quantity')
-            ->selectRaw('SUM(total_price) as total_revenue')
-            ->selectRaw('AVG(unit_price) as avg_price')
-            ->selectRaw('COUNT(DISTINCT order_id) as total_orders')
-            ->selectRaw('SUM(cost_price * quantity) as total_cost')
-            ->selectRaw('SUM(total_price) - SUM(cost_price * quantity) as profit')
-            ->whereHas('order', function ($query) {
-                $query->whereBetween('received_date', [
-                    $this->dateRange['start'],
-                    $this->dateRange['end']
+        $orders = Order::whereBetween('received_date', [
+            $this->dateRange['start'],
+            $this->dateRange['end']
+        ])->get();
+
+        $products = collect();
+        
+        foreach ($orders as $order) {
+            if (!$order->items) continue;
+            
+            foreach ($order->items as $item) {
+                if ($this->search && !str_contains(strtolower($item['item_title'] ?? ''), strtolower($this->search)) 
+                    && !str_contains(strtolower($item['sku'] ?? ''), strtolower($this->search))) {
+                    continue;
+                }
+                
+                if ($this->selectedCategory && ($item['category_name'] ?? '') !== $this->selectedCategory) {
+                    continue;
+                }
+                
+                $products->push([
+                    'sku' => $item['sku'] ?? '',
+                    'item_title' => $item['item_title'] ?? 'Unknown',
+                    'category_name' => $item['category_name'] ?? 'Uncategorized',
+                    'quantity' => $item['quantity'] ?? 0,
+                    'unit_cost' => $item['unit_cost'] ?? 0,
+                    'price_per_unit' => $item['price_per_unit'] ?? 0,
+                    'line_total' => $item['line_total'] ?? 0,
+                    'order_id' => $order->id,
+                    'received_date' => $order->received_date,
+                    'channel_name' => $order->channel_name,
                 ]);
-            })
-            ->when($this->search, function ($query) {
-                $query->where(function ($q) {
-                    $q->where('title', 'like', '%' . $this->search . '%')
-                      ->orWhere('sku', 'like', '%' . $this->search . '%');
-                });
-            })
-            ->groupBy('sku', 'title', 'category')
-            ->orderBy($this->getSortColumn(), $this->sortDirection)
-            ->paginate(15);
+            }
+        }
+        
+        // Group by SKU and calculate metrics
+        $productStats = $products->groupBy('sku')->map(function ($items, $sku) {
+            $firstItem = $items->first();
+            $totalQuantity = $items->sum('quantity');
+            $totalRevenue = $items->sum('line_total');
+            $totalCost = $items->sum(function ($item) {
+                return $item['unit_cost'] * $item['quantity'];
+            });
+            $totalOrders = $items->pluck('order_id')->unique()->count();
+            
+            return [
+                'sku' => $sku,
+                'item_title' => $firstItem['item_title'],
+                'category_name' => $firstItem['category_name'],
+                'total_quantity' => $totalQuantity,
+                'total_revenue' => $totalRevenue,
+                'total_cost' => $totalCost,
+                'profit' => $totalRevenue - $totalCost,
+                'profit_margin' => $totalRevenue > 0 ? (($totalRevenue - $totalCost) / $totalRevenue) * 100 : 0,
+                'avg_price' => $totalQuantity > 0 ? $totalRevenue / $totalQuantity : 0,
+                'total_orders' => $totalOrders,
+            ];
+        });
+        
+        // Sort the results
+        $sortedProducts = $productStats->sortBy(function ($product) {
+            return match ($this->sortBy) {
+                'quantity' => $product['total_quantity'],
+                'revenue' => $product['total_revenue'],
+                'profit' => $product['profit'],
+                'margin' => $product['profit_margin'],
+                'orders' => $product['total_orders'],
+                'name' => $product['item_title'],
+                default => $product['total_revenue'],
+            };
+        }, SORT_REGULAR, $this->sortDirection === 'desc');
+        
+        return $sortedProducts->values();
     }
 
     #[Computed]
@@ -68,22 +119,48 @@ class ProductAnalytics extends Component
             return null;
         }
 
-        return OrderItem::select('sku', 'title', 'category')
-            ->selectRaw('SUM(quantity) as total_quantity')
-            ->selectRaw('SUM(total_price) as total_revenue')
-            ->selectRaw('AVG(unit_price) as avg_price')
-            ->selectRaw('COUNT(DISTINCT order_id) as total_orders')
-            ->selectRaw('SUM(cost_price * quantity) as total_cost')
-            ->selectRaw('SUM(total_price) - SUM(cost_price * quantity) as profit')
-            ->where('sku', $this->selectedProduct)
-            ->whereHas('order', function ($query) {
-                $query->whereBetween('received_date', [
-                    $this->dateRange['start'],
-                    $this->dateRange['end']
-                ]);
+        $product = $this->products->firstWhere('sku', $this->selectedProduct);
+        
+        if (!$product) {
+            return null;
+        }
+        
+        // Get channel breakdown for this product
+        $orders = Order::whereBetween('received_date', [
+            $this->dateRange['start'],
+            $this->dateRange['end']
+        ])->get();
+        
+        $channelBreakdown = collect();
+        
+        foreach ($orders as $order) {
+            if (!$order->items) continue;
+            
+            foreach ($order->items as $item) {
+                if (($item['sku'] ?? '') === $this->selectedProduct) {
+                    $channelBreakdown->push([
+                        'channel' => $order->channel_name,
+                        'subsource' => $order->subsource,
+                        'quantity' => $item['quantity'] ?? 0,
+                        'revenue' => $item['line_total'] ?? 0,
+                        'date' => $order->received_date,
+                    ]);
+                }
+            }
+        }
+        
+        $product['channel_breakdown'] = $channelBreakdown->groupBy('channel')
+            ->map(function ($items, $channel) {
+                return [
+                    'channel' => $channel,
+                    'total_quantity' => $items->sum('quantity'),
+                    'total_revenue' => $items->sum('revenue'),
+                    'orders' => $items->count(),
+                ];
             })
-            ->groupBy('sku', 'title', 'category')
-            ->first();
+            ->values();
+        
+        return $product;
     }
 
     #[Computed]
@@ -98,17 +175,21 @@ class ProductAnalytics extends Component
         
         for ($i = $days - 1; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
-            $quantity = OrderItem::where('sku', $this->selectedProduct)
-                ->whereHas('order', function ($query) use ($date) {
-                    $query->whereDate('received_date', $date);
-                })
-                ->sum('quantity');
             
-            $revenue = OrderItem::where('sku', $this->selectedProduct)
-                ->whereHas('order', function ($query) use ($date) {
-                    $query->whereDate('received_date', $date);
-                })
-                ->sum('total_price');
+            $dayOrders = Order::whereDate('received_date', $date)->get();
+            $quantity = 0;
+            $revenue = 0;
+            
+            foreach ($dayOrders as $order) {
+                if (!$order->items) continue;
+                
+                foreach ($order->items as $item) {
+                    if (($item['sku'] ?? '') === $this->selectedProduct) {
+                        $quantity += $item['quantity'] ?? 0;
+                        $revenue += $item['line_total'] ?? 0;
+                    }
+                }
+            }
             
             $salesData[] = [
                 'date' => $date->format('M j'),
@@ -123,21 +204,40 @@ class ProductAnalytics extends Component
     #[Computed]
     public function topCategories()
     {
-        return OrderItem::select('category')
-            ->selectRaw('COUNT(DISTINCT sku) as product_count')
-            ->selectRaw('SUM(quantity) as total_quantity')
-            ->selectRaw('SUM(total_price) as total_revenue')
-            ->whereHas('order', function ($query) {
-                $query->whereBetween('received_date', [
-                    $this->dateRange['start'],
-                    $this->dateRange['end']
+        $orders = Order::whereBetween('received_date', [
+            $this->dateRange['start'],
+            $this->dateRange['end']
+        ])->get();
+
+        $categories = collect();
+        
+        foreach ($orders as $order) {
+            if (!$order->items) continue;
+            
+            foreach ($order->items as $item) {
+                $categoryName = $item['category_name'] ?? 'Uncategorized';
+                
+                $categories->push([
+                    'category' => $categoryName,
+                    'sku' => $item['sku'] ?? '',
+                    'quantity' => $item['quantity'] ?? 0,
+                    'revenue' => $item['line_total'] ?? 0,
                 ]);
+            }
+        }
+        
+        return $categories->groupBy('category')
+            ->map(function ($items, $category) {
+                return [
+                    'category' => $category,
+                    'product_count' => $items->pluck('sku')->unique()->count(),
+                    'total_quantity' => $items->sum('quantity'),
+                    'total_revenue' => $items->sum('revenue'),
+                ];
             })
-            ->whereNotNull('category')
-            ->groupBy('category')
-            ->orderByDesc('total_revenue')
-            ->limit(10)
-            ->get();
+            ->sortByDesc('total_revenue')
+            ->take(10)
+            ->values();
     }
 
     public function sortBy(string $column)
@@ -162,6 +262,16 @@ class ProductAnalytics extends Component
         $this->selectedProduct = null;
     }
 
+    public function selectCategory(string $category)
+    {
+        $this->selectedCategory = $category;
+    }
+
+    public function clearCategoryFilter()
+    {
+        $this->selectedCategory = null;
+    }
+
     public function updatedSearch()
     {
         $this->resetPage();
@@ -170,18 +280,6 @@ class ProductAnalytics extends Component
     public function updatedPeriod()
     {
         $this->resetPage();
-    }
-
-    private function getSortColumn(): string
-    {
-        return match ($this->sortBy) {
-            'quantity' => 'total_quantity',
-            'revenue' => 'total_revenue',
-            'orders' => 'total_orders',
-            'profit' => 'profit',
-            'name' => 'title',
-            default => 'total_revenue',
-        };
     }
 
     public function render()

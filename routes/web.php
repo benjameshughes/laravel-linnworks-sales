@@ -3,6 +3,7 @@
 use App\Http\Controllers\LinnworksCallbackController;
 use App\Livewire\Dashboard\SalesDashboard;
 use App\Livewire\Dashboard\ProductAnalytics;
+use App\Livewire\Dashboard\ChannelComparison;
 use App\Livewire\Settings\Appearance;
 use App\Livewire\Settings\LinnworksSettings;
 use App\Livewire\Settings\Password;
@@ -16,7 +17,18 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', SalesDashboard::class)->name('dashboard');
     Route::get('products', ProductAnalytics::class)->name('products.analytics');
+    Route::get('channels', ChannelComparison::class)->name('channels.comparison');
     Route::get('linnworks/install-url', [LinnworksCallbackController::class, 'getInstallationUrl'])->name('linnworks.install.url');
+    
+    // Test route to see raw Linnworks data
+    Route::get('test-linnworks', function () {
+        $apiService = app(\App\Services\LinnworksApiService::class);
+        $orders = $apiService->getRecentOpenOrders(auth()->id(), 7);
+        return response()->json([
+            'order_count' => count($orders),
+            'orders' => $orders
+        ]);
+    })->name('test.linnworks');
 });
 
 // Public callback endpoints (no auth middleware)
