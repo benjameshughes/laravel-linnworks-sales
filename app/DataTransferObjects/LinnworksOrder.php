@@ -39,7 +39,7 @@ readonly class LinnworksOrder implements Arrayable
             orderNumber: $data['NumOrderId'] ?? (isset($data['nOrderId']) ? (int) $data['nOrderId'] : null) 
                 ?? (isset($data['order_number']) ? (int) $data['order_number'] : null),
             receivedDate: self::parseDate($generalInfo['ReceivedDate'] ?? $data['dReceivedDate'] ?? $data['received_date'] ?? null),
-            processedDate: $data['Processed'] === true ? self::parseDate($generalInfo['ReceivedDate'] ?? null) : null, // Use received date if processed
+            processedDate: ($data['Processed'] ?? false) === true ? self::parseDate($generalInfo['ReceivedDate'] ?? null) : null, // Use received date if processed
             orderSource: $generalInfo['Source'] ?? $data['Source'] ?? $data['order_source'] ?? null,
             subsource: $generalInfo['SubSource'] ?? $data['SubSource'] ?? $data['subsource'] ?? null,
             currency: $totalsInfo['Currency'] ?? $data['cCurrency'] ?? $data['currency'] ?? 'GBP',

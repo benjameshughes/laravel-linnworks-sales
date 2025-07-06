@@ -63,9 +63,9 @@ class LinnworksApiService
         
         // Get fresh session token and cache it
         if ($this->authenticate()) {
-            // Cache for 30 minutes (Linnworks sessions typically last ~2 hours)
-            cache()->put('linnworks.session_token', $this->sessionToken, now()->addMinutes(30));
-            cache()->put('linnworks.server', $this->server, now()->addMinutes(30));
+            // Cache for 45 minutes (sessions last ~1 hour, refresh proactively)
+            cache()->put('linnworks.session_token', $this->sessionToken, now()->addMinutes(45));
+            cache()->put('linnworks.server', $this->server, now()->addMinutes(45));
             
             Log::info('Using fresh session token for API requests');
             return [
@@ -88,12 +88,13 @@ class LinnworksApiService
     }
 
     /**
-     * Make an authenticated request with retry on auth failure
+     * Make an authenticated request with automatic token refresh on failure
      */
     private function makeAuthenticatedRequest(string $method, string $endpoint, ?array $data = []): ?\Illuminate\Http\Client\Response
     {
         $sessionData = $this->getSessionToken();
         if (!$sessionData) {
+            Log::error('Failed to get session token for API request', ['endpoint' => $endpoint]);
             return null;
         }
 
@@ -103,34 +104,89 @@ class LinnworksApiService
             'method' => $method,
             'url' => $url,
             'endpoint' => $endpoint,
-            'server' => $sessionData['server']
+            'server' => $sessionData['server'],
+            'token_preview' => substr($sessionData['token'], 0, 10) . '...',
+            'has_data' => $data !== null,
+            'data_type' => $data === null ? 'null' : gettype($data)
         ]);
 
-        // First attempt
+        // First attempt with current token
         $response = $this->executeRequest($method, $url, $sessionData['token'], $data);
 
-        // If auth error, try to refresh and retry once
-        if ($response && ($response->status() === 401 || $response->status() === 403)) {
-            Log::info('Auth error detected, clearing cache and refreshing session', [
+        // Check for authentication errors (401, 403) or other session-related failures
+        if ($response && $this->isAuthenticationError($response)) {
+            Log::warning('Authentication error detected, refreshing session and retrying', [
                 'status' => $response->status(),
-                'endpoint' => $endpoint
+                'endpoint' => $endpoint,
+                'response_preview' => substr($response->body(), 0, 200)
             ]);
 
-            // Clear cached session tokens
-            cache()->forget('linnworks.session_token');
-            cache()->forget('linnworks.server');
-            $this->server = null;
-            $this->sessionToken = null;
-
+            // Force fresh authentication
+            $this->clearCachedSession();
+            
             // Get fresh session token
             $sessionData = $this->getSessionToken();
             if ($sessionData) {
                 $url = $sessionData['server'] . $endpoint;
+                Log::info('Retrying API request with fresh token', ['endpoint' => $endpoint]);
                 $response = $this->executeRequest($method, $url, $sessionData['token'], $data);
+                
+                if ($response && $this->isAuthenticationError($response)) {
+                    Log::error('Authentication still failing after token refresh', [
+                        'status' => $response->status(),
+                        'endpoint' => $endpoint,
+                        'response' => $response->body()
+                    ]);
+                }
+            } else {
+                Log::error('Failed to get fresh session token for retry', ['endpoint' => $endpoint]);
             }
         }
 
         return $response;
+    }
+
+    /**
+     * Check if response indicates authentication error
+     */
+    private function isAuthenticationError(\Illuminate\Http\Client\Response $response): bool
+    {
+        // HTTP status codes indicating authentication issues
+        if (in_array($response->status(), [401, 403])) {
+            return true;
+        }
+
+        // Check response body for authentication-related errors
+        $body = $response->body();
+        $authErrorPatterns = [
+            'unauthorized',
+            'forbidden',
+            'invalid token',
+            'session expired',
+            'authentication failed',
+            'access denied'
+        ];
+
+        foreach ($authErrorPatterns as $pattern) {
+            if (stripos($body, $pattern) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Clear cached session data
+     */
+    private function clearCachedSession(): void
+    {
+        cache()->forget('linnworks.session_token');
+        cache()->forget('linnworks.server');
+        $this->server = null;
+        $this->sessionToken = null;
+        
+        Log::info('Cleared cached session tokens');
     }
 
     /**
@@ -139,9 +195,17 @@ class LinnworksApiService
     private function executeRequest(string $method, string $url, string $token, ?array $data = null): ?\Illuminate\Http\Client\Response
     {
         try {
+            $headers = [
+                'Authorization' => $token,
+                'accept' => 'application/json',
+                'content-type' => 'application/json',
+            ];
+
             return match (strtoupper($method)) {
-                'GET' => Http::withHeaders(['Authorization' => $token])->get($url, $data ?? []),
-                'POST' => Http::withHeaders(['Authorization' => $token])->post($url, $data ?? []),
+                'GET' => Http::withHeaders($headers)->get($url, $data ?? []),
+                'POST' => $data === null 
+                    ? Http::withHeaders($headers)->withBody('', 'application/json')->post($url) // Empty body with Content-Length: 0
+                    : Http::withHeaders($headers)->post($url, $data), // With body
                 default => null
             };
         } catch (Exception $e) {
@@ -175,6 +239,13 @@ class LinnworksApiService
                 $data = $response->json();
                 $this->server = $data['Server'];
                 $this->sessionToken = $data['Token'] ?? null;
+                
+                Log::info('Authentication successful', [
+                    'server' => $this->server,
+                    'has_token' => !empty($this->sessionToken),
+                    'token_preview' => substr($this->sessionToken ?? '', 0, 10) . '...'
+                ]);
+                
                 return true;
             }
 
@@ -229,6 +300,7 @@ class LinnworksApiService
 
             if ($response && $response->successful()) {
                 $data = $response->json();
+                // Convert API array response to Laravel Collection
                 $orders = collect($data['Data'] ?? [])
                     ->map(fn (array $order) => LinnworksOrder::fromArray($order));
 
@@ -462,8 +534,11 @@ class LinnworksApiService
 
         try {
             Log::info('Getting all open order UUIDs from Linnworks');
-
-            $response = $this->makeAuthenticatedRequest('POST', '/api/Orders/GetAllOpenOrders', []);
+            
+            // This endpoint requires fulfilmentCenter parameter
+            $response = $this->makeAuthenticatedRequest('POST', '/api/Orders/GetAllOpenOrders', [
+                'fulfilmentCenter' => '00000000-0000-0000-0000-000000000000'
+            ]);
 
             if (!$response || !$response->successful()) {
                 Log::error('Failed to fetch open order UUIDs from Linnworks', [
@@ -488,6 +563,7 @@ class LinnworksApiService
                 'sample_ids' => array_slice($openOrderIds, 0, 3),
             ]);
 
+            // Convert API array response to Laravel Collection
             return collect($openOrderIds);
         } catch (Exception $e) {
             Log::error('Error fetching open order UUIDs from Linnworks', [
@@ -498,7 +574,67 @@ class LinnworksApiService
     }
 
     /**
-     * Get order details by UUIDs
+     * Get open order details by UUID (single or batch)
+     */
+    public function getOpenOrderDetails(array $orderUuids): Collection
+    {
+        if (!$this->isConfigured() || empty($orderUuids)) {
+            return collect();
+        }
+
+        try {
+            Log::info('Fetching open order details', [
+                'order_count' => count($orderUuids),
+                'sample_ids' => array_slice($orderUuids, 0, 3),
+                'request_body' => ['OrderIds' => $orderUuids],
+            ]);
+
+            $response = $this->makeAuthenticatedRequest(
+                'POST', 
+                '/api/OpenOrders/GetOpenOrdersDetails', 
+                ['OrderIds' => $orderUuids] // Send object with OrderIds property
+            );
+
+            if (!$response || !$response->successful()) {
+                Log::error('Failed to fetch open order details from Linnworks', [
+                    'order_ids_count' => count($orderUuids),
+                    'status' => $response?->status(),
+                    'response' => $response?->body(),
+                ]);
+                return collect();
+            }
+
+            $responseData = $response->json();
+            
+            if (!is_array($responseData) || !isset($responseData['Orders'])) {
+                Log::error('GetOpenOrdersDetails returned invalid response structure', [
+                    'response_type' => gettype($responseData),
+                    'has_orders_key' => isset($responseData['Orders']),
+                    'response' => $response->body(),
+                ]);
+                return collect();
+            }
+
+            $orderData = $responseData['Orders'];
+
+            Log::info('Successfully fetched open order details', [
+                'requested_count' => count($orderUuids),
+                'returned_count' => count($orderData)
+            ]);
+            
+            // Convert API array response to Laravel Collection with LinnworksOrder objects
+            return collect($orderData)->map(fn(array $order) => LinnworksOrder::fromArray($order));
+        } catch (Exception $e) {
+            Log::error('Error fetching open order details from Linnworks', [
+                'order_ids_count' => count($orderUuids),
+                'error' => $e->getMessage(),
+            ]);
+            return collect();
+        }
+    }
+
+    /**
+     * Get order details by UUIDs (legacy method)
      */
     public function getOrdersByIds(array $orderIds): Collection
     {
@@ -542,6 +678,7 @@ class LinnworksApiService
                 'returned_count' => count($orderData)
             ]);
             
+            // Convert API array response to Laravel Collection with LinnworksOrder objects
             return collect($orderData)->map(fn(array $order) => LinnworksOrder::fromArray($order));
         } catch (Exception $e) {
             Log::error('Error fetching order details from Linnworks', [
@@ -629,5 +766,213 @@ class LinnworksApiService
                 // Exclude any customer-specific item data
             ];
         }, $items);
+    }
+
+    /**
+     * Get basic inventory items from Linnworks (lightweight)
+     */
+    public function getAllInventoryItems(): Collection
+    {
+        if (!$this->isConfigured()) {
+            return collect();
+        }
+
+        try {
+            Log::info('Fetching all inventory items from Linnworks');
+
+            $allItems = collect();
+            $pageNumber = 1;
+            $entriesPerPage = 200;
+            
+            do {
+                Log::info('Fetching stock items page', ['page' => $pageNumber]);
+                
+                $response = $this->makeAuthenticatedRequest('POST', '/api/Stock/GetStockItems', [
+                    'keywordsToSearch' => '',
+                    'entriesPerPage' => $entriesPerPage,
+                    'pageNumber' => $pageNumber
+                ]);
+
+                if (!$response || !$response->successful()) {
+                    Log::error('Failed to fetch stock items from Linnworks', [
+                        'page' => $pageNumber,
+                        'status' => $response?->status(),
+                        'response' => $response?->body(),
+                    ]);
+                    break;
+                }
+
+                $data = $response->json();
+                $items = $data['Data'] ?? [];
+
+                if (!is_array($items)) {
+                    Log::error('GetStockItems returned non-array data', [
+                        'page' => $pageNumber,
+                        'response_type' => gettype($items),
+                        'response' => $response->body(),
+                    ]);
+                    break;
+                }
+
+                Log::info('Successfully fetched stock items page', [
+                    'page' => $pageNumber,
+                    'items_this_page' => count($items),
+                    'total_results' => $data['TotalResults'] ?? 0
+                ]);
+
+                // Convert API array response to Laravel Collection and merge
+                $allItems = $allItems->merge(collect($items));
+                $pageNumber++;
+
+                // Continue if we got a full page
+            } while (count($items) === $entriesPerPage);
+
+            Log::info('Completed fetching all stock items', [
+                'total_pages' => $pageNumber - 1,
+                'total_items' => $allItems->count()
+            ]);
+
+            return $allItems;
+        } catch (Exception $e) {
+            Log::error('Error fetching stock items from Linnworks', [
+                'error' => $e->getMessage(),
+            ]);
+            return collect();
+        }
+    }
+
+    /**
+     * Get detailed inventory items from Linnworks with full product information
+     * Rate limit: 150/minute
+     */
+    public function getAllInventoryItemsFull(): Collection
+    {
+        if (!$this->isConfigured()) {
+            return collect();
+        }
+
+        try {
+            Log::info('Fetching all detailed inventory items from Linnworks');
+
+            $allItems = collect();
+            $pageNumber = 1;
+            $entriesPerPage = 100; // Reduced for detailed endpoint
+            
+            do {
+                Log::info('Fetching detailed stock items page', ['page' => $pageNumber]);
+                
+                $response = $this->makeAuthenticatedRequest('POST', '/api/Stock/GetStockItemsFull', [
+                    'keyword' => '',
+                    'loadCompositeParents' => true,
+                    'loadVariationParents' => true,
+                    'entriesPerPage' => $entriesPerPage,
+                    'pageNumber' => $pageNumber,
+                    'dataRequirements' => [0], // Basic data requirement
+                    'searchTypes' => [0] // Basic search type
+                ]);
+
+                if (!$response || !$response->successful()) {
+                    Log::error('Failed to fetch detailed stock items from Linnworks', [
+                        'page' => $pageNumber,
+                        'status' => $response?->status(),
+                        'response' => $response?->body(),
+                    ]);
+                    break;
+                }
+
+                $data = $response->json();
+                $items = $data['Data'] ?? [];
+
+                if (!is_array($items)) {
+                    Log::error('GetStockItemsFull returned non-array data', [
+                        'page' => $pageNumber,
+                        'response_type' => gettype($items),
+                        'response' => $response->body(),
+                    ]);
+                    break;
+                }
+
+                Log::info('Successfully fetched detailed stock items page', [
+                    'page' => $pageNumber,
+                    'items_this_page' => count($items),
+                    'total_results' => $data['TotalResults'] ?? 0
+                ]);
+
+                // Convert API array response to Laravel Collection and merge
+                $allItems = $allItems->merge(collect($items));
+                $pageNumber++;
+
+                // Add delay to respect 150/minute rate limit
+                if ($pageNumber > 1) {
+                    usleep(400000); // 0.4 seconds delay between requests
+                }
+
+                // Continue if we got a full page
+            } while (count($items) === $entriesPerPage);
+
+            Log::info('Completed fetching all detailed stock items', [
+                'total_pages' => $pageNumber - 1,
+                'total_items' => $allItems->count()
+            ]);
+
+            return $allItems;
+        } catch (Exception $e) {
+            Log::error('Error fetching detailed stock items from Linnworks', [
+                'error' => $e->getMessage(),
+            ]);
+            return collect();
+        }
+    }
+
+    /**
+     * Get detailed stock items by specific IDs (most efficient for bulk operations)
+     * Rate limit: 250/minute
+     */
+    public function getStockItemsFullByIds(array $stockItemIds): Collection
+    {
+        if (!$this->isConfigured() || empty($stockItemIds)) {
+            return collect();
+        }
+
+        try {
+            Log::info('Fetching detailed stock items by IDs', [
+                'item_count' => count($stockItemIds),
+                'sample_ids' => array_slice($stockItemIds, 0, 3)
+            ]);
+
+            $response = $this->makeAuthenticatedRequest('POST', '/api/Stock/GetStockItemsFullByIds', $stockItemIds);
+
+            if (!$response || !$response->successful()) {
+                Log::error('Failed to fetch detailed stock items by IDs from Linnworks', [
+                    'item_ids_count' => count($stockItemIds),
+                    'status' => $response?->status(),
+                    'response' => $response?->body(),
+                ]);
+                return collect();
+            }
+
+            $items = $response->json();
+            
+            if (!is_array($items)) {
+                Log::error('GetStockItemsFullByIds returned non-array response', [
+                    'response_type' => gettype($items),
+                    'response' => $response->body(),
+                ]);
+                return collect();
+            }
+
+            Log::info('Successfully fetched detailed stock items by IDs', [
+                'requested_count' => count($stockItemIds),
+                'returned_count' => count($items)
+            ]);
+            
+            return collect($items);
+        } catch (Exception $e) {
+            Log::error('Error fetching detailed stock items by IDs from Linnworks', [
+                'item_ids_count' => count($stockItemIds),
+                'error' => $e->getMessage(),
+            ]);
+            return collect();
+        }
     }
 }

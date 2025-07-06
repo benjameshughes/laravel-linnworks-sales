@@ -69,6 +69,14 @@ class Order extends Model
         'sync_metadata' => 'array',
     ];
 
+    /**
+     * Get the order items for this order.
+     */
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
     public function getItemsCollectionAttribute()
     {
         return collect($this->items ?? []);

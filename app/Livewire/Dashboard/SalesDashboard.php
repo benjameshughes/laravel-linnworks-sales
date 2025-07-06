@@ -43,7 +43,7 @@ final class SalesDashboard extends Component
                 $this->dateRange->get('start'),
                 $this->dateRange->get('end')
             ])
-            ->where('channel_name', '!=', 'direct')
+            ->where('channel_name', '!=', 'DIRECT')
             ->when($this->channel !== 'all', fn($query) => 
                 $query->where('channel_name', $this->channel)
             )
@@ -139,7 +139,7 @@ final class SalesDashboard extends Component
         return Order::distinct()
             ->pluck('channel_name')
             ->filter()
-            ->reject(fn($channel) => $channel === 'direct')
+            ->reject(fn($channel) => $channel === 'DIRECT')
             ->sort()
             ->map(fn($channel) => collect(['name' => $channel, 'label' => ucfirst($channel)]));
     }
@@ -231,7 +231,7 @@ final class SalesDashboard extends Component
         $end = Carbon::now()->subDays($days)->endOfDay();
         
         return Order::whereBetween('received_date', [$start, $end])
-            ->where('channel_name', '!=', 'direct')
+            ->where('channel_name', '!=', 'DIRECT')
             ->when($this->channel !== 'all', fn($query) => 
                 $query->where('channel_name', $this->channel)
             )

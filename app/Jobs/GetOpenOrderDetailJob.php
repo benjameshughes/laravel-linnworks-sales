@@ -16,15 +16,15 @@ class GetOpenOrderDetailJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected string $orderUuid;
+    protected array $orderUuids;
     protected int $syncLogId;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(string $orderUuid, int $syncLogId)
+    public function __construct(array $orderUuids, int $syncLogId)
     {
-        $this->orderUuid = $orderUuid;
+        $this->orderUuids = $orderUuids;
         $this->syncLogId = $syncLogId;
     }
 
@@ -33,76 +33,110 @@ class GetOpenOrderDetailJob implements ShouldQueue
      */
     public function handle(LinnworksApiService $linnworksService): void
     {
-        Log::info('Processing order detail job', [
-            'order_uuid' => $this->orderUuid,
+        Log::info('Processing batch order detail job', [
+            'order_count' => count($this->orderUuids),
             'sync_log_id' => $this->syncLogId
         ]);
 
         if (!$linnworksService->isConfigured()) {
-            Log::error('Linnworks API is not configured for detail job', [
-                'order_uuid' => $this->orderUuid
-            ]);
-            $this->incrementSyncCounter('failed');
+            Log::error('Linnworks API is not configured for detail job');
+            $this->incrementSyncCounter('failed', count($this->orderUuids));
             return;
         }
 
         try {
-            // Step 1: Check if order already exists in database
-            $existingOrder = Order::where('linnworks_order_id', $this->orderUuid)->first();
+            // Step 1: Check which orders already exist in database
+            $existingOrderIds = Order::whereIn('linnworks_order_id', $this->orderUuids)
+                ->pluck('linnworks_order_id')
+                ->toArray();
             
-            if ($existingOrder) {
-                Log::info('Order already exists, discarding', [
-                    'order_uuid' => $this->orderUuid,
-                    'order_number' => $existingOrder->order_number
+            $newOrderUuids = array_diff($this->orderUuids, $existingOrderIds);
+            
+            if (count($existingOrderIds) > 0) {
+                Log::info('Some orders already exist, skipping', [
+                    'existing_count' => count($existingOrderIds),
+                    'new_count' => count($newOrderUuids)
                 ]);
-                $this->incrementSyncCounter('skipped');
+                $this->incrementSyncCounter('skipped', count($existingOrderIds));
+            }
+            
+            if (empty($newOrderUuids)) {
                 return;
             }
 
-            // Step 2: Order doesn't exist, fetch details from Linnworks
-            Log::info('Fetching order details from Linnworks', [
-                'order_uuid' => $this->orderUuid
+            // Step 2: Fetch details for new orders from Linnworks
+            Log::info('Fetching batch order details from Linnworks', [
+                'order_count' => count($newOrderUuids)
             ]);
 
-            $orderDetails = $linnworksService->getOrdersByIds([$this->orderUuid]);
+            $orderDetails = $linnworksService->getOpenOrderDetails($newOrderUuids);
             
             if ($orderDetails->isEmpty()) {
                 Log::warning('No order details returned from Linnworks', [
-                    'order_uuid' => $this->orderUuid
+                    'requested_count' => count($newOrderUuids)
                 ]);
-                $this->incrementSyncCounter('failed');
+                $this->incrementSyncCounter('failed', count($newOrderUuids));
                 return;
             }
 
-            $linnworksOrder = $orderDetails->first();
-
-            // Step 3: Create new order in database
-            $orderModel = Order::fromLinnworksOrder($linnworksOrder);
-            $orderModel->save();
-
-            Log::info('Successfully created new order', [
-                'order_uuid' => $this->orderUuid,
-                'order_number' => $orderModel->order_number,
-                'channel' => $orderModel->channel_name,
-                'total_charge' => $orderModel->total_charge
-            ]);
-
-            $this->incrementSyncCounter('created');
+            // Step 3: Create new orders in database
+            $created = 0;
+            $failed = 0;
+            
+            foreach ($orderDetails as $linnworksOrder) {
+                try {
+                    $orderModel = Order::fromLinnworksOrder($linnworksOrder);
+                    $orderModel->save();
+                    
+                    Log::info('Successfully created new order', [
+                        'order_uuid' => $orderModel->linnworks_order_id,
+                        'order_number' => $orderModel->order_number,
+                        'channel' => $orderModel->channel_name,
+                        'total_charge' => $orderModel->total_charge
+                    ]);
+                    
+                    $created++;
+                } catch (\Exception $e) {
+                    Log::error('Failed to create order', [
+                        'error' => $e->getMessage()
+                    ]);
+                    $failed++;
+                }
+            }
+            
+            if ($created > 0) {
+                $this->incrementSyncCounter('created', $created);
+            }
+            
+            if ($failed > 0) {
+                $this->incrementSyncCounter('failed', $failed);
+            }
+            
+            // Account for any orders that weren't returned by the API
+            $notReturned = count($newOrderUuids) - $orderDetails->count();
+            if ($notReturned > 0) {
+                Log::warning('Some orders were not returned by API', [
+                    'requested' => count($newOrderUuids),
+                    'returned' => $orderDetails->count(),
+                    'missing' => $notReturned
+                ]);
+                $this->incrementSyncCounter('failed', $notReturned);
+            }
 
         } catch (\Exception $e) {
-            Log::error('Failed to process order detail', [
-                'order_uuid' => $this->orderUuid,
+            Log::error('Failed to process batch order detail', [
+                'order_count' => count($this->orderUuids),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            $this->incrementSyncCounter('failed');
+            $this->incrementSyncCounter('failed', count($this->orderUuids));
         }
     }
 
     /**
      * Increment counter in the sync log
      */
-    protected function incrementSyncCounter(string $type): void
+    protected function incrementSyncCounter(string $type, int $count = 1): void
     {
         try {
             $syncLog = SyncLog::find($this->syncLogId);
@@ -123,7 +157,7 @@ class GetOpenOrderDetailJob implements ShouldQueue
             };
 
             if ($field) {
-                $syncLog->increment($field);
+                $syncLog->increment($field, $count);
                 
                 // Check if this might be the last job and complete the sync
                 $this->checkAndCompleteSyncIfDone($syncLog);
@@ -180,12 +214,12 @@ class GetOpenOrderDetailJob implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         Log::error('GetOpenOrderDetailJob failed', [
-            'order_uuid' => $this->orderUuid,
+            'order_count' => count($this->orderUuids),
             'sync_log_id' => $this->syncLogId,
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString(),
         ]);
 
-        $this->incrementSyncCounter('failed');
+        $this->incrementSyncCounter('failed', count($this->orderUuids));
     }
 }

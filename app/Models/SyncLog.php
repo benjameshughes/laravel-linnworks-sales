@@ -33,6 +33,7 @@ class SyncLog extends Model
     const TYPE_OPEN_ORDERS = 'open_orders';
     const TYPE_HISTORICAL_ORDERS = 'historical_orders';
     const TYPE_ORDER_UPDATES = 'order_updates';
+    const TYPE_PRODUCTS = 'products';
 
     // Statuses
     const STATUS_STARTED = 'started';

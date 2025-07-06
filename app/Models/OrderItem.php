@@ -12,76 +12,88 @@ class OrderItem extends Model
 
     protected $fillable = [
         'order_id',
-        'linnworks_item_id',
+        'item_id',
         'sku',
-        'title',
-        'description',
-        'category',
+        'item_title',
         'quantity',
-        'unit_price',
-        'total_price',
-        'cost_price',
-        'profit_margin',
-        'tax_rate',
+        'unit_cost',
+        'price_per_unit',
+        'line_total',
         'discount_amount',
-        'bin_rack',
-        'is_service',
-        'item_attributes',
+        'tax_amount',
+        'category_name',
+        'metadata',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
-        'unit_price' => 'decimal:2',
-        'total_price' => 'decimal:2',
-        'cost_price' => 'decimal:2',
-        'profit_margin' => 'decimal:2',
-        'tax_rate' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
-        'is_service' => 'boolean',
-        'item_attributes' => 'array',
+        'unit_cost' => 'decimal:4',
+        'price_per_unit' => 'decimal:4',
+        'line_total' => 'decimal:4',
+        'discount_amount' => 'decimal:4',
+        'tax_amount' => 'decimal:4',
+        'metadata' => 'array',
     ];
 
+    /**
+     * Get the order that owns this item.
+     */
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
-    public function getTotalCostAttribute(): float
+    /**
+     * Get the product for this order item.
+     */
+    public function product(): BelongsTo
     {
-        return $this->cost_price * $this->quantity;
+        return $this->belongsTo(Product::class, 'sku', 'sku');
     }
 
-    public function getNetProfitAttribute(): float
+    /**
+     * Calculate profit for this order item.
+     */
+    public function getProfit(): float
     {
-        return $this->total_price - $this->total_cost;
+        return $this->line_total - ($this->unit_cost * $this->quantity);
     }
 
-    public function getProfitMarginPercentageAttribute(): float
+    /**
+     * Calculate profit margin percentage.
+     */
+    public function getProfitMargin(): float
     {
-        if ($this->total_price == 0) {
+        if ($this->line_total == 0) {
             return 0;
         }
         
-        return ($this->net_profit / $this->total_price) * 100;
+        return ($this->getProfit() / $this->line_total) * 100;
     }
 
+    /**
+     * Scope to filter by SKU.
+     */
     public function scopeBySku($query, string $sku)
     {
         return $query->where('sku', $sku);
     }
 
+    /**
+     * Scope to filter by category.
+     */
     public function scopeByCategory($query, string $category)
     {
-        return $query->where('category', $category);
+        return $query->where('category_name', $category);
     }
 
-    public function scopeServices($query)
+    /**
+     * Scope to filter by date range.
+     */
+    public function scopeByDateRange($query, $startDate, $endDate)
     {
-        return $query->where('is_service', true);
-    }
-
-    public function scopeProducts($query)
-    {
-        return $query->where('is_service', false);
+        return $query->whereHas('order', function($q) use ($startDate, $endDate) {
+            $q->whereBetween('received_date', [$startDate, $endDate]);
+        });
     }
 }

@@ -81,16 +81,47 @@ class GetOpenOrderIdsJob implements ShouldQueue
                         'is_open' => true,
                         'last_synced_at' => now(),
                     ]);
-                Log::info("Marked {count($existingOrderIds)} existing orders as open");
+                Log::info('Marked ' . count($existingOrderIds) . ' existing orders as open');
             }
 
             // Mark orders not in the current sync as closed
             $this->markMissingOrdersAsClosed($openOrderIds);
 
-            // Dispatch individual jobs for each UUID
+            // Only dispatch jobs for new orders (not existing ones)
+            Log::info('DEBUG: Before filtering', [
+                'total_orders' => $openOrderIds->count(),
+                'existing_orders' => count($existingOrderIds)
+            ]);
+            
+            $newOrderIds = $openOrderIds->diff(collect($existingOrderIds));
+            
+            Log::info('DEBUG: After filtering', [
+                'new_orders_count' => $newOrderIds->count()
+            ]);
+            
+            if ($newOrderIds->isEmpty()) {
+                Log::info('No new orders to process - all orders already exist in database');
+                $this->syncLog->complete(0);
+                return;
+            }
+
+            Log::info('Processing new orders only', [
+                'total_orders_from_linnworks' => $openOrderIds->count(),
+                'existing_orders_skipped' => count($existingOrderIds),
+                'new_orders_to_process' => $newOrderIds->count()
+            ]);
+
+            // Dispatch jobs in batches to avoid API rate limits
             $jobsDispatched = 0;
-            foreach ($openOrderIds as $orderUuid) {
-                GetOpenOrderDetailJob::dispatch($orderUuid, $this->syncLog->id);
+            $batchSize = 100; // Process 100 orders per job
+            
+            foreach ($newOrderIds->chunk($batchSize) as $chunkIndex => $chunk) {
+                // Delay each batch by 1 minute after the first one to avoid rate limits
+                $delay = $chunkIndex * 60; // 0, 60, 120, 180 seconds delay
+                
+                GetOpenOrderDetailJob::dispatch($chunk->values()->toArray(), $this->syncLog->id)
+                    ->delay(now()->addSeconds($delay));
+                
                 $jobsDispatched++;
             }
 

@@ -26,3 +26,17 @@ Schedule::command('sync:open-orders --force')
 Schedule::call(function () {
     \App\Models\SyncLog::where('created_at', '<', now()->subDays(30))->delete();
 })->daily()->at('03:00');
+
+// Refresh product analytics cache every 5 minutes
+Schedule::command('analytics:refresh-cache')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/analytics-cache.log'));
+
+// Force refresh analytics cache every hour (clears stale data)
+Schedule::command('analytics:refresh-cache --force')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/analytics-cache.log'));
