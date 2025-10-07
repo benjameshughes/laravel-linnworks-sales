@@ -1,442 +1,57 @@
-<div class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+<div class="min-h-screen" x-data="{ showCharts: true, showMetrics: true }">
     <div class="space-y-6 p-6">
 
-        {{-- Sales Dashboard Header with Controls --}}
-        <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700 p-3">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                {{-- Left: Info --}}
-                <div class="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                    <span>{{ $this->periodSummary->get('date_range') }}</span>
-                    <span class="text-zinc-400">•</span>
-                    <span class="font-medium text-zinc-900 dark:text-zinc-100">
-                        {{ number_format($this->metrics->get('total_orders')) }} orders
-                    </span>
-                    <span class="text-zinc-400">•</span>
-                    <span class="flex items-center gap-1">
-                        <flux:icon name="arrow-path" class="size-3 text-zinc-500" />
-                        {{ $this->lastSyncInfo->get('time_human') }}
-                    </span>
-                    @if($this->lastSyncInfo->get('status') === 'success')
-                        <flux:badge color="green" size="sm">
-                            {{ number_format($this->lastSyncInfo->get('success_rate'), 1) }}%
-                        </flux:badge>
-                    @endif
-                </div>
+        {{-- Filters Island - Non-lazy, always loads first --}}
+        <livewire:dashboard.dashboard-filters />
 
-                {{-- Right: Filters & Controls --}}
-                <div class="flex items-center gap-2 flex-wrap lg:flex-nowrap">
-                    <div class="relative">
-                        <flux:input
-                            wire:model.live.debounce.300ms="searchTerm"
-                            placeholder="Search..."
-                            class="w-32 lg:w-40 flex-shrink-0"
-                            size="sm"
-                        />
-                        <div wire:loading wire:target="searchTerm" class="absolute right-2 top-1/2 -translate-y-1/2">
-                            <svg class="animate-spin h-4 w-4 text-zinc-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </div>
-                    </div>
-
-                    <div class="relative min-w-[140px] flex-1 lg:flex-initial lg:w-36">
-                        <flux:select wire:model.live="period" size="sm">
-                            <flux:select.option value="1">Last 24 hours</flux:select.option>
-                            <flux:select.option value="yesterday">Yesterday</flux:select.option>
-                            <flux:select.option value="7">Last 7 days</flux:select.option>
-                            <flux:select.option value="30">Last 30 days</flux:select.option>
-                            <flux:select.option value="90">Last 90 days</flux:select.option>
-                            <flux:select.option value="custom">Custom Range...</flux:select.option>
-                        </flux:select>
-                    </div>
-
-                    @if($period === 'custom')
-                        <div class="flex items-center gap-2">
-                            <flux:input
-                                type="date"
-                                wire:model.live="customFrom"
-                                size="sm"
-                                class="w-36 flex-shrink-0"
-                            />
-                            <span class="text-zinc-400">→</span>
-                            <flux:input
-                                type="date"
-                                wire:model.live="customTo"
-                                size="sm"
-                                class="w-36 flex-shrink-0"
-                            />
-                        </div>
-                    @endif
-
-                    <div class="relative min-w-[140px] flex-1 lg:flex-initial lg:w-36">
-                        <flux:select wire:model.live="channel" size="sm">
-                            <flux:select.option value="all">All Channels</flux:select.option>
-                            @foreach($this->availableChannels as $channelOption)
-                                <flux:select.option value="{{ $channelOption->get('name') }}">
-                                    {{ $channelOption->get('label') }}
-                                </flux:select.option>
-                            @endforeach
-                        </flux:select>
-                    </div>
-
-                    <flux:button
-                        variant="primary"
-                        size="sm"
-                        wire:click="syncOrders"
-                        wire:target="syncOrders"
-                        wire:loading.attr="disabled"
-                        icon="cloud-arrow-down"
-                        class="flex-shrink-0"
-                    >
-                        <span wire:loading.remove wire:target="syncOrders">Sync</span>
-                        <span wire:loading wire:target="syncOrders">Syncing</span>
-                    </flux:button>
-
-                    <flux:button
-                        variant="ghost"
-                        size="sm"
-                        wire:click="refreshDashboard"
-                        wire:target="refreshDashboard"
-                        wire:loading.attr="disabled"
-                        icon="arrow-path"
-                        class="flex-shrink-0"
-                    />
-                </div>
-
-                {{-- Loading indicator --}}
-                <div
-                    wire:loading.delay
-                    wire:target="period,channel,searchTerm,customFrom,customTo"
-                    class="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-300"
-                    role="status"
-                    aria-live="polite"
-                >
-                    <svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="font-medium">Refreshing metrics…</span>
-                </div>
-            </div>
+        {{-- Metrics Summary Island - Loads in parallel --}}
+        <div x-show="showMetrics" x-transition>
+            <livewire:dashboard.metrics-summary lazy />
         </div>
 
-        {{-- Sync Progress Notification --}}
-        @if($isSyncing)
-            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl shadow-sm p-4">
-                <div class="flex items-center gap-4">
-                    <div class="flex-shrink-0">
-                        <svg class="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <div class="font-medium text-blue-900 dark:text-blue-100">{{ $syncMessage }}</div>
-                        @if($syncCount > 0)
-                            <div class="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                                {{ number_format($syncCount) }} orders
-                            </div>
-                        @endif
-                    </div>
-                    <div class="flex-shrink-0">
-                        <flux:badge color="blue" size="sm">
-                            {{ ucfirst(str_replace('-', ' ', $syncStage)) }}
-                        </flux:badge>
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        @php
-            $refreshTargets = 'period,channel,searchTerm,customFrom,customTo';
-        @endphp
-
-        {{-- Key Metrics Grid --}}
-        @if($showMetrics)
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative">
-                {{-- Total Revenue --}}
-                <div
-                    class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white transition duration-200"
-                    wire:loading.class="opacity-60 saturate-75"
-                    wire:target="{{ $refreshTargets }}"
-                >
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-blue-100 text-sm font-medium">Total Revenue</p>
-                            <p class="text-3xl font-bold">£{{ number_format($this->metrics->get('total_revenue'), 0) }}</p>
-                            @if($this->metrics->get('growth_rate') != 0)
-                                <p class="text-sm text-blue-100 mt-1">
-                                    {{ $this->metrics->get('growth_rate') > 0 ? '+' : '' }}{{ number_format($this->metrics->get('growth_rate'), 1) }}% vs previous period
-                                </p>
-                            @endif
-                        </div>
-                        <flux:icon name="currency-pound" class="size-8 text-blue-200" />
-                    </div>
-                </div>
-
-                {{-- Total Orders --}}
-                <div
-                    class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-sm p-6 text-white transition duration-200"
-                    wire:loading.class="opacity-60 saturate-75"
-                    wire:target="{{ $refreshTargets }}"
-                >
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-emerald-100 text-sm font-medium">Total Orders</p>
-                            <p class="text-3xl font-bold">{{ number_format($this->metrics->get('total_orders')) }}</p>
-                            <p class="text-sm text-emerald-100 mt-1">
-                                {{ number_format($this->periodSummary->get('orders_per_day'), 1) }} per day
-                            </p>
-                        </div>
-                        <flux:icon name="shopping-bag" class="size-8 text-emerald-200" />
-                    </div>
-                </div>
-
-                {{-- Average Order Value --}}
-                <div
-                    class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 text-white transition duration-200"
-                    wire:loading.class="opacity-60 saturate-75"
-                    wire:target="{{ $refreshTargets }}"
-                >
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-purple-100 text-sm font-medium">Average Order</p>
-                            <p class="text-3xl font-bold">£{{ number_format($this->metrics->get('average_order_value'), 0) }}</p>
-                            <p class="text-sm text-purple-100 mt-1">Per order value</p>
-                        </div>
-                        <flux:icon name="calculator" class="size-8 text-purple-200" />
-                    </div>
-                </div>
-
-                {{-- Total Items --}}
-                <div
-                    class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-sm p-6 text-white transition duration-200"
-                    wire:loading.class="opacity-60 saturate-75"
-                    wire:target="{{ $refreshTargets }}"
-                >
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-orange-100 text-sm font-medium">Items Sold</p>
-                            <p class="text-3xl font-bold">{{ number_format($this->metrics->get('total_items')) }}</p>
-                            <p class="text-sm text-orange-100 mt-1">Total units</p>
-                        </div>
-                        <flux:icon name="cube" class="size-8 text-orange-200" />
-                    </div>
-                </div>
-            </div>
-        @endif
-
         {{-- Charts Section --}}
-        @if($showCharts)
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {{-- Sales Trend Chart --}}
-                <div
-                    class="transition duration-200"
-                    wire:loading.class="opacity-50"
-                    wire:target="{{ $refreshTargets }}"
-                >
-                    <x-chart-widget
-                            type="area"
-                            chart-key="sales-trend-{{ $period }}-{{ $channel }}-{{ $searchTerm }}-{{ $customFrom }}-{{ $customTo }}"
-                            :data="$this->salesLineChartData"
-                            title="Sales Trend"
-                            subtitle="{{ $this->periodSummary->get('period_label') }}"
-                            icon="chart-line"
-                            height="350px"
-                    >
-                        <x-slot:actions>
-                            <flux:button variant="ghost" size="sm" wire:click="toggleCharts" icon="eye-slash">
-                                Hide
-                            </flux:button>
-                        </x-slot:actions>
-                    </x-chart-widget>
-                </div>
-
-                {{-- Channel Distribution --}}
-                <div
-                    class="transition duration-200"
-                    wire:loading.class="opacity-50"
-                    wire:target="{{ $refreshTargets }}"
-                >
-                    <x-chart-widget
-                            type="doughnut"
-                            chart-key="channel-doughnut-{{ $period }}-{{ $channel }}-{{ $searchTerm }}-{{ $customFrom }}-{{ $customTo }}"
-                            :data="$this->channelDoughnutChartData"
-                            title="Revenue by Channel"
-                            subtitle="Channel performance breakdown"
-                            icon="chart-pie"
-                            height="350px"
-                    />
-                </div>
+        <div x-show="showCharts" x-transition>
+            {{-- Sales Trend & Channel Distribution - Load in parallel --}}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <livewire:dashboard.sales-trend-chart lazy />
+                <livewire:dashboard.channel-distribution-chart lazy />
             </div>
 
-            {{-- Daily Revenue Bar Chart --}}
-            <div
-                class="transition duration-200"
-                wire:loading.class="opacity-50"
-                wire:target="{{ $refreshTargets }}"
-            >
-                <x-chart-widget
-                        type="bar"
-                        chart-key="daily-bar-{{ $period }}-{{ $channel }}-{{ $searchTerm }}-{{ $customFrom }}-{{ $customTo }}"
-                        :data="$this->salesBarChartData"
-                        title="Daily Revenue"
-                        subtitle="Revenue per day for {{ $this->periodSummary->get('period_label') }}"
-                        icon="currency-pound"
-                        height="250px"
-                />
-            </div>
-        @endif
+            {{-- Daily Revenue Chart --}}
+            <livewire:dashboard.daily-revenue-chart lazy />
+        </div>
 
         {{-- Cache Status --}}
         <livewire:components.cache-status />
 
-        {{-- Analytics Grid --}}
+        {{-- Analytics Grid - Top Products & Channels load in parallel --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {{-- Top Products --}}
-            <div
-                class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6 transition duration-200"
-                wire:loading.class="opacity-50"
-                wire:target="{{ $refreshTargets }}"
-            >
-                <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100 mb-6">Top Products</flux:heading>
-                <div class="space-y-4">
-                    @forelse($this->topProducts as $index => $product)
-                        <div class="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 text-sm font-bold">
-                                    {{ $index + 1 }}
-                                </div>
-                                <div>
-                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $product->get('title') }}</div>
-                                    <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $product->get('sku') }}</div>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-bold text-zinc-900 dark:text-zinc-100">£{{ number_format($product->get('revenue'), 0) }}</div>
-                                <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $product->get('quantity') }} sold</div>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="text-center py-8 text-zinc-500 dark:text-zinc-400">
-                            <flux:icon name="cube" class="size-12 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
-                            <p>No products found</p>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-            
-            {{-- Top Channels --}}
-            <div
-                class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6 transition duration-200"
-                wire:loading.class="opacity-50"
-                wire:target="{{ $refreshTargets }}"
-            >
-                <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100 mb-6">Top Channels</flux:heading>
-                <div class="space-y-4">
-                    @forelse($this->topChannels as $index => $channel)
-                        <div class="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-sm font-bold">
-                                    {{ $index + 1 }}
-                                </div>
-                                <div>
-                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $channel->get('name') }}</div>
-                                    <div class="text-sm text-zinc-600 dark:text-zinc-400">£{{ number_format($channel->get('avg_order_value'), 0) }} avg</div>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-bold text-zinc-900 dark:text-zinc-100">£{{ number_format($channel->get('revenue'), 0) }}</div>
-                                <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $channel->get('orders') }} orders</div>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="text-center py-8 text-zinc-500 dark:text-zinc-400">
-                            <flux:icon name="chart-bar" class="size-12 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
-                            <p>No channels found</p>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
+            <livewire:dashboard.top-products lazy />
+            <livewire:dashboard.top-channels lazy />
         </div>
 
         {{-- Recent Orders Table --}}
-        <div
-            class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 transition duration-200"
-            wire:loading.class="opacity-50"
-            wire:target="{{ $refreshTargets }}"
-        >
-            <div class="p-6 border-b border-zinc-200 dark:border-zinc-700">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">Recent Orders</flux:heading>
-                        <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                            Showing {{ $this->recentOrders->count() }} of {{ number_format($this->metrics->get('total_orders')) }} orders
-                        </p>
-                    </div>
-                    <div class="flex gap-2">
-                        <flux:button variant="ghost" size="sm" wire:click="toggleMetrics" icon="{{ $showMetrics ? 'eye-slash' : 'eye' }}">
-                            {{ $showMetrics ? 'Hide' : 'Show' }} Metrics
-                        </flux:button>
-                        @if(!$showCharts)
-                            <flux:button variant="ghost" size="sm" wire:click="toggleCharts" icon="chart-bar">
-                                Show Charts
-                            </flux:button>
-                        @endif
-                    </div>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-zinc-50 dark:bg-zinc-700 border-b border-zinc-200 dark:border-zinc-600">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Order</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Channel</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Value</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                        @forelse($this->recentOrders as $order)
-                            <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">#{{ $order->order_number }}</div>
-                                    <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ Str::limit($order->linnworks_order_id, 8) }}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-zinc-900 dark:text-zinc-100">{{ $order->received_date?->format('M j, Y') }}</div>
-                                    <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $order->received_date?->format('g:i A') }}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-600 text-zinc-800 dark:text-zinc-200">
-                                        {{ $order->channel_name }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($order->total_charge, 2) }}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <flux:badge color="{{ $order->is_open ? 'blue' : 'zinc' }}" size="sm">
-                                        {{ $order->is_open ? 'Open' : 'Closed' }}
-                                    </flux:badge>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-6 py-12 text-center">
-                                    <div class="text-zinc-500 dark:text-zinc-400">
-                                        <flux:icon name="shopping-bag" class="size-12 mx-auto mb-4 text-zinc-300 dark:text-zinc-600" />
-                                        <p class="text-lg font-medium">No orders found</p>
-                                        <p class="text-sm">Try adjusting your filters or sync some orders</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+        <div class="flex items-center justify-end gap-2 mb-4">
+            <flux:button
+                variant="ghost"
+                size="sm"
+                @click="showMetrics = !showMetrics"
+                x-bind:icon="showMetrics ? 'eye-slash' : 'eye'"
+            >
+                <span x-text="showMetrics ? 'Hide' : 'Show'"></span> Metrics
+            </flux:button>
+
+            <flux:button
+                variant="ghost"
+                size="sm"
+                @click="showCharts = !showCharts"
+                x-bind:icon="showCharts ? 'eye-slash' : 'chart-bar'"
+            >
+                <span x-text="showCharts ? 'Hide' : 'Show'"></span> Charts
+            </flux:button>
         </div>
+
+        <livewire:dashboard.recent-orders lazy />
+
     </div>
 </div>
