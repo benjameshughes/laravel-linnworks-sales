@@ -94,6 +94,9 @@ class DashboardDataService
         ?string $customFrom,
         ?string $customTo
     ): Collection {
+        // Uncomment to see skeleton loaders (adds 1 second delay)
+        // sleep(1);
+
         $dateRange = $this->getDateRange($period, $customFrom, $customTo);
 
         return Order::whereBetween('received_date', [
