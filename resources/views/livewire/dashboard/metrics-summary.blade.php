@@ -1,7 +1,7 @@
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 transition-opacity duration-200" wire:loading.class="opacity-50">
     {{-- Total Revenue --}}
-    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white">
-        <div class="flex items-center justify-between">
+    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white h-32">
+        <div class="flex items-center justify-between h-full">
             <div>
                 <p class="text-blue-100 text-sm font-medium">Total Revenue</p>
                 <p class="text-3xl font-bold">£{{ number_format($this->metrics->get('total_revenue'), 0) }}</p>
@@ -16,8 +16,8 @@
     </div>
 
     {{-- Total Orders --}}
-    <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-sm p-6 text-white">
-        <div class="flex items-center justify-between">
+    <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-sm p-6 text-white h-32">
+        <div class="flex items-center justify-between h-full">
             <div>
                 <p class="text-emerald-100 text-sm font-medium">Total Orders</p>
                 <p class="text-3xl font-bold">{{ number_format($this->metrics->get('total_orders')) }}</p>
@@ -30,8 +30,8 @@
     </div>
 
     {{-- Average Order Value --}}
-    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 text-white">
-        <div class="flex items-center justify-between">
+    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 text-white h-32">
+        <div class="flex items-center justify-between h-full">
             <div>
                 <p class="text-purple-100 text-sm font-medium">Average Order</p>
                 <p class="text-3xl font-bold">£{{ number_format($this->metrics->get('average_order_value'), 0) }}</p>
@@ -42,8 +42,8 @@
     </div>
 
     {{-- Total Items --}}
-    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-sm p-6 text-white">
-        <div class="flex items-center justify-between">
+    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-sm p-6 text-white h-32">
+        <div class="flex items-center justify-between h-full">
             <div>
                 <p class="text-orange-100 text-sm font-medium">Items Sold</p>
                 <p class="text-3xl font-bold">{{ number_format($this->metrics->get('total_items')) }}</p>

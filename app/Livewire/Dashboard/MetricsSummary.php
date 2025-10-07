@@ -9,11 +9,9 @@ use App\Services\Metrics\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Lazy;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
-#[Lazy]
 final class MetricsSummary extends Component
 {
     public string $period = '7';
@@ -79,18 +77,6 @@ final class MetricsSummary extends Component
         $previousPeriodData = $this->getPreviousPeriodOrders();
 
         return $this->salesMetrics->getMetricsSummary($periodDays, $previousPeriodData);
-    }
-
-    public function placeholder(): string
-    {
-        return <<<'HTML'
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 animate-pulse h-32"></div>
-            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-sm p-6 animate-pulse h-32"></div>
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 animate-pulse h-32"></div>
-            <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-sm p-6 animate-pulse h-32"></div>
-        </div>
-        HTML;
     }
 
     public function render()

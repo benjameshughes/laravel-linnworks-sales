@@ -9,11 +9,9 @@ use App\Services\Metrics\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Lazy;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
-#[Lazy]
 final class ChannelDistributionChart extends Component
 {
     public string $period = '7';
@@ -72,16 +70,6 @@ final class ChannelDistributionChart extends Component
     public function chartKey(): string
     {
         return "channel-doughnut-{$this->period}-{$this->channel}-{$this->searchTerm}-{$this->customFrom}-{$this->customTo}";
-    }
-
-    public function placeholder(): string
-    {
-        return <<<'HTML'
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6 animate-pulse">
-            <div class="h-8 bg-zinc-200 dark:bg-zinc-700 rounded w-1/3 mb-4"></div>
-            <div class="h-64 bg-zinc-100 dark:bg-zinc-700/50 rounded-full mx-auto w-64"></div>
-        </div>
-        HTML;
     }
 
     public function render()

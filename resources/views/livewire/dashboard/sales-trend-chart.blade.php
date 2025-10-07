@@ -1,4 +1,4 @@
-<div>
+<div class="transition-opacity duration-200" wire:loading.class="opacity-50">
     <x-chart-widget
         type="area"
         :chart-key="$this->chartKey"

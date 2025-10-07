@@ -9,11 +9,9 @@ use App\Services\Metrics\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Lazy;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
-#[Lazy]
 final class TopChannels extends Component
 {
     public string $period = '7';
@@ -66,23 +64,6 @@ final class TopChannels extends Component
     public function topChannels(): Collection
     {
         return $this->salesMetrics->topChannels(6);
-    }
-
-    public function placeholder(): string
-    {
-        return <<<'HTML'
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6 animate-pulse">
-            <div class="h-6 bg-zinc-200 dark:bg-zinc-700 rounded w-1/3 mb-6"></div>
-            <div class="space-y-4">
-                <div class="h-16 bg-zinc-100 dark:bg-zinc-700/50 rounded"></div>
-                <div class="h-16 bg-zinc-100 dark:bg-zinc-700/50 rounded"></div>
-                <div class="h-16 bg-zinc-100 dark:bg-zinc-700/50 rounded"></div>
-                <div class="h-16 bg-zinc-100 dark:bg-zinc-700/50 rounded"></div>
-                <div class="h-16 bg-zinc-100 dark:bg-zinc-700/50 rounded"></div>
-                <div class="h-16 bg-zinc-100 dark:bg-zinc-700/50 rounded"></div>
-            </div>
-        </div>
-        HTML;
     }
 
     public function render()

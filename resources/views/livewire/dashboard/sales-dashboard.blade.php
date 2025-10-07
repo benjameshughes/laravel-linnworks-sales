@@ -1,33 +1,27 @@
 <div class="min-h-screen" x-data="{ showCharts: true, showMetrics: true }">
     <div class="space-y-6 p-6">
-
-        {{-- Filters Island - Non-lazy, always loads first --}}
+        {{-- Filters Island --}}
         <livewire:dashboard.dashboard-filters />
 
-        {{-- Metrics Summary Island - Loads in parallel --}}
-        <div x-show="showMetrics" x-transition>
-            <livewire:dashboard.metrics-summary lazy />
-        </div>
+        {{-- Metrics Summary Island --}}
+        <livewire:dashboard.metrics-summary />
 
         {{-- Charts Section --}}
-        <div x-show="showCharts" x-transition>
-            {{-- Sales Trend & Channel Distribution - Load in parallel --}}
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <livewire:dashboard.sales-trend-chart lazy />
-                <livewire:dashboard.channel-distribution-chart lazy />
-            </div>
-
-            {{-- Daily Revenue Chart --}}
-            <livewire:dashboard.daily-revenue-chart lazy />
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <livewire:dashboard.sales-trend-chart />
+            <livewire:dashboard.channel-distribution-chart />
         </div>
+
+        {{-- Daily Revenue Chart --}}
+        <livewire:dashboard.daily-revenue-chart />
 
         {{-- Cache Status --}}
         <livewire:components.cache-status />
 
-        {{-- Analytics Grid - Top Products & Channels load in parallel --}}
+        {{-- Analytics Grid --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <livewire:dashboard.top-products lazy />
-            <livewire:dashboard.top-channels lazy />
+            <livewire:dashboard.top-products />
+            <livewire:dashboard.top-channels />
         </div>
 
         {{-- Recent Orders Table --}}
@@ -51,7 +45,6 @@
             </flux:button>
         </div>
 
-        <livewire:dashboard.recent-orders lazy />
-
+        <livewire:dashboard.recent-orders />
     </div>
 </div>
