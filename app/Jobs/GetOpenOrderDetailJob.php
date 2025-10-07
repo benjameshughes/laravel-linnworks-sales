@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Actions\Linnworks\Orders\ImportOrders;
+use App\DataTransferObjects\ImportOrdersResult;
 use App\Models\Order;
 use App\Models\SyncLog;
 use App\Services\LinnworksApiService;
@@ -11,6 +13,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Livewire\Livewire;
 
 class GetOpenOrderDetailJob implements ShouldQueue
 {
@@ -31,7 +34,7 @@ class GetOpenOrderDetailJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(LinnworksApiService $linnworksService): void
+    public function handle(LinnworksApiService $linnworksService, ImportOrders $importOrders): void
     {
         Log::info('Processing batch order detail job', [
             'order_count' => count($this->orderUuids),
@@ -79,49 +82,38 @@ class GetOpenOrderDetailJob implements ShouldQueue
                 return;
             }
 
-            // Step 3: Create new orders in database
-            $created = 0;
-            $failed = 0;
-            
-            foreach ($orderDetails as $linnworksOrder) {
-                try {
-                    $orderModel = Order::fromLinnworksOrder($linnworksOrder);
-                    $orderModel->save();
-                    
-                    Log::info('Successfully created new order', [
-                        'order_uuid' => $orderModel->linnworks_order_id,
-                        'order_number' => $orderModel->order_number,
-                        'channel' => $orderModel->channel_name,
-                        'total_charge' => $orderModel->total_charge
-                    ]);
-                    
-                    $created++;
-                } catch (\Exception $e) {
-                    Log::error('Failed to create order', [
-                        'error' => $e->getMessage()
-                    ]);
-                    $failed++;
-                }
+            /** @var ImportOrdersResult $result */
+            $result = $importOrders->handle($orderDetails);
+
+            if ($result->created > 0) {
+                $this->incrementSyncCounter('created', $result->created);
             }
-            
-            if ($created > 0) {
-                $this->incrementSyncCounter('created', $created);
+
+            if ($result->updated > 0) {
+                $this->incrementSyncCounter('updated', $result->updated);
             }
-            
-            if ($failed > 0) {
-                $this->incrementSyncCounter('failed', $failed);
+
+            if ($result->skipped > 0) {
+                $this->incrementSyncCounter('skipped', $result->skipped);
             }
-            
-            // Account for any orders that weren't returned by the API
-            $notReturned = count($newOrderUuids) - $orderDetails->count();
+
+            if ($result->failed > 0) {
+                $this->incrementSyncCounter('failed', $result->failed);
+            }
+
+            $storedTotal = $result->created + $result->updated + $result->skipped + $result->failed;
+            $notReturned = max(0, count($newOrderUuids) - $storedTotal);
+
             if ($notReturned > 0) {
                 Log::warning('Some orders were not returned by API', [
                     'requested' => count($newOrderUuids),
-                    'returned' => $orderDetails->count(),
-                    'missing' => $notReturned
+                    'stored_total' => $storedTotal,
+                    'missing' => $notReturned,
                 ]);
                 $this->incrementSyncCounter('failed', $notReturned);
             }
+
+            Log::info('Order detail batch imported', $result->toArray());
 
         } catch (\Exception $e) {
             Log::error('Failed to process batch order detail', [
@@ -200,11 +192,27 @@ class GetOpenOrderDetailJob implements ShouldQueue
                 ])
             ]);
 
-            Log::info('Sync completed by detail job', [
-                'sync_log_id' => $syncLog->id,
-                'total_processed' => $totalProcessed,
-                'total_fetched' => $totalFetched
-            ]);
+            if ($syncLog->wasChanged('status')) {
+                $syncLog->refresh();
+
+                $summary = [
+                    'fetched' => $syncLog->total_fetched ?? 0,
+                    'created' => $syncLog->total_created ?? 0,
+                    'updated' => $syncLog->total_updated ?? 0,
+                    'skipped' => $syncLog->total_skipped ?? 0,
+                    'failed' => $syncLog->total_failed ?? 0,
+                    'initiated_by' => $syncLog->metadata['started_by'] ?? null,
+                    'completed_at' => optional($syncLog->completed_at)->toIso8601String(),
+                ];
+
+                Livewire::dispatch('open-orders-synced', $summary);
+
+                Log::info('Sync completed by detail job', [
+                    'sync_log_id' => $syncLog->id,
+                    'total_processed' => $totalProcessed,
+                    'total_fetched' => $totalFetched
+                ]);
+            }
         }
     }
 

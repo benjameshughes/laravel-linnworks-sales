@@ -2,7 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Order;
+use App\Actions\Linnworks\Orders\ImportOrders;
+use App\DataTransferObjects\ImportOrdersResult;
 use App\Services\LinnworksApiService;
 use Illuminate\Console\Command;
 use Carbon\Carbon;
@@ -29,7 +30,7 @@ class SyncLinnworksOrders extends Command
     /**
      * Execute the console command.
      */
-    public function handle(LinnworksApiService $linnworksService)
+    public function handle(LinnworksApiService $linnworksService, ImportOrders $importOrders)
     {
         $days = (int) $this->option('days');
         $force = $this->option('force');
@@ -66,82 +67,46 @@ class SyncLinnworksOrders extends Command
         $this->info("Fetching orders from {$from->format('Y-m-d')} to {$to->format('Y-m-d')}");
 
         // Get recent open orders
-        $openOrders = $linnworksService->getRecentOpenOrders($days);
+        $openOrders = $linnworksService->getRecentOpenOrders(null, $days);
         $this->info("Found {$openOrders->count()} open orders");
 
-        // Get processed orders
-        $processedOrders = $linnworksService->getProcessedOrders($from, $to);
-        $this->info("Found {$processedOrders->count()} processed orders");
+        // Page through processed orders
+        $processedOrders = collect();
+        $pageNumber = 1;
+
+        do {
+            $processedResult = $linnworksService->getProcessedOrders($from, $to, $pageNumber);
+
+            $processedOrders = $processedOrders->merge($processedResult->orders);
+            $pageNumber++;
+        } while ($processedResult->hasMorePages);
+
+        $this->info("Collected {$processedOrders->count()} processed orders");
 
         // Combine all orders
         $allOrders = $openOrders->merge($processedOrders);
-        $this->info("Total orders to process: {$allOrders->count()}");
+        $this->info("Total orders to import: {$allOrders->count()}");
 
         if ($allOrders->isEmpty()) {
             $this->warn('No orders found to sync.');
             return 0;
         }
 
-        $progressBar = $this->output->createProgressBar($allOrders->count());
-        $progressBar->start();
+        /** @var ImportOrdersResult $result */
+        $result = $importOrders->handle($allOrders, $force);
 
-        $created = 0;
-        $updated = 0;
-        $skipped = 0;
-
-        foreach ($allOrders as $linnworksOrder) {
-            if (!$linnworksOrder->orderId) {
-                $skipped++;
-                $progressBar->advance();
-                continue;
-            }
-
-            $existingOrder = Order::where('linnworks_order_id', $linnworksOrder->orderId)->first();
-
-            if ($existingOrder && !$force) {
-                // Update existing order
-                $orderModel = Order::fromLinnworksOrder($linnworksOrder);
-                $existingOrder->fill($orderModel->getAttributes());
-                
-                if ($existingOrder->isDirty()) {
-                    $existingOrder->save();
-                    $updated++;
-                } else {
-                    $skipped++;
-                }
-            } else {
-                // Create new order
-                $orderModel = Order::fromLinnworksOrder($linnworksOrder);
-                
-                try {
-                    $orderModel->save();
-                    $created++;
-                } catch (\Exception $e) {
-                    if ($existingOrder && $force) {
-                        // Force update
-                        $existingOrder->fill($orderModel->getAttributes());
-                        $existingOrder->save();
-                        $updated++;
-                    } else {
-                        $this->error("Failed to save order {$linnworksOrder->orderId}: " . $e->getMessage());
-                        $skipped++;
-                    }
-                }
-            }
-
-            $progressBar->advance();
-        }
-
-        $progressBar->finish();
-        $this->newLine();
-
-        $this->info("Sync completed!");
-        $this->table(['Status', 'Count'], [
-            ['Created', $created],
-            ['Updated', $updated],
-            ['Skipped', $skipped],
-            ['Total', $allOrders->count()],
+        $this->info('Sync completed!');
+        $this->table(['Metric', 'Count'], [
+            ['Processed', $result->processed],
+            ['Created', $result->created],
+            ['Updated', $result->updated],
+            ['Skipped', $result->skipped],
+            ['Failed', $result->failed],
         ]);
+
+        if ($result->failed > 0) {
+            $this->warn('Some orders failed to import. Check logs tagged with "Failed to persist Linnworks order".');
+        }
 
         return 0;
     }

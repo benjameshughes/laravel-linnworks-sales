@@ -139,7 +139,7 @@ class LinnworksOAuthService
             
             $response = Http::withHeaders([
                 'Authorization' => $connection->session_token,
-            ])->get("{$serverUrl}/api/Inventory/GetStockLocations");
+            ])->get("{$serverUrl}/api/Auth/AuthorizeByApplication");
 
             if ($response->successful()) {
                 Log::info('Linnworks connection test successful - session token works', [
@@ -175,7 +175,7 @@ class LinnworksOAuthService
             return null;
         }
 
-        if ($connection->needsNewSession()) {
+        if ($connection->needs_new_session) {
             if (!$this->refreshSession($connection)) {
                 return null;
             }
@@ -240,7 +240,7 @@ class LinnworksOAuthService
             ];
         }
 
-        if ($connection->needsNewSession()) {
+        if ($connection->needs_new_session) {
             return [
                 'connected' => true,
                 'status' => 'needs_refresh',

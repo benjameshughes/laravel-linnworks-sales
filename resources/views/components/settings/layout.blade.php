@@ -5,6 +5,7 @@
             <flux:navlist.item :href="route('settings.password')" wire:navigate>{{ __('Password') }}</flux:navlist.item>
             <flux:navlist.item :href="route('settings.appearance')" wire:navigate>{{ __('Appearance') }}</flux:navlist.item>
             <flux:navlist.item :href="route('settings.linnworks')" wire:navigate>{{ __('Linnworks') }}</flux:navlist.item>
+            <flux:navlist.item :href="route('settings.import')" wire:navigate>{{ __('Import Orders') }}</flux:navlist.item>
         </flux:navlist>
     </div>
 

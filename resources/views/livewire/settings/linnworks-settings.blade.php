@@ -122,6 +122,79 @@
             </div>
         </x-card>
 
+        @if($this->connectionStatus['connected'])
+            <x-card>
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <flux:heading size="lg">Open Orders Defaults</flux:heading>
+                        <flux:description class="text-gray-600 dark:text-gray-400">
+                            Choose the Linnworks view and fulfilment location used when syncing open orders.
+                        </flux:description>
+                    </div>
+                    <flux:button
+                        wire:click="refreshSourceCatalog"
+                        size="sm"
+                        variant="outline"
+                        :disabled="$isRefreshingSources"
+                    >
+                        <span wire:loading wire:target="refreshSourceCatalog" class="flex items-center gap-2">
+                            <flux:icon.arrow-path class="size-4 animate-spin" />
+                            Refreshing...
+                        </span>
+                        <span wire:loading.remove wire:target="refreshSourceCatalog" class="flex items-center gap-2">
+                            <flux:icon.arrow-path class="size-4" />
+                            Refresh from Linnworks
+                        </span>
+                    </flux:button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <flux:field>
+                        <flux:label>Fulfilment Location</flux:label>
+                        <flux:select wire:model="selectedLocation">
+                            @forelse($availableLocations as $location)
+                                <flux:select.option value="{{ $location['id'] }}">
+                                    {{ $location['name'] }}
+                                </flux:select.option>
+                            @empty
+                                <flux:select.option value="">
+                                    No locations detected yet
+                                </flux:select.option>
+                            @endforelse
+                        </flux:select>
+                        <flux:description>
+                            Defaults to the first Linnworks location if none is selected.
+                        </flux:description>
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label>Open Orders View</flux:label>
+                        <flux:select wire:model="selectedView">
+                            @forelse($availableViews as $view)
+                                <flux:select.option value="{{ $view['id'] }}">
+                                    {{ $view['name'] }}
+                                </flux:select.option>
+                            @empty
+                                <flux:select.option value="0">
+                                    Default Linnworks view
+                                </flux:select.option>
+                            @endforelse
+                        </flux:select>
+                        <flux:description>
+                            Leave on the default view or choose a saved Linnworks filter.
+                        </flux:description>
+                    </flux:field>
+                </div>
+
+                <div class="flex justify-end mt-6">
+                    <flux:button wire:click="savePreferences" color="blue">
+                        <flux:icon.check class="size-4" />
+                        Save Preferences
+                    </flux:button>
+                </div>
+            </x-card>
+        @endif
+
 
         {{-- Connection Form --}}
         @if($showForm)

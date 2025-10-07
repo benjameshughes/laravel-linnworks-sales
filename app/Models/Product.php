@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
-use Carbon\Carbon;
+use Laravel\Scout\Searchable;
 
 final class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, Searchable;
 
     protected $fillable = [
         'linnworks_id',
@@ -38,21 +42,77 @@ final class Product extends Model
         'last_synced_at',
     ];
 
-    protected $casts = [
-        'purchase_price' => 'decimal:4',
-        'retail_price' => 'decimal:4',
-        'weight' => 'decimal:3',
-        'dimensions' => 'array',
-        'stock_level' => 'integer',
-        'stock_minimum' => 'integer',
-        'stock_in_orders' => 'integer',
-        'stock_due' => 'integer',
-        'stock_available' => 'integer',
-        'is_active' => 'boolean',
-        'created_date' => 'datetime',
-        'metadata' => 'array',
-        'last_synced_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'purchase_price' => 'decimal:4',
+            'retail_price' => 'decimal:4',
+            'weight' => 'decimal:3',
+            'dimensions' => 'array',
+            'stock_level' => 'integer',
+            'stock_minimum' => 'integer',
+            'stock_in_orders' => 'integer',
+            'stock_due' => 'integer',
+            'stock_available' => 'integer',
+            'is_active' => 'boolean',
+            'created_date' => 'datetime',
+            'metadata' => 'array',
+            'last_synced_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * Get the indexable data array for the model.
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'sku' => $this->sku,
+            'title' => $this->title,
+            'description' => $this->description,
+            'category_name' => $this->category_name,
+            'brand' => $this->brand,
+            'barcode' => $this->barcode,
+            'is_active' => $this->is_active,
+            'stock_level' => $this->stock_level,
+            'retail_price' => $this->retail_price,
+            'purchase_price' => $this->purchase_price,
+            // Searchable text content combined
+            'searchable_content' => collect([
+                $this->sku,
+                $this->title,
+                $this->description,
+                $this->category_name,
+                $this->brand,
+                $this->barcode,
+            ])->filter()->implode(' '),
+        ];
+    }
+
+    /**
+     * Determine if the model should be searchable.
+     */
+    public function shouldBeSearchable(): bool
+    {
+        return $this->is_active && !empty($this->sku);
+    }
+
+    /**
+     * Get the value used to index the model.
+     */
+    public function getScoutKey(): mixed
+    {
+        return $this->id;
+    }
+
+    /**
+     * Get the key name used to index the model.
+     */
+    public function getScoutKeyName(): mixed
+    {
+        return $this->getKeyName();
+    }
 
     /**
      * Get all order items for this product.
@@ -65,69 +125,144 @@ final class Product extends Model
     /**
      * Get all orders that contain this product through order items.
      */
-    public function orders()
+    public function orders(): BelongsToMany
     {
         return $this->belongsToMany(Order::class, 'order_items', 'sku', 'order_id', 'sku', 'id')
             ->withPivot('quantity', 'price_per_unit', 'line_total', 'unit_cost');
     }
 
     /**
-     * Get all order items for this product across all orders (backward compatibility)
+     * Get total quantity sold (modern accessor)
      */
-    public function getOrderItems(): Collection
+    protected function totalSold(): Attribute
     {
-        return $this->orderItems;
+        return Attribute::make(
+            get: fn () => $this->orderItems->sum('quantity')
+        );
     }
 
     /**
-     * Get order items with order context (includes order information)
+     * Get total revenue (modern accessor)
      */
-    public function getOrderItemsWithContext(): Collection
+    protected function totalRevenue(): Attribute
     {
-        return Order::all()
-            ->map(function($order) {
-                $orderItems = collect($order->items ?? [])->where('sku', $this->sku);
-                return $orderItems->map(function($item) use ($order) {
-                    return array_merge($item, [
-                        'order_id' => $order->id,
-                        'order_number' => $order->order_number,
-                        'channel_name' => $order->channel_name,
-                        'received_date' => $order->received_date,
-                        'order_total' => $order->total_charge,
-                    ]);
-                });
-            })
-            ->flatten(1)
-            ->values();
+        return Attribute::make(
+            get: fn () => $this->orderItems->sum(fn ($item) => 
+                $item->line_total > 0 ? $item->line_total : ($item->quantity * $item->price_per_unit)
+            )
+        );
     }
 
-    public function getTotalSold(): int
+    /**
+     * Get average selling price (modern accessor)
+     */
+    protected function averageSellingPrice(): Attribute
     {
-        return $this->getOrderItems()->sum('quantity');
+        return Attribute::make(
+            get: fn () => $this->orderItems->avg('price_per_unit') ?: 0
+        );
     }
 
-    public function getTotalRevenue(): float
+    /**
+     * Get profit margin percentage (modern accessor)
+     */
+    protected function profitMargin(): Attribute
     {
-        return $this->getOrderItems()->sum(function($item) {
-            // Use line_total if available and > 0, otherwise calculate from quantity * price
-            $lineTotal = $item['line_total'] ?? 0;
-            return $lineTotal > 0 ? $lineTotal : ($item['quantity'] ?? 0) * ($item['price_per_unit'] ?? 0);
-        });
+        return Attribute::make(
+            get: function () {
+                if ($this->average_selling_price === 0 || $this->purchase_price === null) {
+                    return 0;
+                }
+                return (($this->average_selling_price - $this->purchase_price) / $this->average_selling_price) * 100;
+            }
+        );
     }
 
-    public function getAverageSellingPrice(): float
+    /**
+     * Get total profit (modern accessor)
+     */
+    protected function totalProfit(): Attribute
     {
-        $items = $this->getOrderItems();
-        return $items->isEmpty() ? 0 : $items->avg('price_per_unit');
+        return Attribute::make(
+            get: fn () => $this->total_revenue - ($this->total_sold * ($this->purchase_price ?: 0))
+        );
     }
 
-    public function getProfitMargin(): float
+    /**
+     * Check if product is low stock (modern accessor)
+     */
+    protected function isLowStock(): Attribute
     {
-        $avgSellingPrice = $this->getAverageSellingPrice();
-        if ($avgSellingPrice === 0 || $this->purchase_price === null) {
-            return 0;
-        }
-        return (($avgSellingPrice - $this->purchase_price) / $avgSellingPrice) * 100;
+        return Attribute::make(
+            get: fn () => $this->stock_available <= $this->stock_minimum
+        );
+    }
+
+    /**
+     * Check if product is out of stock (modern accessor)
+     */
+    protected function isOutOfStock(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->stock_available <= 0
+        );
+    }
+
+    /**
+     * Get stock status (modern accessor)
+     */
+    protected function stockStatus(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => match (true) {
+                $this->is_out_of_stock => 'out_of_stock',
+                $this->is_low_stock => 'low_stock',
+                default => 'in_stock'
+            }
+        );
+    }
+
+    /**
+     * Get formatted price (modern accessor)
+     */
+    protected function formattedRetailPrice(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => '£' . number_format((float) ($this->retail_price ?: 0), 2)
+        );
+    }
+
+    /**
+     * Get formatted purchase price (modern accessor)
+     */
+    protected function formattedPurchasePrice(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => '£' . number_format((float) ($this->purchase_price ?: 0), 2)
+        );
+    }
+
+    /**
+     * Get display name combining title and SKU (modern accessor)
+     */
+    protected function displayName(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => "{$this->title} ({$this->sku})"
+        );
+    }
+
+    /**
+     * Check if product has been sold recently (modern accessor)
+     */
+    protected function hasSoldRecently(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->orderItems
+                ->filter(fn ($item) => 
+                    $item->order && $item->order->received_date >= now()->subDays(30)
+                )->isNotEmpty()
+        );
     }
 
     public static function fromLinnworksInventory(array $stockItem): self
@@ -182,21 +317,42 @@ final class Product extends Model
     {
         // Handle nested structure from GetStockItemsFull
         $generalInfo = $stockItem['GeneralInfo'] ?? $stockItem;
-        $stockLevels = $stockItem['StockLevel'] ?? [];
-        $pricing = $stockItem['PriceInfo'] ?? [];
         $variations = $stockItem['Variations'] ?? [];
         $images = $stockItem['Images'] ?? [];
+
+        // StockLevels is an array - get first location or aggregate
+        $stockLevels = [];
+        if (isset($stockItem['StockLevels']) && is_array($stockItem['StockLevels']) && !empty($stockItem['StockLevels'])) {
+            $stockLevels = $stockItem['StockLevels'][0]; // Use first location
+        }
+
+        // Extract pricing - PurchasePrice at root level, RetailPrice from channel prices
+        $purchasePrice = $stockItem['PurchasePrice'] ?? $generalInfo['PurchasePrice'] ?? null;
+        $retailPrice = null;
+
+        // Try to get retail price from channel prices (use first available)
+        if (isset($stockItem['ItemChannelPrices']) && is_array($stockItem['ItemChannelPrices']) && !empty($stockItem['ItemChannelPrices'])) {
+            $retailPrice = $stockItem['ItemChannelPrices'][0]['Price'] ?? null;
+        }
+
+        // Fallback to any RetailPrice field found
+        $retailPrice = $retailPrice ?? $stockItem['RetailPrice'] ?? $generalInfo['RetailPrice'] ?? null;
+
+        // Only store non-zero purchase price
+        if ($purchasePrice !== null && $purchasePrice <= 0) {
+            $purchasePrice = null;
+        }
 
         return new self([
             'linnworks_id' => $generalInfo['StockItemId'] ?? $stockItem['StockItemId'] ?? null,
             'sku' => $generalInfo['ItemNumber'] ?? $stockItem['ItemNumber'] ?? null,
             'title' => $generalInfo['ItemTitle'] ?? $stockItem['ItemTitle'] ?? null,
-            'description' => $generalInfo['ItemDescription'] ?? $stockItem['ItemDescription'] ?? $generalInfo['MetaData'] ?? null,
+            'description' => $generalInfo['ItemDescription'] ?? $stockItem['ItemDescription'] ?? $generalInfo['MetaData'] ?? $stockItem['MetaData'] ?? null,
             'category_id' => $generalInfo['CategoryId'] ?? $stockItem['CategoryId'] ?? null,
             'category_name' => $generalInfo['CategoryName'] ?? $stockItem['CategoryName'] ?? null,
             'brand' => $generalInfo['BrandName'] ?? $stockItem['BrandName'] ?? null,
-            'purchase_price' => $pricing['PurchasePrice'] ?? $generalInfo['PurchasePrice'] ?? $stockItem['PurchasePrice'] ?? null,
-            'retail_price' => $pricing['RetailPrice'] ?? $generalInfo['RetailPrice'] ?? $stockItem['RetailPrice'] ?? null,
+            'purchase_price' => $purchasePrice,
+            'retail_price' => $retailPrice,
             'weight' => $generalInfo['Weight'] ?? $stockItem['Weight'] ?? null,
             'dimensions' => [
                 'height' => $generalInfo['Height'] ?? $stockItem['Height'] ?? null,
@@ -205,7 +361,7 @@ final class Product extends Model
                 'dimension_unit' => $generalInfo['DimensionUnit'] ?? $stockItem['DimensionUnit'] ?? 'cm',
             ],
             'barcode' => $generalInfo['BarcodeNumber'] ?? $stockItem['BarcodeNumber'] ?? null,
-            'stock_level' => $stockLevels['Quantity'] ?? $stockItem['Quantity'] ?? 0,
+            'stock_level' => $stockLevels['Level'] ?? $stockItem['Quantity'] ?? 0,
             'stock_minimum' => $stockLevels['MinimumLevel'] ?? $stockItem['MinimumLevel'] ?? 0,
             'stock_in_orders' => $stockLevels['InOrder'] ?? $stockItem['InOrder'] ?? 0,
             'stock_due' => $stockLevels['Due'] ?? $stockItem['Due'] ?? 0,
@@ -247,112 +403,56 @@ final class Product extends Model
         ]);
     }
 
-    public function scopeActive($query)
+    /**
+     * Modern query scopes
+     */
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
-    public function scopeInStock($query)
+    public function scopeInStock(Builder $query): Builder
     {
         return $query->where('stock_available', '>', 0);
     }
 
-    public function scopeLowStock($query)
+    public function scopeLowStock(Builder $query): Builder
     {
         return $query->whereColumn('stock_available', '<=', 'stock_minimum');
     }
 
-    public function scopeByCategory($query, string $category)
+    public function scopeOutOfStock(Builder $query): Builder
+    {
+        return $query->where('stock_available', '<=', 0);
+    }
+
+    public function scopeByCategory(Builder $query, string $category): Builder
     {
         return $query->where('category_name', $category);
     }
 
-    /**
-     * Get top selling products with sales data
-     */
-    public static function getTopSellers(int $limit = 10): Collection
+    public function scopeByBrand(Builder $query, string $brand): Builder
     {
-        return static::all()
-            ->map(function($product) {
-                $orderItems = $product->getOrderItems();
-                return [
-                    'product' => $product,
-                    'total_sold' => $orderItems->sum('quantity'),
-                    'total_revenue' => $product->getTotalRevenue(), // Use the corrected method
-                    'order_count' => $orderItems->count(),
-                ];
-            })
-            ->sortByDesc('total_sold')
-            ->take($limit);
+        return $query->where('brand', $brand);
     }
 
-    /**
-     * Get sales performance by channel for this product
-     */
-    public function getSalesPerformanceByChannel(): Collection
+    public function scopeByPriceRange(Builder $query, float $min, float $max): Builder
     {
-        return $this->getOrderItemsWithContext()
-            ->groupBy('channel_name')
-            ->map(function($items, $channel) {
-                return [
-                    'channel' => $channel,
-                    'quantity_sold' => $items->sum('quantity'),
-                    'revenue' => $items->sum(function($item) {
-                        $lineTotal = $item['line_total'] ?? 0;
-                        return $lineTotal > 0 ? $lineTotal : ($item['quantity'] ?? 0) * ($item['price_per_unit'] ?? 0);
-                    }),
-                    'order_count' => $items->count(),
-                    'avg_price' => $items->avg('price_per_unit'),
-                ];
-            })
-            ->sortByDesc('revenue');
+        return $query->whereBetween('retail_price', [$min, $max]);
     }
 
-    /**
-     * Get recent sales activity for this product
-     */
-    public function getRecentSales(int $days = 30): Collection
+    public function scopeRecentlyUpdated(Builder $query, int $days = 7): Builder
     {
-        return $this->getOrderItemsWithContext()
-            ->filter(function($item) use ($days) {
-                return $item['received_date'] >= now()->subDays($days);
-            })
-            ->sortByDesc('received_date');
+        return $query->where('updated_at', '>=', now()->subDays($days));
     }
 
-    /**
-     * Check if this product has been sold recently
-     */
-    public function hasSoldRecently(int $days = 30): bool
+    public function scopeWithSales(Builder $query): Builder
     {
-        return $this->getRecentSales($days)->isNotEmpty();
+        return $query->whereHas('orderItems');
     }
 
-    /**
-     * Get profit analysis for this product
-     */
-    public function getProfitAnalysis(): array
+    public function scopeWithoutSales(Builder $query): Builder
     {
-        $orderItems = $this->getOrderItems();
-        $totalSold = $orderItems->sum('quantity');
-        $totalRevenue = $orderItems->sum(function($item) {
-            $lineTotal = $item['line_total'] ?? 0;
-            return $lineTotal > 0 ? $lineTotal : ($item['quantity'] ?? 0) * ($item['price_per_unit'] ?? 0);
-        });
-        $avgSellingPrice = $orderItems->avg('price_per_unit');
-        
-        $totalCost = $totalSold * ($this->purchase_price ?? 0);
-        $totalProfit = $totalRevenue - $totalCost;
-        $profitMargin = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;
-
-        return [
-            'total_sold' => $totalSold,
-            'total_revenue' => $totalRevenue,
-            'total_cost' => $totalCost,
-            'total_profit' => $totalProfit,
-            'profit_margin_percent' => $profitMargin,
-            'avg_selling_price' => $avgSellingPrice,
-            'purchase_price' => $this->purchase_price,
-        ];
+        return $query->whereDoesntHave('orderItems');
     }
 }

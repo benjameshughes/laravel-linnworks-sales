@@ -68,7 +68,8 @@ class GetAllProductsJob implements ShouldQueue
                 ->toArray();
 
             if (!empty($existingProducts)) {
-                Log::info("Found {count($existingProducts)} existing products to update");
+                $existingCount = count($existingProducts);
+                Log::info("Found {$existingCount} existing products to update");
             }
 
             // Process products in batches to avoid overwhelming the queue

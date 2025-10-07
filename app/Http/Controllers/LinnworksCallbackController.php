@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\LinnworksOAuthService;
+use App\Services\Linnworks\Auth\AuthenticationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 class LinnworksCallbackController extends Controller
 {
     public function __construct(
-        private LinnworksOAuthService $oauthService
+        private readonly AuthenticationService $authService,
     ) {}
 
     /**
@@ -69,16 +69,22 @@ class LinnworksCallbackController extends Controller
             // The secret is only needed for API calls, not for receiving the token
             $applicationSecret = config('linnworks.application_secret', 'not_required_for_callback');
 
-            // Create the connection automatically
-            $connection = $this->oauthService->createConnection(
-                $ourUserId,
-                $applicationId,
-                $applicationSecret,
-                $token
-            );
+            // Create the connection using new service
+            $connection = $this->authService->createConnection($ourUserId, $token);
+
+            if (!$connection) {
+                Log::error('Failed to create Linnworks connection', [
+                    'user_id' => $ourUserId,
+                    'token_length' => strlen($token),
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create connection'
+                ], 500);
+            }
 
             // Test the connection immediately
-            $testResult = $this->oauthService->testConnection($connection);
+            $testResult = $this->authService->validateConnection($connection);
 
             Log::info('Linnworks connection created via callback', [
                 'user_id' => $ourUserId,
@@ -122,11 +128,14 @@ class LinnworksCallbackController extends Controller
         // Generate tracking parameter with user ID
         $tracking = 'user_' . $user->id;
 
-        // Generate installation URL with tracking
-        $installUrl = "https://apps.linnworks.net/Authorization/Authorize/{$applicationId}?Tracking={$tracking}";
+        // Generate installation URL using new service
+        $installUrl = $this->authService->generateInstallUrl();
+        
+        // Add tracking parameter
+        $installUrlWithTracking = "{$installUrl}&Tracking={$tracking}";
 
         return response()->json([
-            'install_url' => $installUrl,
+            'install_url' => $installUrlWithTracking,
             'tracking' => $tracking,
             'user_id' => $user->id,
         ]);

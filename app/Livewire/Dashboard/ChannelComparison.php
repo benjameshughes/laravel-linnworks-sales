@@ -129,29 +129,35 @@ class ChannelComparison extends Component
             return $orderChannel === $this->selectedChannel;
         });
         
-        $products = collect();
-        foreach ($channelOrders as $order) {
-            if (!$order->items) continue;
-            
-            foreach ($order->items as $item) {
-                $products->push([
-                    'sku' => $item['sku'] ?? '',
-                    'item_title' => $item['item_title'] ?? 'Unknown',
-                    'quantity' => $item['quantity'] ?? 0,
-                    'revenue' => $item['line_total'] ?? 0,
-                ]);
-            }
-        }
+        // Use proper relationships and eager loading - senior Laravel approach
+        $orderIds = $channelOrders->pluck('id');
         
-        $topProducts = $products->groupBy('sku')->map(function ($items, $sku) {
-            $firstItem = $items->first();
-            return [
-                'sku' => $sku,
-                'item_title' => $firstItem['item_title'],
-                'total_quantity' => $items->sum('quantity'),
-                'total_revenue' => $items->sum('revenue'),
-            ];
-        })->sortByDesc('total_revenue')->take(5)->values();
+        // Get aggregated data first
+        $aggregatedData = OrderItem::whereIn('order_id', $orderIds)
+            ->selectRaw('
+                sku,
+                SUM(quantity) as total_quantity,
+                SUM(line_total) as total_revenue,
+                COUNT(*) as order_count
+            ')
+            ->groupBy('sku')
+            ->orderByDesc('total_revenue')
+            ->limit(5)
+            ->get()
+            ->keyBy('sku');
+            
+        // Get product titles for these SKUs in one query
+        $products = \App\Models\Product::whereIn('sku', $aggregatedData->keys())
+            ->pluck('title', 'sku');
+            
+        // Combine the data
+        $topProducts = $aggregatedData->map(fn ($item) => [
+            'sku' => $item->sku,
+            'item_title' => $products[$item->sku] ?? 'Unknown Product',
+            'total_quantity' => (int) $item->total_quantity,
+            'total_revenue' => (float) $item->total_revenue,
+            'order_count' => (int) $item->order_count,
+        ])->values();
         
         $channelData['top_products'] = $topProducts;
         

@@ -36,10 +36,15 @@ readonly class LinnworksOrder implements Arrayable
 
         return new self(
             orderId: $data['OrderId'] ?? $data['pkOrderID'] ?? $data['order_id'] ?? null,
-            orderNumber: $data['NumOrderId'] ?? (isset($data['nOrderId']) ? (int) $data['nOrderId'] : null) 
-                ?? (isset($data['order_number']) ? (int) $data['order_number'] : null),
+            orderNumber: isset($data['NumOrderId']) ? (int) $data['NumOrderId'] : (
+                isset($data['ReferenceNum']) ? (int) $data['ReferenceNum'] : (      // ProcessedOrders endpoint
+                    isset($data['nOrderId']) ? (int) $data['nOrderId'] : (
+                        isset($data['order_number']) ? (int) $data['order_number'] : null
+                    )
+                )
+            ),
             receivedDate: self::parseDate($generalInfo['ReceivedDate'] ?? $data['dReceivedDate'] ?? $data['received_date'] ?? null),
-            processedDate: ($data['Processed'] ?? false) === true ? self::parseDate($generalInfo['ReceivedDate'] ?? null) : null, // Use received date if processed
+            processedDate: self::determineProcessedDate($data, $generalInfo),
             orderSource: $generalInfo['Source'] ?? $data['Source'] ?? $data['order_source'] ?? null,
             subsource: $generalInfo['SubSource'] ?? $data['SubSource'] ?? $data['subsource'] ?? null,
             currency: $totalsInfo['Currency'] ?? $data['cCurrency'] ?? $data['currency'] ?? 'GBP',
@@ -84,6 +89,44 @@ readonly class LinnworksOrder implements Arrayable
         } catch (\Exception) {
             return null;
         }
+    }
+
+    /**
+     * Safely determine processed date from various API response structures
+     */
+    private static function determineProcessedDate(array $data, array $generalInfo): ?Carbon
+    {
+        // Try direct processed date fields first (from ProcessedOrders API)
+        $processedDate = $data['dProcessedOn'] ??           // ProcessedOrders endpoint
+                        $data['ProcessedDate'] ??
+                        $data['dProcessedDate'] ??
+                        $generalInfo['ProcessedDate'] ??
+                        $generalInfo['dProcessedDate'] ??
+                        null;
+
+        // If we have an explicit processed date, use it
+        if ($processedDate) {
+            return self::parseDate($processedDate);
+        }
+
+        // Otherwise check if order is marked as processed
+        $isProcessed = $data['Processed'] ??
+                      $data['bProcessed'] ??
+                      $generalInfo['Processed'] ??
+                      $generalInfo['bProcessed'] ??
+                      false;
+
+        if (!$isProcessed) {
+            return null;
+        }
+
+        // If processed but no date given, use received date as fallback
+        $fallbackDate = $generalInfo['ReceivedDate'] ??
+                       $data['dReceivedDate'] ??
+                       $data['received_date'] ??
+                       null;
+
+        return self::parseDate($fallbackDate);
     }
 
     // Convenience methods for calculations

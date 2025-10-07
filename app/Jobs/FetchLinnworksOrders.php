@@ -54,38 +54,43 @@ class FetchLinnworksOrders implements ShouldQueue
         try {
             // Fetch open orders if requested
             if ($this->orderType === 'open' || $this->orderType === 'both') {
-                Log::info('Fetching open orders from Linnworks');
-                $openOrders = $linnworksService->getRecentOpenOrders(
-                    $this->fromDate->diffInDays($this->toDate)
-                );
+                $windowDays = max(1, $this->fromDate->diffInDays($this->toDate) ?: 1);
+
+                Log::info('Fetching open orders from Linnworks', [
+                    'window_days' => $windowDays,
+                ]);
+
+                $openOrders = $linnworksService->getRecentOpenOrders(null, $windowDays);
                 $allOrders = $allOrders->merge($openOrders);
+
                 Log::info('Fetched open orders', ['count' => $openOrders->count()]);
             }
 
             // Fetch processed orders if requested
             if ($this->orderType === 'processed' || $this->orderType === 'both') {
                 Log::info('Fetching processed orders from Linnworks');
-                
-                // Paginate through processed orders
+
                 $pageNumber = 1;
+
                 do {
-                    $processedOrders = $linnworksService->getProcessedOrders(
+                    $result = $linnworksService->getProcessedOrders(
                         $this->fromDate,
                         $this->toDate,
                         $pageNumber,
                         $this->batchSize
                     );
-                    
-                    $allOrders = $allOrders->merge($processedOrders);
+
+                    $ordersPage = $result->orders;
+                    $allOrders = $allOrders->merge($ordersPage);
+
                     Log::info('Fetched processed orders page', [
                         'page' => $pageNumber,
-                        'count' => $processedOrders->count()
+                        'count' => $ordersPage->count(),
+                        'total_results' => $result->totalResults,
                     ]);
-                    
+
                     $pageNumber++;
-                    
-                    // Continue if we got a full page
-                } while ($processedOrders->count() === $this->batchSize);
+                } while ($result->hasMorePages);
             }
 
             Log::info('Total orders fetched from Linnworks', ['total' => $allOrders->count()]);

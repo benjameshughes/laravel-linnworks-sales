@@ -1,10 +1,13 @@
 <?php
 
 use App\Http\Controllers\LinnworksCallbackController;
+use App\Livewire\Analytics\SalesAnalytics;
 use App\Livewire\Dashboard\SalesDashboard;
 use App\Livewire\Dashboard\ProductAnalytics;
 use App\Livewire\Dashboard\ChannelComparison;
+use App\Livewire\ProductDetail;
 use App\Livewire\Settings\Appearance;
+use App\Livewire\Settings\ImportProgress;
 use App\Livewire\Settings\LinnworksSettings;
 use App\Livewire\Settings\Password;
 use App\Livewire\Settings\Profile;
@@ -16,7 +19,9 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', SalesDashboard::class)->name('dashboard');
+    Route::get('analytics', SalesAnalytics::class)->name('analytics');
     Route::get('products', ProductAnalytics::class)->name('products.analytics');
+    Route::get('products/{sku}', ProductDetail::class)->name('products.detail');
     Route::get('channels', ChannelComparison::class)->name('channels.comparison');
     Route::get('linnworks/install-url', [LinnworksCallbackController::class, 'getInstallationUrl'])->name('linnworks.install.url');
     
@@ -25,8 +30,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         $apiService = app(\App\Services\LinnworksApiService::class);
         $orders = $apiService->getRecentOpenOrders(auth()->id(), 7);
         return response()->json([
-            'order_count' => count($orders),
-            'orders' => $orders
+            'order_count' => $orders->count(),
+            'orders' => $orders->map->toArray(),
         ]);
     })->name('test.linnworks');
 });
@@ -42,6 +47,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('settings/password', Password::class)->name('settings.password');
     Route::get('settings/appearance', Appearance::class)->name('settings.appearance');
     Route::get('settings/linnworks', LinnworksSettings::class)->name('settings.linnworks');
+    Route::get('settings/import', ImportProgress::class)->name('settings.import');
 });
 
 require __DIR__.'/auth.php';

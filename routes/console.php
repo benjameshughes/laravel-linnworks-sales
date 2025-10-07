@@ -8,9 +8,9 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Schedule open orders sync every 10 minutes
+// Schedule open orders sync every 15 minutes
 Schedule::command('sync:open-orders')
-    ->everyTenMinutes()
+    ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/linnworks-sync.log'));
@@ -40,3 +40,24 @@ Schedule::command('analytics:refresh-cache --force')
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/analytics-cache.log'));
+
+// Refresh metrics cache every 15 minutes with concurrent jobs
+Schedule::command('metrics:refresh-cache --concurrent')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/metrics-cache.log'));
+
+// Force refresh metrics cache every hour (ensures fresh data)
+Schedule::command('metrics:refresh-cache --concurrent')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/metrics-cache.log'));
+
+// Check and update processed orders status every hour
+Schedule::command('orders:check-processed')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/processed-orders-check.log'));

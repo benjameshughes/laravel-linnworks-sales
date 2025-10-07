@@ -1,0 +1,186 @@
+<section class="w-full">
+    @include('partials.settings-heading')
+
+    <x-settings.layout :heading="__('Import Orders')" :subheading="__('Import historical orders from Linnworks with real-time progress tracking')">
+        <div class="w-full max-w-4xl space-y-6">
+        {{-- Import Configuration --}}
+        @if (!$isImporting && !$isCompleted)
+            <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 shadow-sm">
+                <flux:heading size="lg" class="mb-4">Configure Import</flux:heading>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <flux:field>
+                            <flux:label>From Date</flux:label>
+                            <flux:input type="date" wire:model="fromDate" />
+                            <flux:error name="fromDate" />
+                        </flux:field>
+
+                        <flux:field>
+                            <flux:label>To Date</flux:label>
+                            <flux:input type="date" wire:model="toDate" />
+                            <flux:error name="toDate" />
+                        </flux:field>
+                    </div>
+
+                    <flux:field>
+                        <flux:label>Batch Size (50-200)</flux:label>
+                        <flux:input type="number" wire:model="batchSize" min="50" max="200" />
+                        <flux:error name="batchSize" />
+                        <flux:description>Number of orders to fetch per API request. Higher values are faster but may hit rate limits.</flux:description>
+                    </flux:field>
+
+                    <div class="flex gap-3">
+                        <flux:button variant="primary" wire:click="startImport" icon="arrow-down-tray">
+                            Start Import
+                        </flux:button>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        {{-- Progress Display --}}
+        @if ($isImporting || $isCompleted)
+            <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 shadow-sm">
+                <div class="space-y-6">
+                    {{-- Status Header --}}
+                    <div class="flex items-center justify-between">
+                        <flux:heading size="lg">
+                            @if ($isImporting)
+                                <span class="flex items-center gap-2">
+                                    <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Importing Orders...
+                                </span>
+                            @elseif ($success)
+                                <span class="flex items-center gap-2">
+                                    <svg class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Import Completed
+                                </span>
+                            @else
+                                <span class="flex items-center gap-2">
+                                    <svg class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Import Failed
+                                </span>
+                            @endif
+                        </flux:heading>
+
+                        @if ($isCompleted)
+                            <flux:button variant="ghost" wire:click="resetImport" size="sm">
+                                Start New Import
+                            </flux:button>
+                        @endif
+                    </div>
+
+                    {{-- Progress Bar --}}
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-zinc-600 dark:text-zinc-400">Progress</span>
+                            <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ number_format($percentage, 1) }}%</span>
+                        </div>
+                        <div class="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
+                            <div
+                                class="h-full transition-all duration-300 ease-out {{ $success ? 'bg-green-500' : ($isImporting ? 'bg-blue-500' : 'bg-red-500') }}"
+                                style="width: {{ $percentage }}%"
+                            ></div>
+                        </div>
+                    </div>
+
+                    {{-- Stats Grid --}}
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Total Orders</div>
+                            <div class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{{ number_format($totalOrders) }}</div>
+                        </div>
+
+                        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Processed</div>
+                            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ number_format($totalProcessed) }}</div>
+                        </div>
+
+                        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Imported</div>
+                            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ number_format($totalImported) }}</div>
+                        </div>
+
+                        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Errors</div>
+                            <div class="text-2xl font-bold {{ $totalErrors > 0 ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100' }}">
+                                {{ number_format($totalErrors) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Current Status Message --}}
+                    @if ($message)
+                        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                            <div class="flex items-start gap-3">
+                                <svg class="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div class="flex-1">
+                                    <p class="text-sm text-blue-800 dark:text-blue-200">{{ $message }}</p>
+                                    @if ($currentPage > 0)
+                                        <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                            Page {{ number_format($currentPage) }}
+                                            @if ($totalOrders > 0)
+                                                of ~{{ number_format(ceil($totalOrders / $batchSize)) }}
+                                            @endif
+                                        </p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Additional Stats --}}
+                    @if ($totalSkipped > 0 || $startedAt)
+                        <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4 space-y-2 text-sm">
+                            @if ($totalSkipped > 0)
+                                <div class="flex justify-between">
+                                    <span class="text-zinc-600 dark:text-zinc-400">Skipped (already exists)</span>
+                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ number_format($totalSkipped) }}</span>
+                                </div>
+                            @endif
+                            @if ($startedAt)
+                                <div class="flex justify-between">
+                                    <span class="text-zinc-600 dark:text-zinc-400">Started at</span>
+                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">
+                                        {{ \Carbon\Carbon::parse($startedAt)->format('Y-m-d H:i:s') }}
+                                    </span>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
+
+        {{-- Help Text --}}
+        @if (!$isImporting && !$isCompleted)
+            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div class="flex gap-3">
+                    <svg class="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-amber-900 dark:text-amber-100 mb-1">Important Notes</h4>
+                        <ul class="text-sm text-amber-800 dark:text-amber-200 space-y-1 list-disc list-inside">
+                            <li>This will import all processed orders from Linnworks within the specified date range</li>
+                            <li>Large imports may take several minutes to complete</li>
+                            <li>Existing orders will be updated with the latest data</li>
+                            <li>The page will update in real-time as the import progresses</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        @endif
+        </div>
+    </x-settings.layout>
+</section>

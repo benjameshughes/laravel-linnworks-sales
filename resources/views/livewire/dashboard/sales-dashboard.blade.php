@@ -1,73 +1,166 @@
 <div class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
     <div class="space-y-6 p-6">
-        {{-- Condensed Header with Controls --}}
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-4">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div class="flex items-center gap-6">
-                    <div>
-                        <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">Sales Dashboard</flux:heading>
-                        <div class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                            <span>{{ $this->periodSummary->get('period_label') }}</span>
-                            <span class="text-zinc-400">•</span>
-                            <span class="font-medium text-zinc-900 dark:text-zinc-100">
-                                {{ number_format($this->metrics->get('total_orders')) }} orders
-                            </span>
+
+        {{-- Sales Dashboard Header with Controls --}}
+        <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700 p-3">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                {{-- Left: Info --}}
+                <div class="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <span>{{ $this->periodSummary->get('date_range') }}</span>
+                    <span class="text-zinc-400">•</span>
+                    <span class="font-medium text-zinc-900 dark:text-zinc-100">
+                        {{ number_format($this->metrics->get('total_orders')) }} orders
+                    </span>
+                    <span class="text-zinc-400">•</span>
+                    <span class="flex items-center gap-1">
+                        <flux:icon name="arrow-path" class="size-3 text-zinc-500" />
+                        {{ $this->lastSyncInfo->get('time_human') }}
+                    </span>
+                    @if($this->lastSyncInfo->get('status') === 'success')
+                        <flux:badge color="green" size="sm">
+                            {{ number_format($this->lastSyncInfo->get('success_rate'), 1) }}%
+                        </flux:badge>
+                    @endif
+                </div>
+
+                {{-- Right: Filters & Controls --}}
+                <div class="flex items-center gap-2 flex-wrap lg:flex-nowrap">
+                    <div class="relative">
+                        <flux:input
+                            wire:model.live.debounce.300ms="searchTerm"
+                            placeholder="Search..."
+                            class="w-32 lg:w-40 flex-shrink-0"
+                            size="sm"
+                        />
+                        <div wire:loading wire:target="searchTerm" class="absolute right-2 top-1/2 -translate-y-1/2">
+                            <svg class="animate-spin h-4 w-4 text-zinc-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
                         </div>
                     </div>
-                    
-                    {{-- Sync Status Inline --}}
-                    <div class="hidden lg:flex items-center gap-3 text-sm">
-                        <flux:icon name="arrow-path" class="size-4 text-zinc-500" />
-                        <span class="text-zinc-600 dark:text-zinc-400">{{ $this->lastSyncInfo->get('time_human') }}</span>
-                        @if($this->lastSyncInfo->get('status') === 'success')
-                            <flux:badge color="green" size="sm">
-                                {{ number_format($this->lastSyncInfo->get('success_rate'), 1) }}% success
-                            </flux:badge>
-                        @endif
+
+                    <div class="relative min-w-[140px] flex-1 lg:flex-initial lg:w-36">
+                        <flux:select wire:model.live="period" size="sm">
+                            <flux:select.option value="1">Last 24 hours</flux:select.option>
+                            <flux:select.option value="yesterday">Yesterday</flux:select.option>
+                            <flux:select.option value="7">Last 7 days</flux:select.option>
+                            <flux:select.option value="30">Last 30 days</flux:select.option>
+                            <flux:select.option value="90">Last 90 days</flux:select.option>
+                            <flux:select.option value="custom">Custom Range...</flux:select.option>
+                        </flux:select>
                     </div>
-                </div>
-                
-                {{-- Controls --}}
-                <div class="flex flex-wrap gap-2">
-                    <flux:input 
-                        wire:model.live="searchTerm" 
-                        placeholder="Search orders..." 
-                        class="min-w-48"
+
+                    @if($period === 'custom')
+                        <div class="flex items-center gap-2">
+                            <flux:input
+                                type="date"
+                                wire:model.live="customFrom"
+                                size="sm"
+                                class="w-36 flex-shrink-0"
+                            />
+                            <span class="text-zinc-400">→</span>
+                            <flux:input
+                                type="date"
+                                wire:model.live="customTo"
+                                size="sm"
+                                class="w-36 flex-shrink-0"
+                            />
+                        </div>
+                    @endif
+
+                    <div class="relative min-w-[140px] flex-1 lg:flex-initial lg:w-36">
+                        <flux:select wire:model.live="channel" size="sm">
+                            <flux:select.option value="all">All Channels</flux:select.option>
+                            @foreach($this->availableChannels as $channelOption)
+                                <flux:select.option value="{{ $channelOption->get('name') }}">
+                                    {{ $channelOption->get('label') }}
+                                </flux:select.option>
+                            @endforeach
+                        </flux:select>
+                    </div>
+
+                    <flux:button
+                        variant="primary"
                         size="sm"
+                        wire:click="syncOrders"
+                        wire:target="syncOrders"
+                        wire:loading.attr="disabled"
+                        icon="cloud-arrow-down"
+                        class="flex-shrink-0"
+                    >
+                        <span wire:loading.remove wire:target="syncOrders">Sync</span>
+                        <span wire:loading wire:target="syncOrders">Syncing</span>
+                    </flux:button>
+
+                    <flux:button
+                        variant="ghost"
+                        size="sm"
+                        wire:click="refreshDashboard"
+                        wire:target="refreshDashboard"
+                        wire:loading.attr="disabled"
+                        icon="arrow-path"
+                        class="flex-shrink-0"
                     />
-                    
-                    <flux:select wire:model.live="period" size="sm" class="min-w-32">
-                        <flux:select.option value="1">24h</flux:select.option>
-                        <flux:select.option value="7">7 days</flux:select.option>
-                        <flux:select.option value="30">30 days</flux:select.option>
-                        <flux:select.option value="90">90 days</flux:select.option>
-                    </flux:select>
-                    
-                    <flux:select wire:model.live="channel" size="sm" class="min-w-32">
-                        <flux:select.option value="all">All Channels</flux:select.option>
-                        @foreach($this->availableChannels as $channelOption)
-                            <flux:select.option value="{{ $channelOption->get('name') }}">
-                                {{ $channelOption->get('label') }}
-                            </flux:select.option>
-                        @endforeach
-                    </flux:select>
-                    
-                    <flux:button variant="primary" size="sm" wire:click="syncOrders" icon="cloud-arrow-down">
-                        Sync
-                    </flux:button>
-                    
-                    <flux:button variant="ghost" size="sm" wire:click="$refresh" icon="arrow-path">
-                        Refresh
-                    </flux:button>
+                </div>
+
+                {{-- Loading indicator --}}
+                <div
+                    wire:loading.delay
+                    wire:target="period,channel,searchTerm,customFrom,customTo"
+                    class="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-300"
+                    role="status"
+                    aria-live="polite"
+                >
+                    <svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="font-medium">Refreshing metrics…</span>
                 </div>
             </div>
         </div>
 
+        {{-- Sync Progress Notification --}}
+        @if($isSyncing)
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl shadow-sm p-4">
+                <div class="flex items-center gap-4">
+                    <div class="flex-shrink-0">
+                        <svg class="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-blue-900 dark:text-blue-100">{{ $syncMessage }}</div>
+                        @if($syncCount > 0)
+                            <div class="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                                {{ number_format($syncCount) }} orders
+                            </div>
+                        @endif
+                    </div>
+                    <div class="flex-shrink-0">
+                        <flux:badge color="blue" size="sm">
+                            {{ ucfirst(str_replace('-', ' ', $syncStage)) }}
+                        </flux:badge>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @php
+            $refreshTargets = 'period,channel,searchTerm,customFrom,customTo';
+        @endphp
+
         {{-- Key Metrics Grid --}}
         @if($showMetrics)
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative">
                 {{-- Total Revenue --}}
-                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white">
+                <div
+                    class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white transition duration-200"
+                    wire:loading.class="opacity-60 saturate-75"
+                    wire:target="{{ $refreshTargets }}"
+                >
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-blue-100 text-sm font-medium">Total Revenue</p>
@@ -83,7 +176,11 @@
                 </div>
 
                 {{-- Total Orders --}}
-                <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-sm p-6 text-white">
+                <div
+                    class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-sm p-6 text-white transition duration-200"
+                    wire:loading.class="opacity-60 saturate-75"
+                    wire:target="{{ $refreshTargets }}"
+                >
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-emerald-100 text-sm font-medium">Total Orders</p>
@@ -97,7 +194,11 @@
                 </div>
 
                 {{-- Average Order Value --}}
-                <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 text-white">
+                <div
+                    class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 text-white transition duration-200"
+                    wire:loading.class="opacity-60 saturate-75"
+                    wire:target="{{ $refreshTargets }}"
+                >
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-purple-100 text-sm font-medium">Average Order</p>
@@ -109,7 +210,11 @@
                 </div>
 
                 {{-- Total Items --}}
-                <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-sm p-6 text-white">
+                <div
+                    class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-sm p-6 text-white transition duration-200"
+                    wire:loading.class="opacity-60 saturate-75"
+                    wire:target="{{ $refreshTargets }}"
+                >
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-orange-100 text-sm font-medium">Items Sold</p>
@@ -124,30 +229,77 @@
 
         {{-- Charts Section --}}
         @if($showCharts)
-            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">Daily Sales</flux:heading>
-                    <flux:button variant="ghost" size="sm" wire:click="toggleCharts" icon="eye-slash">
-                        Hide Charts
-                    </flux:button>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {{-- Sales Trend Chart --}}
+                <div
+                    class="transition duration-200"
+                    wire:loading.class="opacity-50"
+                    wire:target="{{ $refreshTargets }}"
+                >
+                    <x-chart-widget
+                            type="area"
+                            chart-key="sales-trend-{{ $period }}-{{ $channel }}-{{ $searchTerm }}-{{ $customFrom }}-{{ $customTo }}"
+                            :data="$this->salesLineChartData"
+                            title="Sales Trend"
+                            subtitle="{{ $this->periodSummary->get('period_label') }}"
+                            icon="chart-line"
+                            height="350px"
+                    >
+                        <x-slot:actions>
+                            <flux:button variant="ghost" size="sm" wire:click="toggleCharts" icon="eye-slash">
+                                Hide
+                            </flux:button>
+                        </x-slot:actions>
+                    </x-chart-widget>
                 </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                    @foreach($this->dailySalesChart as $day)
-                        <div class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600">
-                            <div class="text-xs text-zinc-600 dark:text-zinc-400 font-medium">{{ $day->get('day') }}</div>
-                            <div class="text-sm text-zinc-900 dark:text-zinc-100 font-medium">{{ $day->get('date') }}</div>
-                            <div class="text-lg font-bold text-zinc-900 dark:text-zinc-100 mt-1">{{ $day->get('orders') }}</div>
-                            <div class="text-xs text-zinc-600 dark:text-zinc-400">£{{ number_format($day->get('revenue'), 0) }}</div>
-                        </div>
-                    @endforeach
+
+                {{-- Channel Distribution --}}
+                <div
+                    class="transition duration-200"
+                    wire:loading.class="opacity-50"
+                    wire:target="{{ $refreshTargets }}"
+                >
+                    <x-chart-widget
+                            type="doughnut"
+                            chart-key="channel-doughnut-{{ $period }}-{{ $channel }}-{{ $searchTerm }}-{{ $customFrom }}-{{ $customTo }}"
+                            :data="$this->channelDoughnutChartData"
+                            title="Revenue by Channel"
+                            subtitle="Channel performance breakdown"
+                            icon="chart-pie"
+                            height="350px"
+                    />
                 </div>
             </div>
+
+            {{-- Daily Revenue Bar Chart --}}
+            <div
+                class="transition duration-200"
+                wire:loading.class="opacity-50"
+                wire:target="{{ $refreshTargets }}"
+            >
+                <x-chart-widget
+                        type="bar"
+                        chart-key="daily-bar-{{ $period }}-{{ $channel }}-{{ $searchTerm }}-{{ $customFrom }}-{{ $customTo }}"
+                        :data="$this->salesBarChartData"
+                        title="Daily Revenue"
+                        subtitle="Revenue per day for {{ $this->periodSummary->get('period_label') }}"
+                        icon="currency-pound"
+                        height="250px"
+                />
+            </div>
         @endif
+
+        {{-- Cache Status --}}
+        <livewire:components.cache-status />
 
         {{-- Analytics Grid --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {{-- Top Products --}}
-            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
+            <div
+                class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6 transition duration-200"
+                wire:loading.class="opacity-50"
+                wire:target="{{ $refreshTargets }}"
+            >
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100 mb-6">Top Products</flux:heading>
                 <div class="space-y-4">
                     @forelse($this->topProducts as $index => $product)
@@ -176,7 +328,11 @@
             </div>
             
             {{-- Top Channels --}}
-            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
+            <div
+                class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6 transition duration-200"
+                wire:loading.class="opacity-50"
+                wire:target="{{ $refreshTargets }}"
+            >
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100 mb-6">Top Channels</flux:heading>
                 <div class="space-y-4">
                     @forelse($this->topChannels as $index => $channel)
@@ -206,7 +362,11 @@
         </div>
 
         {{-- Recent Orders Table --}}
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700">
+        <div
+            class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 transition duration-200"
+            wire:loading.class="opacity-50"
+            wire:target="{{ $refreshTargets }}"
+        >
             <div class="p-6 border-b border-zinc-200 dark:border-zinc-700">
                 <div class="flex items-center justify-between">
                     <div>

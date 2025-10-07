@@ -9,7 +9,7 @@ This is a **Sales Insight Dashboard** for Linnworks integration built with Larav
 - **Overview Dashboard**: Get high-level sales metrics and performance indicators
 - **Product Analysis**: Drill down into specific product performance and trends
 - **Channel Analytics**: Analyze sales performance across different sales channels
-- **Linnworks Integration**: Connect to Linnworks API for real-time sales data synchronization
+- **Linnworks Integration**: Connect to the Linnworks API in a strictly read-only fashion to pull sales analytics data (no writes)
 
 The project is currently built on a Laravel Livewire starter kit foundation with authentication features. The sales dashboard functionality will be implemented on top of this foundation.
 
@@ -20,7 +20,7 @@ The project is currently built on a Laravel Livewire starter kit foundation with
 - SQLite database (development) / MySQL (production)
 - Pest testing framework
 - Vite for asset compilation
-- Linnworks API integration (planned)
+- Linnworks API integration (read-only data ingestion)
 
 ## Development Commands
 
@@ -218,3 +218,5 @@ Follow Laravel and PHP best practices when working with this codebase:
 - Using zinc for the colour of dark mode
 - Flux buttons have an icon prop. Use that instead of adding icons in tag
 - Flux buttons have an icon prop, use that
+- Don't use try catches. Use exceptions. Laravel's built-in exception handler is amazing
+- When coding follow senior-level laravel and php standards

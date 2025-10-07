@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Jobs\GetOpenOrderIdsJob;
+use App\Actions\Linnworks\Orders\SyncRecentOrders;
 use App\Models\Order;
 use App\Models\SyncLog;
+use App\Services\Metrics\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
+use Throwable;
 
 final class SalesDashboard extends Component
 {
@@ -19,17 +22,39 @@ final class SalesDashboard extends Component
     public string $searchTerm = '';
     public bool $showMetrics = true;
     public bool $showCharts = true;
+    public bool $isSyncing = false;
+    public string $syncStage = '';
+    public string $syncMessage = '';
+    public int $syncCount = 0;
+    public ?string $customFrom = null;
+    public ?string $customTo = null;
     
     public function mount()
     {
-        //
+        // Initialize custom dates to last 7 days
+        $this->customTo = Carbon::now()->format('Y-m-d');
+        $this->customFrom = Carbon::now()->subDays(7)->format('Y-m-d');
     }
 
     #[Computed]
     public function dateRange(): Collection
     {
+        if ($this->period === 'custom') {
+            return collect([
+                'start' => Carbon::parse($this->customFrom)->startOfDay(),
+                'end' => Carbon::parse($this->customTo)->endOfDay(),
+            ]);
+        }
+
+        if ($this->period === 'yesterday') {
+            return collect([
+                'start' => Carbon::yesterday()->startOfDay(),
+                'end' => Carbon::yesterday()->endOfDay(),
+            ]);
+        }
+
         $days = (int) $this->period;
-        
+
         return collect([
             'start' => Carbon::now()->subDays($days)->startOfDay(),
             'end' => Carbon::now()->endOfDay(),
@@ -58,112 +83,98 @@ final class SalesDashboard extends Component
     }
 
     #[Computed]
+    public function salesMetrics(): SalesMetrics
+    {
+        return new SalesMetrics($this->orders);
+    }
+    
+    #[Computed]
     public function metrics(): Collection
     {
-        $orders = $this->orders;
-        $totalRevenue = $orders->sum('total_charge');
-        $totalOrders = $orders->count();
-        
-        return collect([
-            'total_revenue' => $totalRevenue,
-            'total_orders' => $totalOrders,
-            'average_order_value' => $totalOrders > 0 ? $totalRevenue / $totalOrders : 0,
-            'total_items' => $orders->sum(fn($order) => collect($order->items ?? [])->sum('quantity')),
-            'growth_rate' => $this->calculateGrowthRate($totalRevenue),
-        ]);
+        if ($this->period === 'custom') {
+            $periodDays = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
+        } elseif ($this->period === 'yesterday') {
+            $periodDays = 1;
+        } else {
+            $periodDays = (int) $this->period;
+        }
+
+        $previousPeriodData = $this->getPreviousPeriodOrders();
+
+        return $this->salesMetrics->getMetricsSummary($periodDays, $previousPeriodData);
     }
 
     #[Computed]
     public function periodSummary(): Collection
     {
+        if ($this->period === 'custom') {
+            $days = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
+        } elseif ($this->period === 'yesterday') {
+            $days = 1;
+        } else {
+            $days = (int) $this->period;
+        }
+
+        $totalOrders = $this->metrics->get('total_orders');
+        $processedOrders = $this->orders->where('is_processed', true)->count();
+        $openOrders = $this->orders->where('is_open', true)->count();
+
         return collect([
             'period_label' => $this->getPeriodLabel(),
             'date_range' => $this->getFormattedDateRange(),
-            'orders_per_day' => $this->metrics->get('total_orders') / (int) $this->period,
+            'orders_per_day' => $days > 0 ? $totalOrders / $days : 0,
+            'processed_count' => $processedOrders,
+            'open_count' => $openOrders,
+            'processed_percentage' => $totalOrders > 0 ? ($processedOrders / $totalOrders) * 100 : 0,
         ]);
     }
 
     #[Computed]
     public function topProducts(): Collection
     {
-        return $this->orders
-            ->flatMap(fn($order) => collect($order->items ?? []))
-            ->groupBy('sku')
-            ->map(function (Collection $items, string $sku) {
-                $firstItem = $items->first();
-                return collect([
-                    'sku' => $sku,
-                    'title' => $firstItem['item_title'] ?? 'Unknown Product',
-                    'quantity' => $items->sum('quantity'),
-                    'revenue' => $items->sum('line_total'),
-                    'orders' => $items->count(),
-                    'avg_price' => $items->avg('price_per_unit'),
-                ]);
-            })
-            ->sortByDesc('revenue')
-            ->take(5)
-            ->values();
+        return $this->salesMetrics->topProducts();
     }
 
     #[Computed]
     public function topChannels(): Collection
     {
-        return $this->orders
-            ->groupBy('channel_name')
-            ->map(function (Collection $channelOrders, string $channel) {
-                return collect([
-                    'name' => $channel,
-                    'orders' => $channelOrders->count(),
-                    'revenue' => $channelOrders->sum('total_charge'),
-                    'avg_order_value' => $channelOrders->avg('total_charge'),
-                    'percentage' => ($channelOrders->sum('total_charge') / $this->metrics->get('total_revenue')) * 100,
-                ]);
-            })
-            ->sortByDesc('revenue')
-            ->take(6)
-            ->values();
+        return $this->salesMetrics->topChannels();
     }
 
     #[Computed]
     public function recentOrders(): Collection
     {
-        return $this->orders
-            ->sortByDesc('received_date')
-            ->take(15)
-            ->values();
+        return $this->salesMetrics->recentOrders();
     }
 
     #[Computed]
     public function availableChannels(): Collection
     {
-        return Order::distinct()
-            ->pluck('channel_name')
-            ->filter()
-            ->reject(fn($channel) => $channel === 'DIRECT')
-            ->sort()
-            ->map(fn($channel) => collect(['name' => $channel, 'label' => ucfirst($channel)]));
+        return $this->salesMetrics->availableChannels();
     }
 
     #[Computed]
+    public function salesLineChartData(): array
+    {
+        return $this->salesMetrics->getLineChartData($this->period);
+    }
+    
+    #[Computed]
+    public function salesBarChartData(): array
+    {
+        return $this->salesMetrics->getBarChartData($this->period);
+    }
+    
+    #[Computed]
+    public function channelDoughnutChartData(): array
+    {
+        return $this->salesMetrics->getDoughnutChartData();
+    }
+    
+    #[Computed]
     public function dailySalesChart(): Collection
     {
-        $days = (int) $this->period;
-        
-        return collect(range($days - 1, 0))
-            ->map(function (int $daysAgo) {
-                $date = Carbon::now()->subDays($daysAgo);
-                $dayOrders = $this->orders->filter(
-                    fn($order) => $order->received_date?->isSameDay($date)
-                );
-                
-                return collect([
-                    'date' => $date->format('M j'),
-                    'day' => $date->format('D'),
-                    'revenue' => $dayOrders->sum('total_charge'),
-                    'orders' => $dayOrders->count(),
-                    'avg_order_value' => $dayOrders->avg('total_charge') ?? 0,
-                ]);
-            });
+        return $this->salesMetrics->dailySalesData($this->period);
     }
 
     #[Computed]
@@ -195,11 +206,51 @@ final class SalesDashboard extends Component
 
     public function syncOrders(): void
     {
-        GetOpenOrderIdsJob::dispatch('ui');
-        
+        if ($this->isSyncing) {
+            return;
+        }
+
+        $this->isSyncing = true;
+
+        try {
+            if ($this->period === 'custom') {
+                $windowDays = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
+            } elseif ($this->period === 'yesterday') {
+                $windowDays = 1;
+            } else {
+                $windowDays = (int) $this->period;
+            }
+
+            $processedWindow = max((int) config('linnworks.sync.default_date_range', 30), $windowDays);
+
+            app(SyncRecentOrders::class)->handle(
+                openWindowDays: $windowDays,
+                processedWindowDays: $processedWindow,
+                forceUpdate: false,
+                userId: auth()->id(),
+            );
+
+            // Real-time updates are handled via broadcast events
+            // The final notification will be sent by handleSyncCompleted()
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $this->isSyncing = false;
+
+            $this->dispatch('notification', [
+                'message' => 'Failed to sync orders. See logs for details.',
+                'type' => 'error',
+            ]);
+        }
+    }
+
+    public function refreshDashboard(): void
+    {
+        $this->dispatch('$refresh');
+
         $this->dispatch('notification', [
-            'message' => 'Order sync started successfully',
-            'type' => 'success'
+            'message' => 'Dashboard data refreshed',
+            'type' => 'info',
         ]);
     }
 
@@ -213,35 +264,79 @@ final class SalesDashboard extends Component
         $this->showCharts = !$this->showCharts;
     }
 
-    private function calculateGrowthRate(float $currentRevenue): float
+    #[On('open-orders-synced')]
+    public function handleOpenOrdersSynced(array $summary): void
     {
-        $previousPeriodRevenue = $this->getPreviousPeriodRevenue();
-        
-        if ($previousPeriodRevenue === 0.0) {
-            return $currentRevenue > 0 ? 100.0 : 0.0;
-        }
-        
-        return (($currentRevenue - $previousPeriodRevenue) / $previousPeriodRevenue) * 100;
+        $this->dispatch('$refresh');
     }
 
-    private function getPreviousPeriodRevenue(): float
+    #[On('echo:sync-progress,sync.started')]
+    public function handleSyncStarted(array $data): void
     {
-        $days = (int) $this->period;
-        $start = Carbon::now()->subDays($days * 2)->startOfDay();
-        $end = Carbon::now()->subDays($days)->endOfDay();
-        
+        $this->isSyncing = true;
+        $this->syncStage = 'started';
+        $this->syncMessage = 'Starting sync...';
+        $this->syncCount = 0;
+    }
+
+    #[On('echo:sync-progress,sync.progress')]
+    public function handleSyncProgress(array $data): void
+    {
+        $this->syncStage = $data['stage'];
+        $this->syncMessage = $data['message'];
+        $this->syncCount = $data['count'] ?? 0;
+    }
+
+    #[On('echo:sync-progress,sync.completed')]
+    public function handleSyncCompleted(array $data): void
+    {
+        $this->isSyncing = false;
+        $this->syncStage = 'completed';
+        $this->syncMessage = $data['success']
+            ? "Sync completed: {$data['created']} created, {$data['updated']} updated"
+            : 'Sync completed with errors';
+
+        $this->dispatch('$refresh');
+
+        $this->dispatch('notification', [
+            'message' => $this->syncMessage,
+            'type' => $data['success'] ? 'success' : 'warning',
+        ]);
+    }
+
+
+    private function getPreviousPeriodOrders(): Collection
+    {
+        if ($this->period === 'custom') {
+            $days = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
+            $start = Carbon::parse($this->customFrom)->subDays($days)->startOfDay();
+            $end = Carbon::parse($this->customFrom)->subDay()->endOfDay();
+        } elseif ($this->period === 'yesterday') {
+            $start = Carbon::now()->subDays(2)->startOfDay();
+            $end = Carbon::now()->subDays(2)->endOfDay();
+        } else {
+            $days = (int) $this->period;
+            $start = Carbon::now()->subDays($days * 2)->startOfDay();
+            $end = Carbon::now()->subDays($days)->endOfDay();
+        }
+
         return Order::whereBetween('received_date', [$start, $end])
             ->where('channel_name', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn($query) => 
+            ->when($this->channel !== 'all', fn($query) =>
                 $query->where('channel_name', $this->channel)
             )
-            ->sum('total_charge');
+            ->get();
     }
 
     private function getPeriodLabel(): string
     {
+        if ($this->period === 'custom') {
+            return 'Custom: ' . Carbon::parse($this->customFrom)->format('M j') . ' - ' . Carbon::parse($this->customTo)->format('M j, Y');
+        }
+
         return match ($this->period) {
             '1' => 'Last 24 hours',
+            'yesterday' => 'Yesterday',
             '7' => 'Last 7 days',
             '30' => 'Last 30 days',
             '90' => 'Last 90 days',
