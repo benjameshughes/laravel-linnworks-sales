@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Models\Order;
+use App\Services\Dashboard\DashboardDataService;
 use App\Services\Metrics\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -45,48 +45,15 @@ final class DailyRevenueChart extends Component
     }
 
     #[Computed]
-    public function dateRange(): Collection
-    {
-        if ($this->period === 'custom') {
-            return collect([
-                'start' => Carbon::parse($this->customFrom)->startOfDay(),
-                'end' => Carbon::parse($this->customTo)->endOfDay(),
-            ]);
-        }
-
-        if ($this->period === 'yesterday') {
-            return collect([
-                'start' => Carbon::yesterday()->startOfDay(),
-                'end' => Carbon::yesterday()->endOfDay(),
-            ]);
-        }
-
-        $days = (int) $this->period;
-
-        return collect([
-            'start' => Carbon::now()->subDays($days)->startOfDay(),
-            'end' => Carbon::now()->endOfDay(),
-        ]);
-    }
-
-    #[Computed]
     public function orders(): Collection
     {
-        return Order::whereBetween('received_date', [
-                $this->dateRange->get('start'),
-                $this->dateRange->get('end')
-            ])
-            ->where('channel_name', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn($query) =>
-                $query->where('channel_name', $this->channel)
-            )
-            ->when($this->searchTerm, fn($query) =>
-                $query->where(function ($q) {
-                    $q->where('order_number', 'like', "%{$this->searchTerm}%")
-                      ->orWhere('channel_name', 'like', "%{$this->searchTerm}%");
-                })
-            )
-            ->get();
+        return app(DashboardDataService::class)->getOrders(
+            period: $this->period,
+            channel: $this->channel,
+            searchTerm: $this->searchTerm,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
     }
 
     #[Computed]

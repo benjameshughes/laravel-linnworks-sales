@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Models\Order;
+use App\Services\Dashboard\DashboardDataService;
 use App\Services\Metrics\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -46,48 +46,17 @@ final class MetricsSummary extends Component
     }
 
     #[Computed]
-    public function dateRange(): Collection
-    {
-        if ($this->period === 'custom') {
-            return collect([
-                'start' => Carbon::parse($this->customFrom)->startOfDay(),
-                'end' => Carbon::parse($this->customTo)->endOfDay(),
-            ]);
-        }
-
-        if ($this->period === 'yesterday') {
-            return collect([
-                'start' => Carbon::yesterday()->startOfDay(),
-                'end' => Carbon::yesterday()->endOfDay(),
-            ]);
-        }
-
-        $days = (int) $this->period;
-
-        return collect([
-            'start' => Carbon::now()->subDays($days)->startOfDay(),
-            'end' => Carbon::now()->endOfDay(),
-        ]);
-    }
-
-    #[Computed]
     public function orders(): Collection
     {
-        return Order::whereBetween('received_date', [
-                $this->dateRange->get('start'),
-                $this->dateRange->get('end')
-            ])
-            ->where('channel_name', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn($query) =>
-                $query->where('channel_name', $this->channel)
-            )
-            ->when($this->searchTerm, fn($query) =>
-                $query->where(function ($q) {
-                    $q->where('order_number', 'like', "%{$this->searchTerm}%")
-                      ->orWhere('channel_name', 'like', "%{$this->searchTerm}%");
-                })
-            )
-            ->get();
+        // Use shared singleton service - loads data ONCE per request
+        // All islands share same orders collection = massive memory savings
+        return app(DashboardDataService::class)->getOrders(
+            period: $this->period,
+            channel: $this->channel,
+            searchTerm: $this->searchTerm,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
     }
 
     #[Computed]
@@ -131,24 +100,12 @@ final class MetricsSummary extends Component
 
     private function getPreviousPeriodOrders(): Collection
     {
-        if ($this->period === 'custom') {
-            $days = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
-            $start = Carbon::parse($this->customFrom)->subDays($days)->startOfDay();
-            $end = Carbon::parse($this->customFrom)->subDay()->endOfDay();
-        } elseif ($this->period === 'yesterday') {
-            $start = Carbon::now()->subDays(2)->startOfDay();
-            $end = Carbon::now()->subDays(2)->endOfDay();
-        } else {
-            $days = (int) $this->period;
-            $start = Carbon::now()->subDays($days * 2)->startOfDay();
-            $end = Carbon::now()->subDays($days)->endOfDay();
-        }
-
-        return Order::whereBetween('received_date', [$start, $end])
-            ->where('channel_name', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn($query) =>
-                $query->where('channel_name', $this->channel)
-            )
-            ->get();
+        // Also uses shared service for previous period data
+        return app(DashboardDataService::class)->getPreviousPeriodOrders(
+            period: $this->period,
+            channel: $this->channel,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
     }
 }
