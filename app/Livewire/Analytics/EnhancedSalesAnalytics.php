@@ -190,7 +190,7 @@ class EnhancedSalesAnalytics extends Component
     /**
      * Drill down into a specific product
      */
-    public function drillDownProduct(string $sku): void
+    public function drillDownProduct(string $sku)
     {
         return redirect()->route('products.detail', ['sku' => $sku]);
     }

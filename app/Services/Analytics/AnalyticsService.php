@@ -19,16 +19,14 @@ final class AnalyticsService
 
     /**
      * Get filtered orders based on analytics filter
+     *
+     * NOTE: We do NOT cache raw Order collections - they're too large and cause memory issues.
+     * Instead, we cache computed metrics results in the methods below.
      */
     public function getOrders(AnalyticsFilter $filter): Collection
     {
-        $cacheKey = $this->getCacheKey('orders', $filter);
-
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($filter) {
-            $query = Order::query()->where('channel_name', '!=', 'DIRECT');
-
-            return $filter->applyToQuery($query)->get();
-        });
+        $query = Order::query()->where('channel_name', '!=', 'DIRECT');
+        return $filter->applyToQuery($query)->get();
     }
 
     /**
@@ -56,27 +54,23 @@ final class AnalyticsService
      */
     public function getChannelBreakdown(AnalyticsFilter $filter): Collection
     {
-        $cacheKey = $this->getCacheKey('channel_breakdown', $filter);
+        $orders = $this->getOrders($filter);
+        $metrics = new SalesMetrics($orders);
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($filter) {
-            $orders = $this->getOrders($filter);
-            $metrics = new SalesMetrics($orders);
-
-            return $metrics->topChannels(limit: 20)->map(function (Collection $channel) use ($filter) {
-                return [
-                    'name' => $channel['name'],
-                    'subsource' => $channel['subsource'] ?? null,
-                    'revenue' => $channel['revenue'],
-                    'orders' => $channel['orders'],
-                    'avg_order_value' => $channel['avg_order_value'],
-                    'percentage' => $channel['percentage'],
-                    // Add drill-down URL
-                    'drill_down_url' => route('analytics', [
-                        ...$filter->toArray(),
-                        'channels' => [$channel['name']],
-                    ]),
-                ];
-            });
+        return $metrics->topChannels(limit: 20)->map(function (Collection $channel) use ($filter) {
+            return [
+                'name' => $channel['name'],
+                'subsource' => $channel['subsource'] ?? null,
+                'revenue' => $channel['revenue'],
+                'orders' => $channel['orders'],
+                'avg_order_value' => $channel['avg_order_value'],
+                'percentage' => $channel['percentage'],
+                // Add drill-down URL
+                'drill_down_url' => route('analytics', [
+                    ...$filter->toArray(),
+                    'channels' => [$channel['name']],
+                ]),
+            ];
         });
     }
 
@@ -85,24 +79,20 @@ final class AnalyticsService
      */
     public function getProductBreakdown(AnalyticsFilter $filter, int $limit = 20): Collection
     {
-        $cacheKey = $this->getCacheKey("product_breakdown_{$limit}", $filter);
+        $orders = $this->getOrders($filter);
+        $metrics = new SalesMetrics($orders);
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($filter, $limit) {
-            $orders = $this->getOrders($filter);
-            $metrics = new SalesMetrics($orders);
-
-            return $metrics->topProducts(limit: $limit)->map(function (Collection $product) {
-                return [
-                    'sku' => $product['sku'],
-                    'title' => $product['title'],
-                    'revenue' => $product['revenue'],
-                    'quantity' => $product['quantity'],
-                    'orders' => $product['orders'],
-                    'avg_price' => $product['avg_price'],
-                    // Add drill-down URL
-                    'drill_down_url' => route('products.detail', ['sku' => $product['sku']]),
-                ];
-            });
+        return $metrics->topProducts(limit: $limit)->map(function (Collection $product) {
+            return [
+                'sku' => $product['sku'],
+                'title' => $product['title'],
+                'revenue' => $product['revenue'],
+                'quantity' => $product['quantity'],
+                'orders' => $product['orders'],
+                'avg_price' => $product['avg_price'],
+                // Add drill-down URL
+                'drill_down_url' => route('products.detail', ['sku' => $product['sku']]),
+            ];
         });
     }
 
@@ -111,15 +101,11 @@ final class AnalyticsService
      */
     public function getDailyTrend(AnalyticsFilter $filter): Collection
     {
-        $cacheKey = $this->getCacheKey('daily_trend', $filter);
+        $orders = $this->getOrders($filter);
+        $metrics = new SalesMetrics($orders);
+        $days = (string) $filter->dateRange->diffInDays();
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($filter) {
-            $orders = $this->getOrders($filter);
-            $metrics = new SalesMetrics($orders);
-            $days = (string) $filter->dateRange->diffInDays();
-
-            return $metrics->dailySalesData($days);
-        });
+        return $metrics->dailySalesData($days);
     }
 
     /**
@@ -157,23 +143,4 @@ final class AnalyticsService
         ];
     }
 
-    /**
-     * Clear analytics cache
-     */
-    public function clearCache(): void
-    {
-        Cache::flush(); // In production, you'd want to be more selective
-    }
-
-    /**
-     * Generate cache key for analytics data
-     */
-    private function getCacheKey(string $prefix, AnalyticsFilter $filter): string
-    {
-        return sprintf(
-            'analytics:%s:%s',
-            $prefix,
-            md5(serialize($filter->toArray()))
-        );
-    }
 }
