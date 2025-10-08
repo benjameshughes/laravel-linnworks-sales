@@ -1,14 +1,37 @@
 <div>
+    {{-- Header with Loading Indicator --}}
     <div class="mb-6 flex items-center justify-between">
-        <flux:heading size="xl">Sales Analytics</flux:heading>
+        <div class="flex items-center gap-3">
+            <flux:heading size="xl">Sales Analytics</flux:heading>
+
+            {{-- Global Loading Spinner --}}
+            <div wire:loading class="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="font-medium">Updating...</span>
+            </div>
+        </div>
 
         <div class="flex items-center gap-2">
             <flux:button
                 wire:click="toggleComparison"
+                wire:target="toggleComparison"
+                wire:loading.attr="disabled"
                 variant="{{ $showComparison ? 'primary' : 'outline' }}"
                 size="sm"
             >
-                {{ $showComparison ? 'Hide' : 'Show' }} Comparison
+                <span wire:loading.remove wire:target="toggleComparison">
+                    {{ $showComparison ? 'Hide' : 'Show' }} Comparison
+                </span>
+                <span wire:loading wire:target="toggleComparison" class="flex items-center gap-1">
+                    <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading...
+                </span>
             </flux:button>
 
             <flux:button
@@ -23,11 +46,13 @@
     </div>
 
     {{-- Filters Section --}}
-    <div class="mb-8 bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-gray-200 dark:border-zinc-800">
+    <div class="mb-8 bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-gray-200 dark:border-zinc-800 transition-opacity duration-200"
+         wire:loading.class="opacity-50"
+         wire:target="applyPreset,toggleChannel,startDate,endDate">
         <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {{-- Date Preset --}}
-                <div>
+                <div class="relative">
                     <flux:field>
                         <flux:label>Date Range</flux:label>
                         <flux:select wire:model.live="preset" wire:change="applyPreset($event.target.value)">
@@ -40,6 +65,12 @@
                             <flux:select.option value="custom">Custom Range</flux:select.option>
                         </flux:select>
                     </flux:field>
+                    <div wire:loading wire:target="applyPreset" class="absolute right-2 top-9">
+                        <svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
                 </div>
 
                 {{-- Custom Date Range --}}
@@ -74,6 +105,13 @@
                         label="Channels"
                         placeholder="All channels"
                     />
+                    <div wire:loading wire:target="toggleChannel" class="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                        <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Filtering...
+                    </div>
                 </div>
             </div>
 
@@ -84,9 +122,11 @@
         </div>
     </div>
 
-    {{-- Comparison Banner --}}
+    {{-- Comparison Banner with Transition --}}
     @if($showComparison)
-        <div class="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6">
+        <div class="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6 transition-opacity duration-200"
+             wire:loading.class="opacity-50"
+             wire:target="toggleComparison">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {{-- Revenue Comparison --}}
                 <div>
@@ -154,8 +194,9 @@
         </div>
     @endif
 
-    {{-- Key Metrics --}}
-    <div class="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    {{-- Key Metrics with Loading State --}}
+    <div class="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 transition-opacity duration-200"
+         wire:loading.class="opacity-50">
         <div class="bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-gray-200 dark:border-zinc-800 p-6">
             <div class="flex items-center justify-between">
                 <div>
@@ -227,8 +268,9 @@
         </div>
     </div>
 
-    {{-- Drill-Down Sections --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    {{-- Drill-Down Sections with Hover Effects --}}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 transition-opacity duration-200"
+         wire:loading.class="opacity-50">
         {{-- Channel Breakdown with Drill-Down --}}
         <div class="bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-gray-200 dark:border-zinc-800 p-6">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -239,7 +281,11 @@
                 @foreach($this->channelBreakdown->take(10) as $channel)
                     <button
                         wire:click="drillDownChannel('{{ $channel['name'] }}')"
-                        class="w-full text-left p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                        x-data="{ hover: false }"
+                        @mouseenter="hover = true"
+                        @mouseleave="hover = false"
+                        class="w-full text-left p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all duration-200"
+                        :class="{ 'scale-[1.02] shadow-md': hover }"
                     >
                         <div class="flex items-center justify-between mb-2">
                             <div>
@@ -254,7 +300,7 @@
                             </div>
                         </div>
                         <div class="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
-                            <div class="bg-blue-600 h-2 rounded-full" style="width: {{ min($channel['percentage'], 100) }}%"></div>
+                            <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: {{ min($channel['percentage'], 100) }}%"></div>
                         </div>
                     </button>
                 @endforeach
@@ -271,7 +317,11 @@
                 @foreach($this->productBreakdown->take(10) as $product)
                     <button
                         wire:click="drillDownProduct('{{ $product['sku'] }}')"
-                        class="w-full text-left p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                        x-data="{ hover: false }"
+                        @mouseenter="hover = true"
+                        @mouseleave="hover = false"
+                        class="w-full text-left p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all duration-200"
+                        :class="{ 'scale-[1.02] shadow-md': hover }"
                     >
                         <div class="flex items-center justify-between">
                             <div class="flex-1 min-w-0">
