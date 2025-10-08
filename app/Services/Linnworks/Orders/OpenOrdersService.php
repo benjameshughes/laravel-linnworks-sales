@@ -8,6 +8,7 @@ use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Auth\SessionManager;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -21,6 +22,115 @@ class OpenOrdersService
         private readonly LocationsService $locations,
         private readonly ViewsService $views,
     ) {}
+
+    /**
+     * Get open orders with date filtering support.
+     *
+     * This method uses the filters.DateFields parameter to filter by received date,
+     * enabling true incremental sync for open orders.
+     */
+    public function getOpenOrdersInDateRange(
+        int $userId,
+        \Carbon\Carbon $from,
+        \Carbon\Carbon $to,
+        int $entriesPerPage = 200,
+        int $maxOrders = 5000,
+        ?int $viewId = null,
+        ?string $locationId = null
+    ): Collection {
+        $sessionToken = $this->sessionManager->getValidSessionToken($userId);
+
+        if (!$sessionToken) {
+            Log::error('No valid session token for date-filtered open orders', ['user_id' => $userId]);
+            return collect();
+        }
+
+        // Auto-detect location and view
+        if ($locationId === null) {
+            $locations = $this->locations->getLocations($userId);
+
+            if ($locations->isNotEmpty()) {
+                $detectedLocation = $locations->first(fn ($loc) => ($loc['IsDefault'] ?? false) === true) ?? $locations->first();
+                if ($detectedLocation) {
+                    $locationId = $detectedLocation['StockLocationId'] ?? $detectedLocation['LocationId'] ?? '00000000-0000-0000-0000-000000000000';
+                }
+            }
+        }
+
+        $viewId = $viewId ?? 4;
+        $locationId = $locationId ?? '00000000-0000-0000-0000-000000000000';
+
+        Log::info('Fetching date-filtered open orders', [
+            'user_id' => $userId,
+            'from' => $from->toISOString(),
+            'to' => $to->toISOString(),
+            'view_id' => $viewId,
+            'location_id' => $locationId,
+        ]);
+
+        // Paginate through GetOpenOrders with date filtering
+        $allOrders = collect();
+        $page = 1;
+
+        do {
+            $payload = [
+                'ViewId' => $viewId,
+                'LocationId' => $locationId,
+                'EntriesPerPage' => $entriesPerPage,
+                'PageNumber' => $page,
+                'Filters' => [
+                    'DateFields' => [
+                        [
+                            'FieldCode' => 'GENERAL_INFO_DATE',
+                            'Type' => 'Range',
+                            'DateFrom' => $from->copy()->utc()->toISOString(),
+                            'DateTo' => $to->copy()->utc()->toISOString(),
+                        ],
+                    ],
+                ],
+            ];
+
+            $request = ApiRequest::post('OpenOrders/GetOpenOrders', $payload)->asJson();
+            $response = $this->client->makeRequest($request, $sessionToken);
+
+            if ($response->isError()) {
+                Log::warning('Failed to fetch date-filtered open orders page', [
+                    'user_id' => $userId,
+                    'page' => $page,
+                    'error' => $response->error,
+                ]);
+                break;
+            }
+
+            $data = $response->getData();
+            $pageOrders = $data->has('Data')
+                ? collect($data->get('Data'))
+                : $data;
+
+            if ($pageOrders->isEmpty()) {
+                break;
+            }
+
+            $allOrders = $allOrders->merge($pageOrders);
+
+            Log::info('Fetched date-filtered open orders page', [
+                'page' => $page,
+                'orders_in_page' => $pageOrders->count(),
+                'total_fetched' => $allOrders->count(),
+            ]);
+
+            $page++;
+
+            // Stop if we've reached maxOrders or if page returned fewer than requested
+            if ($allOrders->count() >= $maxOrders || $pageOrders->count() < $entriesPerPage) {
+                break;
+            }
+        } while (true);
+
+        return $allOrders
+            ->take($maxOrders)
+            ->map(fn ($order) => is_array($order) ? $order : (array) $order);
+    }
 
     /**
      * Get all open orders with proper pagination using GetViewStats + GetOpenOrders.
