@@ -268,16 +268,16 @@
         </div>
     </div>
 
-    {{-- Drill-Down Sections with Enhanced Design --}}
+    {{-- Drill-Down Sections - Clean List Design --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 transition-opacity duration-200"
          wire:loading.class="opacity-50">
         {{-- Channel Breakdown with Drill-Down --}}
-        <div class="bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-gray-200 dark:border-zinc-800 p-6">
-            <div class="flex items-center justify-between mb-6">
+        <div class="bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-gray-200 dark:border-zinc-800">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-zinc-800">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                     Channel Performance
                 </h3>
-                <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded-full">
+                <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full">
                     Top {{ $this->channelBreakdown->count() }}
                 </span>
             </div>
@@ -290,82 +290,54 @@
                     <p class="text-gray-600 dark:text-gray-400">No channel data available</p>
                 </div>
             @else
-                <div class="space-y-2">
+                <div class="divide-y divide-gray-200 dark:divide-zinc-800">
                     @foreach($this->channelBreakdown->take(10) as $index => $channel)
-                        @php
-                            // Business color palette - subtle and professional
-                            $colors = [
-                                ['bg' => 'bg-primary-500', 'text' => 'text-primary-600', 'ring' => 'ring-primary-500/20', 'light' => 'bg-primary-50 dark:bg-primary-900/10'],
-                                ['bg' => 'bg-secondary-400', 'text' => 'text-secondary-600', 'ring' => 'ring-secondary-500/20', 'light' => 'bg-secondary-50 dark:bg-secondary-800/20'],
-                                ['bg' => 'bg-success-500', 'text' => 'text-success-700', 'ring' => 'ring-success-500/20', 'light' => 'bg-success-50 dark:bg-success-900/10'],
-                                ['bg' => 'bg-zinc-500', 'text' => 'text-zinc-600', 'ring' => 'ring-zinc-500/20', 'light' => 'bg-zinc-50 dark:bg-zinc-800/50'],
-                                ['bg' => 'bg-accent-500', 'text' => 'text-accent-600', 'ring' => 'ring-accent-500/20', 'light' => 'bg-accent-50 dark:bg-accent-900/10'],
-                            ];
-                            $color = $colors[$index % count($colors)];
-                        @endphp
                         <button
                             wire:click="drillDownChannel('{{ $channel['name'] }}')"
-                            x-data="{ hover: false }"
-                            @mouseenter="hover = true"
-                            @mouseleave="hover = false"
-                            class="w-full group relative overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 transition-all duration-200 hover:border-primary-300 dark:hover:border-primary-800"
-                            :class="{ 'scale-[1.01] shadow-lg': hover }"
+                            class="w-full group p-5 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-zinc-800/50"
                         >
-                            {{-- Rank Badge --}}
-                            @if($index < 3)
-                                <div class="absolute top-3 right-3">
-                                    <div class="flex items-center justify-center w-8 h-8 rounded-full {{ $color['light'] }} {{ $color['text'] }} text-xs font-bold border border-{{ $color['text'] }}/20">
-                                        #{{ $index + 1 }}
-                                    </div>
-                                </div>
-                            @endif
-
-                            <div class="flex items-start gap-4">
-                                {{-- Channel Icon --}}
-                                <div class="flex-shrink-0 w-12 h-12 rounded-lg {{ $color['light'] }} flex items-center justify-center group-hover:scale-105 transition-transform duration-200 border border-{{ $color['text'] }}/10">
-                                    <svg class="w-6 h-6 {{ $color['text'] }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                    </svg>
-                                </div>
-
-                                {{-- Content --}}
-                                <div class="flex-1 min-w-0 {{ $index < 3 ? 'pr-10' : '' }}">
-                                    <div class="flex items-start justify-between mb-3">
-                                        <div class="flex-1">
-                                            <div class="font-semibold text-gray-900 dark:text-white text-left">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-3">
+                                        @if($index < 3)
+                                            <span class="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-xs font-bold">
+                                                {{ $index + 1 }}
+                                            </span>
+                                        @endif
+                                        <div class="flex-1 min-w-0">
+                                            <div class="font-semibold text-gray-900 dark:text-white text-left truncate">
                                                 {{ $channel['name'] }}
                                             </div>
                                             @if($channel['subsource'])
-                                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">
                                                     {{ $channel['subsource'] }}
                                                 </div>
                                             @endif
                                         </div>
-                                        <div class="text-right ml-4">
-                                            <div class="text-lg font-bold text-gray-900 dark:text-white">
-                                                £{{ number_format($channel['revenue'], 0) }}
-                                            </div>
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">
-                                                {{ $channel['orders'] }} orders
-                                            </div>
-                                        </div>
                                     </div>
+                                </div>
+                                <div class="text-right ml-4 flex-shrink-0">
+                                    <div class="text-lg font-bold text-gray-900 dark:text-white">
+                                        £{{ number_format($channel['revenue'], 0) }}
+                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ $channel['orders'] }} orders
+                                    </div>
+                                </div>
+                            </div>
 
-                                    {{-- Enhanced Progress Bar --}}
-                                    <div class="relative">
-                                        <div class="w-full bg-gray-100 dark:bg-secondary-800/30 rounded-full h-2.5 overflow-hidden shadow-inner">
-                                            <div class="{{ $color['bg'] }} h-2.5 rounded-full transition-all duration-500 ease-out"
-                                                 style="width: {{ min($channel['percentage'], 100) }}%"></div>
-                                        </div>
-                                        <div class="flex items-center justify-between mt-2">
-                                            <span class="text-xs font-semibold {{ $color['text'] }}">
-                                                {{ number_format($channel['percentage'], 1) }}%
-                                            </span>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">
-                                                £{{ number_format($channel['avg_order_value'], 0) }} avg
-                                            </span>
-                                        </div>
-                                    </div>
+                            <div class="relative">
+                                <div class="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
+                                    <div class="bg-primary-500 h-2 rounded-full transition-all duration-500 ease-out"
+                                         style="width: {{ min($channel['percentage'], 100) }}%"></div>
+                                </div>
+                                <div class="flex items-center justify-between mt-1.5 text-xs">
+                                    <span class="font-medium text-primary-600 dark:text-primary-400">
+                                        {{ number_format($channel['percentage'], 1) }}%
+                                    </span>
+                                    <span class="text-gray-500 dark:text-gray-400">
+                                        £{{ number_format($channel['avg_order_value'], 0) }} avg
+                                    </span>
                                 </div>
                             </div>
                         </button>
@@ -375,12 +347,12 @@
         </div>
 
         {{-- Product Breakdown with Drill-Down --}}
-        <div class="bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-gray-200 dark:border-zinc-800 p-6">
-            <div class="flex items-center justify-between mb-6">
+        <div class="bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-gray-200 dark:border-zinc-800">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-zinc-800">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                     Top Products
                 </h3>
-                <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded-full">
+                <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full">
                     {{ $this->productBreakdown->count() }} shown
                 </span>
             </div>
@@ -393,68 +365,48 @@
                     <p class="text-gray-600 dark:text-gray-400">No product data available</p>
                 </div>
             @else
-                <div class="space-y-2">
+                <div class="divide-y divide-gray-200 dark:divide-zinc-800">
                     @foreach($this->productBreakdown->take(10) as $index => $product)
                         <button
                             wire:click="drillDownProduct('{{ $product['sku'] }}')"
-                            x-data="{ hover: false }"
-                            @mouseenter="hover = true"
-                            @mouseleave="hover = false"
-                            class="w-full group relative overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 hover:border-primary-300 dark:hover:border-primary-800 transition-all duration-200"
-                            :class="{ 'scale-[1.01] shadow-lg': hover }"
+                            class="w-full group p-5 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-zinc-800/50"
                         >
-                            <div class="flex items-center gap-4">
-                                {{-- Product Image Placeholder --}}
-                                <div class="flex-shrink-0">
-                                    <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-secondary-300 to-secondary-500 dark:from-secondary-600 dark:to-secondary-700 flex items-center justify-center text-white font-bold text-lg group-hover:scale-105 transition-transform duration-200 shadow-sm border border-secondary-400/20">
-                                        {{ strtoupper(substr($product['title'], 0, 2)) }}
-                                    </div>
-                                </div>
-
-                                {{-- Product Info --}}
-                                <div class="flex-1 min-w-0 text-left">
-                                    <div class="flex items-start justify-between gap-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-3">
+                                        @if($index < 3)
+                                            <span class="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-success-100 dark:bg-success-900/20 text-success-700 dark:text-success-400 text-xs font-bold">
+                                                {{ $index + 1 }}
+                                            </span>
+                                        @endif
                                         <div class="flex-1 min-w-0">
-                                            <div class="font-semibold text-gray-900 dark:text-white truncate">
+                                            <div class="font-semibold text-gray-900 dark:text-white text-left truncate">
                                                 {{ $product['title'] }}
                                             </div>
-                                            <div class="flex items-center gap-2 mt-1">
-                                                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                                    {{ $product['sku'] }}
-                                                </span>
-                                                @if($index < 3)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800 dark:bg-success-900/30 dark:text-success-400 border border-success-300/30">
-                                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
-                                                            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>
-                                                        </svg>
-                                                        Top Seller
-                                                    </span>
-                                                @endif
-                                            </div>
-                                        </div>
-
-                                        <div class="text-right flex-shrink-0">
-                                            <div class="text-lg font-bold text-gray-900 dark:text-white">
-                                                £{{ number_format($product['revenue'], 0) }}
-                                            </div>
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">
-                                                {{ $product['quantity'] }} sold
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                                {{ $product['sku'] }}
                                             </div>
                                         </div>
                                     </div>
-
-                                    {{-- Mini Revenue Bar --}}
-                                    <div class="mt-3">
-                                        @php
-                                            $maxRevenue = $this->productBreakdown->first()['revenue'] ?? 1;
-                                            $percentage = ($product['revenue'] / $maxRevenue) * 100;
-                                        @endphp
-                                        <div class="w-full bg-gray-100 dark:bg-secondary-800/30 rounded-full h-2 overflow-hidden shadow-inner">
-                                            <div class="bg-primary-500 h-2 rounded-full transition-all duration-500"
-                                                 style="width: {{ $percentage }}%"></div>
-                                        </div>
+                                </div>
+                                <div class="text-right ml-4 flex-shrink-0">
+                                    <div class="text-lg font-bold text-gray-900 dark:text-white">
+                                        £{{ number_format($product['revenue'], 0) }}
                                     </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ $product['quantity'] }} sold
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                @php
+                                    $maxRevenue = $this->productBreakdown->first()['revenue'] ?? 1;
+                                    $percentage = ($product['revenue'] / $maxRevenue) * 100;
+                                @endphp
+                                <div class="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
+                                    <div class="bg-primary-500 h-2 rounded-full transition-all duration-500"
+                                         style="width: {{ $percentage }}%"></div>
                                 </div>
                             </div>
                         </button>
