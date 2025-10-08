@@ -1,4 +1,4 @@
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 transition-opacity duration-200" wire:loading.class="opacity-50">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 transition-opacity duration-200" wire:loading.class="opacity-50">
     {{-- Total Revenue --}}
     <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white h-32">
         <div class="flex items-center justify-between h-full">
@@ -52,4 +52,26 @@
             <flux:icon name="cube" class="size-8 text-orange-200" />
         </div>
     </div>
+
+    {{-- Best Day --}}
+    @php
+        $startDate = $this->dateRange->get('start')?->format('Y-m-d');
+        $endDate = $this->dateRange->get('end')?->format('Y-m-d');
+        $bestDay = $this->salesMetrics->bestPerformingDay($startDate, $endDate);
+    @endphp
+    @if($bestDay)
+        <div class="bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl shadow-sm p-6 text-white h-32">
+            <div class="flex items-center justify-between h-full">
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <p class="text-pink-100 text-sm font-medium">Best Day</p>
+                        <flux:icon name="star" class="size-3 text-pink-200" />
+                    </div>
+                    <p class="text-3xl font-bold">£{{ number_format($bestDay['revenue'], 0) }}</p>
+                    <p class="text-sm text-pink-100 mt-1">{{ $bestDay['date'] }} • {{ $bestDay['orders'] }} orders</p>
+                </div>
+                <flux:icon name="fire" class="size-8 text-pink-200" />
+            </div>
+        </div>
+    @endif
 </div>

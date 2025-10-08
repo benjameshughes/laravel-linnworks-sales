@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\LinnworksCallbackController;
-use App\Livewire\Analytics\EnhancedSalesAnalytics;
+use App\Livewire\Analytics\SalesAnalytics;
 use App\Livewire\Dashboard\SalesDashboard;
 use App\Livewire\Dashboard\ProductAnalytics;
 use App\Livewire\Dashboard\ChannelComparison;
@@ -19,7 +19,7 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', SalesDashboard::class)->name('dashboard');
-    Route::get('analytics', EnhancedSalesAnalytics::class)->name('analytics');
+    Route::get('analytics', SalesAnalytics::class)->name('analytics');
     Route::get('products', ProductAnalytics::class)->name('products.analytics');
     Route::get('products/{sku}', ProductDetail::class)->name('products.detail');
     Route::get('channels', ChannelComparison::class)->name('channels.comparison');

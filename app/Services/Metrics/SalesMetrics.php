@@ -7,6 +7,7 @@ namespace App\Services\Metrics;
 use App\Models\Order;
 use App\Traits\PreparesChartData;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
 
 class SalesMetrics extends MetricBase
@@ -246,9 +247,25 @@ class SalesMetrics extends MetricBase
     /**
      * Get daily sales data for chart visualization
      */
-    public function dailySalesData(string $period): Collection
+    public function dailySalesData(string $period, ?string $startDate = null, ?string $endDate = null): Collection
     {
-        return $this->cache("daily_sales_data_{$period}", function () use ($period) {
+        $cacheKey = "daily_sales_data_{$period}" . ($startDate ? ':' . $startDate : '') . ($endDate ? ':' . $endDate : '');
+
+        return $this->cache($cacheKey, function () use ($period, $startDate, $endDate) {
+            if ($startDate && $endDate) {
+                $start = Carbon::parse($startDate)->startOfDay();
+                $end = Carbon::parse($endDate)->startOfDay();
+
+                if ($start->greaterThan($end)) {
+                    [$start, $end] = [$end, $start];
+                }
+
+                return collect(CarbonPeriod::create($start, '1 day', $end))
+                    ->map(function (Carbon $date) {
+                        return $this->buildDailyBreakdown($date);
+                    });
+            }
+
             if ($period === 'yesterday') {
                 $date = Carbon::yesterday();
                 $dayOrders = $this->data;
@@ -263,6 +280,7 @@ class SalesMetrics extends MetricBase
                 return collect([
                     collect([
                         'date' => $date->format('M j'),
+                        'iso_date' => $date->format('Y-m-d'),
                         'day' => $date->format('D'),
                         'revenue' => $revenue,
                         'orders' => $orderCount,
@@ -275,35 +293,41 @@ class SalesMetrics extends MetricBase
                 ]);
             }
 
-            $days = (int) $period;
+            $days = (int) max(1, $period);
 
             return collect(range($days - 1, 0))
                 ->map(function (int $daysAgo) {
                     $date = Carbon::now()->subDays($daysAgo);
-                    $dayOrders = $this->data->filter(
-                        fn($order) => $order->received_date?->isSameDay($date)
-                    );
-                    $openOrders = $dayOrders->where('is_processed', false);
-                    $processedOrders = $dayOrders->where('is_processed', true);
-
-                    $revenue = $dayOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-                    $openRevenue = $openOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-                    $processedRevenue = $processedOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-                    $orderCount = $dayOrders->count();
-
-                    return collect([
-                        'date' => $date->format('M j'),
-                        'day' => $date->format('D'),
-                        'revenue' => $revenue,
-                        'orders' => $orderCount,
-                        'avg_order_value' => $orderCount > 0 ? $revenue / $orderCount : 0,
-                        'open_orders' => $openOrders->count(),
-                        'processed_orders' => $processedOrders->count(),
-                        'open_revenue' => $openRevenue,
-                        'processed_revenue' => $processedRevenue,
-                    ]);
+                    return $this->buildDailyBreakdown($date);
                 });
         });
+    }
+
+    protected function buildDailyBreakdown(Carbon $date): Collection
+    {
+        $dayOrders = $this->data->filter(
+            fn($order) => $order->received_date?->isSameDay($date)
+        );
+        $openOrders = $dayOrders->where('is_processed', false);
+        $processedOrders = $dayOrders->where('is_processed', true);
+
+        $revenue = $dayOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+        $openRevenue = $openOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+        $processedRevenue = $processedOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+        $orderCount = $dayOrders->count();
+
+        return collect([
+            'date' => $date->format('M j'),
+            'iso_date' => $date->format('Y-m-d'),
+            'day' => $date->format('D'),
+            'revenue' => $revenue,
+            'orders' => $orderCount,
+            'avg_order_value' => $orderCount > 0 ? $revenue / $orderCount : 0,
+            'open_orders' => $openOrders->count(),
+            'processed_orders' => $processedOrders->count(),
+            'open_revenue' => $openRevenue,
+            'processed_revenue' => $processedRevenue,
+        ]);
     }
 
     /**
@@ -315,6 +339,32 @@ class SalesMetrics extends MetricBase
             ->sortByDesc('received_date')
             ->take($limit)
             ->values();
+    }
+
+    /**
+     * Get the day with the highest revenue
+     */
+    public function bestPerformingDay(?string $startDate = null, ?string $endDate = null): ?Collection
+    {
+        $cacheKey = 'best_performing_day' . ($startDate ? ':' . $startDate : '') . ($endDate ? ':' . $endDate : '');
+
+        return $this->cache($cacheKey, function () use ($startDate, $endDate) {
+            $period = '30'; // Default to last 30 days
+
+            if ($startDate && $endDate) {
+                $start = Carbon::parse($startDate);
+                $end = Carbon::parse($endDate);
+                $period = (string) max(1, $start->diffInDays($end));
+            }
+
+            $dailyData = $this->dailySalesData($period, $startDate, $endDate);
+
+            if ($dailyData->isEmpty()) {
+                return null;
+            }
+
+            return $dailyData->sortByDesc('revenue')->first();
+        });
     }
 
     /**
@@ -358,9 +408,9 @@ class SalesMetrics extends MetricBase
     /**
      * Prepare data for line charts
      */
-    public function getLineChartData(string $period): array
+    public function getLineChartData(string $period, ?string $startDate = null, ?string $endDate = null): array
     {
-        $chartData = $this->dailySalesData($period);
+        $chartData = $this->dailySalesData($period, $startDate, $endDate);
 
         return [
             'labels' => $chartData->pluck('date')->toArray(),
@@ -394,15 +444,18 @@ class SalesMetrics extends MetricBase
                     'borderDash' => [5, 5],
                 ],
             ],
+            'meta' => [
+                'iso_dates' => $chartData->pluck('iso_date')->toArray(),
+            ],
         ];
     }
 
     /**
      * Prepare data for bar charts
      */
-    public function getBarChartData(string $period): array
+    public function getBarChartData(string $period, ?string $startDate = null, ?string $endDate = null): array
     {
-        $chartData = $this->dailySalesData($period);
+        $chartData = $this->dailySalesData($period, $startDate, $endDate);
 
         return [
             'labels' => $chartData->pluck('date')->toArray(),
@@ -421,6 +474,9 @@ class SalesMetrics extends MetricBase
                     'borderColor' => '#F59E0B',
                     'borderWidth' => 1,
                 ],
+            ],
+            'meta' => [
+                'iso_dates' => $chartData->pluck('iso_date')->toArray(),
             ],
         ];
     }
@@ -442,9 +498,9 @@ class SalesMetrics extends MetricBase
     /**
      * Prepare data for order count charts (showing open vs processed)
      */
-    public function getOrderCountChartData(string $period): array
+    public function getOrderCountChartData(string $period, ?string $startDate = null, ?string $endDate = null): array
     {
-        $chartData = $this->dailySalesData($period);
+        $chartData = $this->dailySalesData($period, $startDate, $endDate);
 
         return [
             'labels' => $chartData->pluck('date')->toArray(),
@@ -463,6 +519,9 @@ class SalesMetrics extends MetricBase
                     'borderColor' => '#F59E0B',
                     'borderWidth' => 1,
                 ],
+            ],
+            'meta' => [
+                'iso_dates' => $chartData->pluck('iso_date')->toArray(),
             ],
         ];
     }

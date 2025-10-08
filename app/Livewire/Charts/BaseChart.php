@@ -13,7 +13,7 @@ abstract class BaseChart extends Component
     public array $data = [];
     
     #[Reactive]
-    public array $options = [];
+    public ?array $options = [];
     
     public string $chartId;
     public string $height = '300px';
@@ -32,7 +32,7 @@ abstract class BaseChart extends Component
         $this->chartId = 'chart-' . uniqid();
         $this->data = $data;
         $this->options = $options ?? [];
-        $this->mergedOptions = array_merge($this->getDefaultOptions(), $this->options);
+        $this->mergedOptions = array_merge($this->getDefaultOptions(), $this->options ?? []);
         
         if ($height) {
             $this->height = $height;
