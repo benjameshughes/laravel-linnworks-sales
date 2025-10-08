@@ -59,17 +59,28 @@ class SalesMetrics extends MetricBase
 
     /**
      * Get total items sold across all orders
+     * Falls back to JSON column if order_items table is empty
      */
     public function totalItemsSold(): int
     {
         return $this->cache('total_items_sold', function () {
             $orderIds = $this->data->pluck('id')->toArray();
-            
+
             if (empty($orderIds)) {
                 return 0;
             }
-            
-            return \App\Models\OrderItem::whereIn('order_id', $orderIds)->sum('quantity');
+
+            // Try order_items table first
+            $fromTable = \App\Models\OrderItem::whereIn('order_id', $orderIds)->sum('quantity');
+
+            // If no items in table, use JSON column as fallback
+            if ($fromTable === 0) {
+                return $this->data->sum(function ($order) {
+                    return collect($order->items ?? [])->sum('quantity');
+                });
+            }
+
+            return $fromTable;
         });
     }
 
