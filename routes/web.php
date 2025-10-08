@@ -24,16 +24,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('products/{sku}', ProductDetail::class)->name('products.detail');
     Route::get('channels', ChannelComparison::class)->name('channels.comparison');
     Route::get('linnworks/install-url', [LinnworksCallbackController::class, 'getInstallationUrl'])->name('linnworks.install.url');
-    
-    // Test route to see raw Linnworks data
-    Route::get('test-linnworks', function () {
-        $apiService = app(\App\Services\LinnworksApiService::class);
-        $orders = $apiService->getRecentOpenOrders(auth()->id(), 7);
-        return response()->json([
-            'order_count' => $orders->count(),
-            'orders' => $orders->map->toArray(),
-        ]);
-    })->name('test.linnworks');
 });
 
 // Public callback endpoints (no auth middleware)

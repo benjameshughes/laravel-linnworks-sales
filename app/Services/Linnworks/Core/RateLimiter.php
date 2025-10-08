@@ -54,17 +54,15 @@ class RateLimiter
      */
     public function waitForReset(): void
     {
-        $key = $this->getCacheKey();
-        $ttl = Cache::store()->getStore()->ttl($key);
-        
-        if ($ttl > 0) {
-            Log::info('Linnworks rate limiter: Waiting for reset', [
-                'wait_seconds' => $ttl,
-                'max_requests' => $this->config->maxRequests,
-            ]);
-            
-            sleep($ttl + 1); // Wait for TTL + 1 second buffer
-        }
+        // Just wait for the full TTL period since we can't get exact TTL from database cache
+        $waitSeconds = self::CACHE_TTL;
+
+        Log::info('Linnworks rate limiter: Waiting for reset', [
+            'wait_seconds' => $waitSeconds,
+            'max_requests' => $this->config->maxRequests,
+        ]);
+
+        sleep($waitSeconds + 1); // Wait for TTL + 1 second buffer
     }
 
     /**

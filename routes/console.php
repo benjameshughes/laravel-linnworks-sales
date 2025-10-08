@@ -55,9 +55,9 @@ Schedule::command('metrics:refresh-cache --concurrent')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/metrics-cache.log'));
 
-// Check and update processed orders status every hour
-Schedule::command('orders:check-processed')
-    ->hourly()
+// Check and update processed orders status every 30 minutes (oldest first)
+Schedule::command('sync:check-processed')
+    ->everyThirtyMinutes()
     ->withoutOverlapping()
     ->runInBackground()
-    ->appendOutputTo(storage_path('logs/processed-orders-check.log'));
+    ->appendOutputTo(storage_path('logs/check-processed.log'));
