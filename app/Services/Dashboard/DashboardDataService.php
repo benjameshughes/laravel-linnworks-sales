@@ -80,10 +80,11 @@ class DashboardDataService
         }
 
         $days = (int) $period;
+        $now = Carbon::now();
 
         return collect([
-            'start' => Carbon::now()->subDays($days)->startOfDay(),
-            'end' => Carbon::now()->endOfDay(),
+            'start' => $now->copy()->subDays($days)->startOfDay(),
+            'end' => $now->endOfDay(),
         ]);
     }
 

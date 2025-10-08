@@ -79,6 +79,16 @@ final class MetricsSummary extends Component
         return $this->salesMetrics->getMetricsSummary($periodDays, $previousPeriodData);
     }
 
+    #[Computed]
+    public function dateRange(): Collection
+    {
+        return app(DashboardDataService::class)->getDateRange(
+            period: $this->period,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
+    }
+
     public function render()
     {
         return view('livewire.dashboard.metrics-summary');

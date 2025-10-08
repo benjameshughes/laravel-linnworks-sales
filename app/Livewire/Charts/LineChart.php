@@ -17,14 +17,24 @@ final class LineChart extends BaseChart
             'scales' => [
                 'y' => [
                     'beginAtZero' => true,
+                    'grace' => '10%',
                     'grid' => [
                         'display' => true,
                         'color' => 'rgba(0, 0, 0, 0.05)',
+                    ],
+                    'ticks' => [
+                        'padding' => 10,
                     ],
                 ],
                 'x' => [
                     'grid' => [
                         'display' => false,
+                    ],
+                    'offset' => true,
+                    'ticks' => [
+                        'padding' => 10,
+                        'autoSkip' => true,
+                        'maxRotation' => 0,
                     ],
                 ],
             ],
@@ -34,8 +44,15 @@ final class LineChart extends BaseChart
                     'borderWidth' => 2,
                 ],
                 'point' => [
-                    'radius' => 3,
-                    'hoverRadius' => 5,
+                    'radius' => 4,
+                    'hoverRadius' => 6,
+                    'hitRadius' => 10,
+                ],
+            ],
+            'layout' => [
+                'padding' => [
+                    'left' => 10,
+                    'right' => 10,
                 ],
             ],
         ]);

@@ -23,8 +23,67 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
+    /* Primary: Picton Blue */
+    --color-primary-50: #e6f7ff;
+    --color-primary-100: #c6f0ff;
+    --color-primary-200: #8de1ff;
+    --color-primary-300: #54d1ff;
+    --color-primary-400: #1bc2ff;
+    --color-primary-500: #00a5e0;
+    --color-primary-600: #0084b4;
+    --color-primary-700: #006387;
+    --color-primary-800: #00425a;
+    --color-primary-900: #00212d;
+
+    /* Secondary: Jet (dark neutral) */
+    --color-secondary-50: #f7f7f8;
+    --color-secondary-100: #d4d4d9;
+    --color-secondary-200: #a9a9b2;
+    --color-secondary-300: #7d7d8c;
+    --color-secondary-400: #565661;
+    --color-secondary-500: #303036;
+    --color-secondary-600: #26262b;
+    --color-secondary-700: #1d1d20;
+    --color-secondary-800: #131316;
+    --color-secondary-900: #0a0a0b;
+
+    /* Accent: Rose Red */
+    --color-accent-50: #fff0f5;
+    --color-accent-100: #fdc4d9;
+    --color-accent-200: #fc8ab4;
+    --color-accent-300: #fa4f8e;
+    --color-accent-400: #f91468;
+    --color-accent-500: #ca054d;
+    --color-accent-600: #a3043e;
+    --color-accent-700: #7a032f;
+    --color-accent-800: #52021f;
+    --color-accent-900: #290110;
+
+    /* Success: Yellow Green */
+    --color-success-50: #f7fae8;
+    --color-success-100: #eef3dd;
+    --color-success-200: #dde7bc;
+    --color-success-300: #cbdb9a;
+    --color-success-400: #bace78;
+    --color-success-500: #a8c256;
+    --color-success-600: #8ca53b;
+    --color-success-700: #697c2d;
+    --color-success-800: #46521e;
+    --color-success-900: #23290f;
+
+    /* Ghost White for light backgrounds */
+    --color-ghost-50: #fffeff;
+    --color-ghost-100: #fffeff;
+    --color-ghost-200: #fffdff;
+    --color-ghost-300: #fffcff;
+    --color-ghost-400: #fffbff;
+    --color-ghost-500: #fffaff;
+    --color-ghost-600: #ff95ff;
+    --color-ghost-700: #ff30ff;
+    --color-ghost-800: #ca00ca;
+    --color-ghost-900: #650065;
+
+    --color-accent-content: var(--color-secondary-800);
     --color-accent-foreground: var(--color-white);
 }
 
