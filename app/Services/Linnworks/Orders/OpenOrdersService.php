@@ -3,6 +3,7 @@
 namespace App\Services\Linnworks\Orders;
 
 use App\Models\LinnworksConnection;
+use App\Services\Linnworks\Concerns\HandlesApiRetries;
 use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Auth\SessionManager;
 use App\ValueObjects\Linnworks\ApiRequest;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Log;
 
 class OpenOrdersService
 {
+    use HandlesApiRetries;
+
     public function __construct(
         private readonly LinnworksClient $client,
         private readonly SessionManager $sessionManager,
@@ -139,38 +142,53 @@ class OpenOrdersService
             return null;
         }
 
-        $payload = [
-            'ViewId' => $viewId,
-            'LocationId' => $locationId,
-        ];
+        try {
+            return $this->withRetry(
+                callback: function () use ($viewId, $locationId, $sessionToken, $userId) {
+                    $payload = [
+                        'ViewId' => $viewId,
+                        'LocationId' => $locationId,
+                    ];
 
-        $request = ApiRequest::post('OpenOrders/GetViewStats', $payload)->asJson();
-        $response = $this->client->makeRequest($request, $sessionToken);
+                    $request = ApiRequest::post('OpenOrders/GetViewStats', $payload)->asJson();
+                    $response = $this->client->makeRequest($request, $sessionToken);
 
-        if ($response->isError()) {
-            Log::warning('Failed to get view stats', [
+                    if ($response->isError()) {
+                        Log::warning('Failed to get view stats', [
+                            'user_id' => $userId,
+                            'view_id' => $viewId,
+                            'error' => $response->error,
+                        ]);
+                        return null;
+                    }
+
+                    $data = $response->getData();
+
+                    // Response is an array, find the matching view
+                    $viewStats = $data->first(fn ($stat) => ($stat['ViewId'] ?? null) === $viewId);
+
+                    if (!$viewStats) {
+                        Log::warning('View stats not found in response', [
+                            'user_id' => $userId,
+                            'view_id' => $viewId,
+                            'available_views' => $data->pluck('ViewId')->toArray(),
+                        ]);
+                        return null;
+                    }
+
+                    return is_array($viewStats) ? $viewStats : (array) $viewStats;
+                },
+                backoffSchedule: [1, 3, 10],
+                operation: 'GetViewStats'
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to get view stats after retries', [
                 'user_id' => $userId,
                 'view_id' => $viewId,
-                'error' => $response->error,
+                'exception' => $e->getMessage(),
             ]);
             return null;
         }
-
-        $data = $response->getData();
-
-        // Response is an array, find the matching view
-        $viewStats = $data->first(fn ($stat) => ($stat['ViewId'] ?? null) === $viewId);
-
-        if (!$viewStats) {
-            Log::warning('View stats not found in response', [
-                'user_id' => $userId,
-                'view_id' => $viewId,
-                'available_views' => $data->pluck('ViewId')->toArray(),
-            ]);
-            return null;
-        }
-
-        return is_array($viewStats) ? $viewStats : (array) $viewStats;
     }
 
     /**

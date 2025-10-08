@@ -9,6 +9,9 @@
                         </div>
                         <div>
                             <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $channel->get('name') }}</div>
+                            @if($channel->get('subsource'))
+                                <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $channel->get('subsource') }}</div>
+                            @endif
                             <div class="text-sm text-zinc-600 dark:text-zinc-400">£{{ number_format($channel->get('avg_order_value'), 0) }} avg</div>
                         </div>
                     </div>

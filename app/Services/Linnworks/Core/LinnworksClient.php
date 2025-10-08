@@ -2,10 +2,13 @@
 
 namespace App\Services\Linnworks\Core;
 
+use App\Exceptions\Linnworks\LinnworksApiException;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
 use App\ValueObjects\Linnworks\SessionToken;
 use App\ValueObjects\Linnworks\RateLimitConfig;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -17,21 +20,43 @@ class LinnworksClient
     private const CACHE_PREFIX = 'linnworks_response:';
     private const CACHE_TTL = 900; // 15 minutes
 
+    private readonly CircuitBreaker $circuitBreaker;
+
     public function __construct(
         private readonly RateLimiter $rateLimiter,
         private readonly int $timeout = 30,
         private readonly bool $enableCaching = true,
-    ) {}
+    ) {
+        $this->circuitBreaker = new CircuitBreaker(
+            serviceName: 'linnworks_api',
+            failureThreshold: 5,
+            recoveryTimeout: 60,
+            successThreshold: 2
+        );
+    }
 
     /**
      * Make an API request with rate limiting and error handling
+     *
+     * @throws LinnworksApiException
      */
     public function makeRequest(ApiRequest $request, ?SessionToken $sessionToken = null): ApiResponse
     {
+        // Check circuit breaker
+        if (!$this->circuitBreaker->canMakeRequest()) {
+            $stats = $this->circuitBreaker->getStats();
+            throw new LinnworksApiException(
+                message: 'Circuit breaker is open, too many recent failures',
+                context: $stats,
+                code: 503
+            );
+        }
+
         // Check cache first
         if ($this->enableCaching && $request->method === 'GET') {
             $cachedResponse = $this->getCachedResponse($request);
             if ($cachedResponse !== null) {
+                $this->circuitBreaker->recordSuccess();
                 return $cachedResponse;
             }
         }
@@ -42,7 +67,7 @@ class LinnworksClient
                 'endpoint' => $request->endpoint,
                 'current_requests' => $this->rateLimiter->getCurrentRequestCount(),
             ]);
-            
+
             $this->rateLimiter->waitForReset();
         }
 
@@ -51,8 +76,13 @@ class LinnworksClient
             $this->rateLimiter->recordRequest();
 
             // Make HTTP request
+            $startTime = microtime(true);
             $response = $this->executeHttpRequest($request, $sessionToken);
-            
+            $duration = microtime(true) - $startTime;
+
+            // Check for HTTP errors
+            $this->validateResponse($response, $request, $duration);
+
             // Create API response
             $apiResponse = ApiResponse::fromHttpResponse($response);
 
@@ -64,16 +94,41 @@ class LinnworksClient
             // Log request details
             $this->logRequest($request, $apiResponse);
 
+            // Record success in circuit breaker
+            $this->circuitBreaker->recordSuccess();
+
             return $apiResponse;
 
-        } catch (\Exception $e) {
-            Log::error('Linnworks API request failed', [
+        } catch (ConnectionException $e) {
+            $this->circuitBreaker->recordFailure();
+            throw LinnworksApiException::timeout(
+                endpoint: $request->endpoint,
+                duration: $duration ?? 0
+            );
+        } catch (RequestException $e) {
+            $this->circuitBreaker->recordFailure();
+            throw LinnworksApiException::fromResponse(
+                response: $e->response,
+                message: "Linnworks API request to {$request->endpoint} failed"
+            );
+        } catch (LinnworksApiException $e) {
+            $this->circuitBreaker->recordFailure();
+            throw $e;
+        } catch (\Throwable $e) {
+            $this->circuitBreaker->recordFailure();
+
+            Log::error('Unexpected error during Linnworks API request', [
                 'endpoint' => $request->endpoint,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return ApiResponse::error($e->getMessage(), 500);
+            throw new LinnworksApiException(
+                message: "Unexpected error: {$e->getMessage()}",
+                context: ['endpoint' => $request->endpoint],
+                code: 500,
+                previous: $e
+            );
         }
     }
 
@@ -198,6 +253,35 @@ class LinnworksClient
     }
 
     /**
+     * Validate HTTP response and throw appropriate exceptions
+     *
+     * @throws LinnworksApiException
+     */
+    private function validateResponse(Response $response, ApiRequest $request, float $duration): void
+    {
+        // Check for rate limiting
+        if ($response->status() === 429) {
+            throw LinnworksApiException::rateLimited($response);
+        }
+
+        // Check for server errors (5xx)
+        if ($response->serverError()) {
+            throw LinnworksApiException::fromResponse(
+                response: $response,
+                message: "Linnworks API server error for {$request->endpoint}"
+            );
+        }
+
+        // Check for client errors (4xx)
+        if ($response->clientError() && $response->status() !== 404) {
+            throw LinnworksApiException::fromResponse(
+                response: $response,
+                message: "Linnworks API client error for {$request->endpoint}"
+            );
+        }
+    }
+
+    /**
      * Clear cache for specific endpoint or all cached responses
      */
     public function clearCache(?string $endpoint = null): void
@@ -221,12 +305,21 @@ class LinnworksClient
     }
 
     /**
+     * Get circuit breaker instance
+     */
+    public function getCircuitBreaker(): CircuitBreaker
+    {
+        return $this->circuitBreaker;
+    }
+
+    /**
      * Get client statistics
      */
     public function getStats(): array
     {
         return [
             'rate_limiter' => $this->rateLimiter->getStats(),
+            'circuit_breaker' => $this->circuitBreaker->getStats(),
             'caching_enabled' => $this->enableCaching,
             'default_timeout' => $this->timeout,
         ];

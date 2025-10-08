@@ -7,6 +7,7 @@ namespace App\Actions\Linnworks\Orders;
 use App\DataTransferObjects\ImportOrdersResult;
 use App\DataTransferObjects\LinnworksOrder;
 use App\Models\Order;
+use App\Services\Performance\PerformanceMonitor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +18,20 @@ use Illuminate\Support\Facades\Log;
  */
 final class ImportOrders
 {
+    public function __construct(
+        private readonly PerformanceMonitor $performanceMonitor
+    ) {}
+
     public function handle(iterable $orders, bool $forceUpdate = false): ImportOrdersResult
+    {
+        return $this->performanceMonitor->measure(
+            operation: 'ImportOrders',
+            callback: fn () => $this->importOrders($orders, $forceUpdate),
+            metadata: ['force_update' => $forceUpdate]
+        );
+    }
+
+    private function importOrders(iterable $orders, bool $forceUpdate): ImportOrdersResult
     {
         $ordersCollection = $orders instanceof Collection ? $orders : collect($orders);
 

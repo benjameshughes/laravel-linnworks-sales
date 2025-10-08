@@ -32,9 +32,16 @@
                                 <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $order->received_date?->format('g:i A') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-600 text-zinc-800 dark:text-zinc-200">
-                                    {{ $order->channel_name }}
-                                </span>
+                                <div class="flex flex-col gap-1">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-600 text-zinc-800 dark:text-zinc-200">
+                                        {{ $order->channel_name }}
+                                    </span>
+                                    @if($order->sub_source)
+                                        <span class="text-xs text-zinc-500 dark:text-zinc-400">
+                                            {{ $order->sub_source }}
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($order->total_charge, 2) }}</div>

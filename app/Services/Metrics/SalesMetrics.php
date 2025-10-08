@@ -152,13 +152,15 @@ class SalesMetrics extends MetricBase
             $totalRevenue = $this->totalRevenue();
 
             return $this->data
-                ->groupBy('channel_name')
-                ->map(function (Collection $channelOrders, string $channel) use ($totalRevenue) {
+                ->groupBy(fn (Order $order) => $order->channel_name . '|' . ($order->sub_source ?? ''))
+                ->map(function (Collection $channelOrders, string $groupKey) use ($totalRevenue) {
+                    [$channel, $subsource] = explode('|', $groupKey, 2);
                     $channelRevenue = $channelOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
                     $ordersCount = $channelOrders->count();
 
                     return collect([
                         'name' => $channel,
+                        'subsource' => $subsource ?: null,
                         'orders' => $ordersCount,
                         'revenue' => $channelRevenue,
                         'avg_order_value' => $ordersCount > 0 ? $channelRevenue / $ordersCount : 0,
