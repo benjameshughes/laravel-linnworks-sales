@@ -25,7 +25,7 @@
     {{-- Filters Section --}}
     <div class="mb-8 bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-gray-200 dark:border-zinc-800">
         <div class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {{-- Date Preset --}}
                 <div>
                     <flux:field>
@@ -66,37 +66,16 @@
                     </div>
                 @endif
 
-                {{-- Channel Filter --}}
-                <div>
-                    <flux:field>
-                        <flux:label>Channels ({{ count($channels) }} selected)</flux:label>
-                        <flux:select wire:model.live="channels" multiple>
-                            @foreach($this->availableChannels as $channel)
-                                <flux:select.option value="{{ $channel }}">{{ $channel }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
-                    </flux:field>
-                </div>
-
-                {{-- Actions --}}
-                <div class="flex items-end gap-2">
-                    <flux:button wire:click="clearFilters" variant="outline" size="sm">
-                        Reset Filters
-                    </flux:button>
+                {{-- Channel Filter with Pill Selector --}}
+                <div class="{{ $preset === 'custom' ? '' : 'md:col-span-2' }}">
+                    <x-pill-selector
+                        :options="$this->availableChannels->toArray()"
+                        :selected="$channels"
+                        label="Channels"
+                        placeholder="All channels"
+                    />
                 </div>
             </div>
-
-            {{-- Active Filters Display --}}
-            @if($this->filter->hasActiveFilters() || !empty($search))
-                <div class="mt-4 flex flex-wrap gap-2">
-                    @foreach($channels as $channel)
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            {{ $channel }}
-                            <button wire:click="toggleChannel('{{ $channel }}')" class="ml-2">×</button>
-                        </span>
-                    @endforeach
-                </div>
-            @endif
 
             {{-- Date Range Display --}}
             <div class="mt-4 text-sm text-gray-600 dark:text-gray-400">
