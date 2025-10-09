@@ -9,9 +9,11 @@
 
             <flux:sidebar.collapse class="max-lg:hidden" />
 
-            <a href="{{ route('dashboard') }}" class="me-5 flex items-center space-x-2 rtl:space-x-reverse" wire:navigate>
-                <x-app-logo />
-            </a>
+            <flux:brand :href="route('dashboard')" :name="config('app.name')" wire:navigate>
+                <x-slot name="logo" class="flex aspect-square size-8 items-center justify-center rounded-md bg-accent-content text-accent-foreground">
+                    <x-app-logo-icon class="size-5 fill-current text-white dark:text-black" />
+                </x-slot>
+            </flux:brand>
 
             <flux:sidebar.nav>
                 <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:sidebar.item>
