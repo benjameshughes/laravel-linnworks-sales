@@ -54,6 +54,8 @@ final class DashboardFilters extends Component
         }
 
         $this->isSyncing = true;
+        $this->syncStage = 'queued';
+        $this->syncMessage = 'Sync job queued...';
 
         try {
             if ($this->period === 'custom') {
@@ -66,19 +68,24 @@ final class DashboardFilters extends Component
 
             $processedWindow = max((int) config('linnworks.sync.default_date_range', 30), $windowDays);
 
-            app(SyncRecentOrders::class)->handle(
+            \App\Jobs\SyncRecentOrdersJob::dispatch(
                 openWindowDays: $windowDays,
                 processedWindowDays: $processedWindow,
                 forceUpdate: false,
                 userId: auth()->id(),
             );
+
+            $this->dispatch('notification', [
+                'message' => 'Sync started in background. Updates will appear automatically.',
+                'type' => 'info',
+            ]);
         } catch (Throwable $exception) {
             report($exception);
 
             $this->isSyncing = false;
 
             $this->dispatch('notification', [
-                'message' => 'Failed to sync orders. See logs for details.',
+                'message' => 'Failed to queue sync job. See logs for details.',
                 'type' => 'error',
             ]);
         }
