@@ -22,7 +22,9 @@ class SyncInventoryPaginatedJob implements ShouldQueue
         private readonly int $pageNumber = 1,
         private readonly int $entriesPerPage = 200,
         private readonly int $maxRetries = 3,
-    ) {}
+    ) {
+        $this->onQueue('medium');
+    }
 
     public function handle(ProductsApiService $productsApiService): void
     {

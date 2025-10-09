@@ -24,7 +24,9 @@ final class SyncRecentOrdersJob implements ShouldQueue
         public int $processedWindowDays,
         public bool $forceUpdate,
         public ?int $userId,
-    ) {}
+    ) {
+        $this->onQueue('high');
+    }
 
     public function handle(SyncRecentOrders $syncAction): void
     {

@@ -16,12 +16,19 @@
                 <span class="flex items-center gap-1"
                       x-data="{
                           lastSync: '{{ $this->lastSyncInfo->get('time_human') }}',
+                          elapsed: 0,
+                          interval: null,
                           updateTime() {
-                              // This will be called every minute to refresh the computed property
+                              this.elapsed++;
+                              // After 60 seconds, switch to minute intervals
+                              if (this.elapsed === 60) {
+                                  clearInterval(this.interval);
+                                  this.interval = setInterval(() => $wire.$refresh(), 60000);
+                              }
                               $wire.$refresh();
                           }
                       }"
-                      x-init="setInterval(() => updateTime(), 60000)">
+                      x-init="interval = setInterval(() => updateTime(), 1000)">
                     @if($isSyncing)
                         <span class="flex items-center gap-1"
                               x-transition:enter="transition ease-out duration-300"

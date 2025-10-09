@@ -9,6 +9,7 @@ use App\Services\Metrics\SalesMetrics;
 use App\Services\Metrics\ProductsMetrics;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -17,13 +18,14 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class RefreshMetricsCacheJob implements ShouldQueue
+class RefreshMetricsCacheJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 300; // 5 minutes
     public int $tries = 3;
     public int $backoff = 60; // 1 minute
+    public int $uniqueFor = 300; // 5 minutes (prevent stacking during cache refresh)
 
     private string $period;
     private ?string $channel;
@@ -32,9 +34,17 @@ class RefreshMetricsCacheJob implements ShouldQueue
     {
         $this->period = $period;
         $this->channel = $channel;
-        
+
         // Use high priority queue for cache refresh
         $this->onQueue('high');
+    }
+
+    /**
+     * The unique ID of the job.
+     */
+    public function uniqueId(): string
+    {
+        return 'refresh-metrics-cache-' . $this->period . '-' . ($this->channel ?? 'all');
     }
 
     public function handle(): void

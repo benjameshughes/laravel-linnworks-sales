@@ -23,6 +23,7 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
     {
         $this->stockItemIds = $stockItemIds;
         $this->syncLogId = $syncLogId;
+        $this->onQueue('medium');
     }
 
     public function handle(LinnworksApiService $linnworksService): void

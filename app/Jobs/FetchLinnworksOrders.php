@@ -28,7 +28,7 @@ class FetchLinnworksOrders implements ShouldQueue
         public string $orderType = 'both', // 'open', 'processed', 'both'
         public int $batchSize = 100
     ) {
-        $this->onQueue('linnworks');
+        $this->onQueue('low');
     }
 
     /**
@@ -100,7 +100,6 @@ class FetchLinnworksOrders implements ShouldQueue
             
             foreach ($chunks as $index => $chunk) {
                 ProcessLinnworksOrders::dispatch($chunk->toArray())
-                    ->onQueue('linnworks-processing')
                     ->delay(now()->addSeconds($index * 2)); // Stagger jobs by 2 seconds
             }
 

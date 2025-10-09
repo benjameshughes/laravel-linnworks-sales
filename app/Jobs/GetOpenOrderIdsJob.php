@@ -7,15 +7,18 @@ use App\Models\Order;
 use App\Models\SyncLog;
 use App\Services\LinnworksApiService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class GetOpenOrderIdsJob implements ShouldQueue
+class GetOpenOrderIdsJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $uniqueFor = 3600; // 1 hour
 
     protected ?string $startedBy;
     protected SyncLog $syncLog;
@@ -26,6 +29,15 @@ class GetOpenOrderIdsJob implements ShouldQueue
     public function __construct(?string $startedBy = null)
     {
         $this->startedBy = $startedBy ?? 'system';
+        $this->onQueue('high');
+    }
+
+    /**
+     * The unique ID of the job.
+     */
+    public function uniqueId(): string
+    {
+        return 'get-open-order-ids';
     }
 
     /**

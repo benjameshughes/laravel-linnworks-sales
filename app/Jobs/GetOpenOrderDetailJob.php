@@ -29,6 +29,15 @@ class GetOpenOrderDetailJob implements ShouldQueue
     {
         $this->orderUuids = $orderUuids;
         $this->syncLogId = $syncLogId;
+        $this->onQueue('high');
+    }
+
+    /**
+     * Get the middleware the job should pass through.
+     */
+    public function middleware(): array
+    {
+        return [new \App\Jobs\Middleware\RateLimitLinnworks];
     }
 
     /**
