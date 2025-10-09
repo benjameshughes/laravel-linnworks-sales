@@ -33,6 +33,14 @@ class GetOpenOrderDetailJob implements ShouldQueue
     }
 
     /**
+     * Get the middleware the job should pass through.
+     */
+    public function middleware(): array
+    {
+        return [new \App\Jobs\Middleware\RateLimitLinnworks];
+    }
+
+    /**
      * Execute the job.
      */
     public function handle(LinnworksApiService $linnworksService, ImportOrders $importOrders): void

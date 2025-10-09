@@ -8,15 +8,18 @@ use App\Models\Product;
 use App\Models\SyncLog;
 use App\Services\LinnworksApiService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class GetDetailedProductsJob implements ShouldQueue
+class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $uniqueFor = 3600; // 1 hour
 
     protected ?string $startedBy;
     protected SyncLog $syncLog;
@@ -27,6 +30,14 @@ class GetDetailedProductsJob implements ShouldQueue
         $this->startedBy = $startedBy ?? 'system';
         $this->updateExistingOnly = $updateExistingOnly;
         $this->onQueue('medium');
+    }
+
+    /**
+     * The unique ID of the job.
+     */
+    public function uniqueId(): string
+    {
+        return 'get-detailed-products-' . ($this->updateExistingOnly ? 'existing' : 'all');
     }
 
     public function handle(LinnworksApiService $linnworksService): void
