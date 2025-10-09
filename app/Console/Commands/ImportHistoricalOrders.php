@@ -221,6 +221,11 @@ class ImportHistoricalOrders extends Command
 
             $this->info("✅ Completed processing. Total orders: {$this->totalProcessed}");
 
+            // Backfill missing order items
+            if (!$isDryRun) {
+                $this->backfillMissingItems($from, $to);
+            }
+
             // Broadcast import completed event
             if (!$isDryRun) {
                 event(new ImportCompleted(
@@ -412,6 +417,149 @@ class ImportHistoricalOrders extends Command
             'status' => $status,
             'last_synced_at' => now(),
         ]);
+    }
+
+    private function backfillMissingItems(Carbon $from, Carbon $to): void
+    {
+        $this->newLine();
+        $this->info('🔍 Backfilling missing order items...');
+
+        // Get orders in date range without items
+        $ordersWithoutItems = Order::whereDoesntHave('orderItems')
+            ->whereNotNull('linnworks_order_id')
+            ->whereBetween('received_date', [$from, $to])
+            ->get();
+
+        $totalWithoutItems = $ordersWithoutItems->count();
+
+        if ($totalWithoutItems === 0) {
+            $this->info('✨ All orders already have items!');
+            return;
+        }
+
+        $this->info("📦 Found {$totalWithoutItems} orders without items");
+
+        $backfilled = 0;
+        $skipped = 0;
+        $errors = 0;
+
+        $progressBar = $this->output->createProgressBar($totalWithoutItems);
+        $progressBar->start();
+
+        // Process in chunks of 50 to respect rate limits
+        foreach ($ordersWithoutItems->chunk(50) as $chunk) {
+            $orderIds = $chunk->pluck('linnworks_order_id')->filter()->toArray();
+
+            if (empty($orderIds)) {
+                $progressBar->advance($chunk->count());
+                continue;
+            }
+
+            try {
+                // Fetch detailed orders with items from Linnworks
+                $detailedOrders = $this->apiService->getProcessedOrdersWithDetails($orderIds);
+
+                foreach ($chunk as $localOrder) {
+                    try {
+                        // Find matching detailed order
+                        $detailedOrder = $detailedOrders->firstWhere(function ($order) use ($localOrder) {
+                            $orderId = is_array($order)
+                                ? ($order['GeneralInfo']['pkOrderID'] ?? null)
+                                : null;
+                            return $orderId === $localOrder->linnworks_order_id;
+                        });
+
+                        if (!$detailedOrder) {
+                            $skipped++;
+                            $progressBar->advance();
+                            continue;
+                        }
+
+                        $items = is_array($detailedOrder) ? ($detailedOrder['Items'] ?? []) : [];
+
+                        if (empty($items)) {
+                            $skipped++;
+                            $progressBar->advance();
+                            continue;
+                        }
+
+                        // Create order items
+                        DB::transaction(function () use ($localOrder, $items) {
+                            foreach ($items as $itemData) {
+                                $sku = $itemData['SKU'] ?? null;
+                                $itemTitle = $itemData['ItemTitle'] ?? null;
+
+                                // If no item title, try to get it from Product model
+                                if (empty($itemTitle) && !empty($sku)) {
+                                    $product = \App\Models\Product::where('sku', $sku)->first();
+                                    $itemTitle = $product?->title ?? "Product {$sku}";
+                                }
+
+                                if (empty($itemTitle)) {
+                                    $itemTitle = 'Unknown Product';
+                                }
+
+                                OrderItem::create([
+                                    'order_id' => $localOrder->id,
+                                    'item_id' => $itemData['ItemId'] ?? null,
+                                    'sku' => $sku,
+                                    'item_title' => $itemTitle,
+                                    'quantity' => $itemData['Quantity'] ?? 0,
+                                    'unit_cost' => $itemData['UnitCost'] ?? 0,
+                                    'price_per_unit' => $itemData['PricePerUnit'] ?? 0,
+                                    'line_total' => $itemData['LineTotal'] ?? 0,
+                                    'category_name' => $itemData['CategoryName'] ?? null,
+                                ]);
+                            }
+
+                            // Update the order's items JSON column as well
+                            $localOrder->update(['items' => $items]);
+                        });
+
+                        $backfilled++;
+
+                    } catch (\Exception $e) {
+                        $errors++;
+                        Log::error('Failed to backfill order items', [
+                            'order_id' => $localOrder->id,
+                            'order_number' => $localOrder->order_number,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+
+                    $progressBar->advance();
+                }
+
+            } catch (\Exception $e) {
+                $this->newLine();
+                $this->error("❌ Error backfilling chunk: {$e->getMessage()}");
+                Log::error('Backfill chunk error', [
+                    'order_ids' => $orderIds,
+                    'error' => $e->getMessage(),
+                ]);
+                $errors += count($orderIds);
+                $progressBar->advance(count($orderIds));
+            }
+        }
+
+        $progressBar->finish();
+        $this->newLine(2);
+
+        $this->info('📊 Backfill Summary:');
+        $this->table(['Metric', 'Count'], [
+            ['Orders without items', number_format($totalWithoutItems)],
+            ['Successfully backfilled', number_format($backfilled)],
+            ['Skipped (no items in Linnworks)', number_format($skipped)],
+            ['Errors', number_format($errors)],
+        ]);
+
+        if ($backfilled > 0) {
+            $this->info("✅ Backfilled items for {$backfilled} orders!");
+            $this->info('📈 Updated Statistics:');
+            $this->line('   Total OrderItem records: ' . number_format(OrderItem::count()));
+            $this->line('   Orders with items: ' . number_format(Order::whereHas('orderItems')->count()));
+            $this->line('   Orders without items: ' . number_format(Order::whereDoesntHave('orderItems')->count()));
+        }
     }
 
     private function displayFinalSummary(bool $isDryRun): void

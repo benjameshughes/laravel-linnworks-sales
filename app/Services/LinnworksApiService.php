@@ -343,6 +343,27 @@ class LinnworksApiService
     }
 
     /**
+     * Retrieve processed orders with full details (including line items) by IDs.
+     */
+    public function getProcessedOrdersWithDetails(array $orderIds, ?int $userId = null): Collection
+    {
+        if (empty($orderIds)) {
+            return collect();
+        }
+
+        try {
+            $userId = $this->resolveUserId($userId);
+            return $this->processedOrders->getProcessedOrdersWithDetails($userId, $orderIds);
+        } catch (\Throwable $exception) {
+            Log::error('Failed to fetch processed orders with details.', [
+                'order_count' => count($orderIds),
+                'error' => $exception->getMessage(),
+            ]);
+            return collect();
+        }
+    }
+
+    /**
      * Retrieve all open order identifiers.
      */
     public function getAllOpenOrderIds(?int $userId = null): Collection
