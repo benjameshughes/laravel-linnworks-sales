@@ -107,16 +107,6 @@
                     <span wire:loading.remove wire:target="syncOrders">Sync</span>
                     <span wire:loading wire:target="syncOrders">Syncing</span>
                 </flux:button>
-
-                <flux:button
-                    variant="ghost"
-                    size="sm"
-                    wire:click="refreshDashboard"
-                    wire:target="refreshDashboard"
-                    wire:loading.attr="disabled"
-                    icon="arrow-path"
-                    class="flex-shrink-0"
-                />
             </div>
         </div>
     </div>

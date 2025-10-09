@@ -91,22 +91,6 @@ final class DashboardFilters extends Component
         }
     }
 
-    public function refreshDashboard(): void
-    {
-        $this->dispatch('filters-updated',
-            period: $this->period,
-            channel: $this->channel,
-            searchTerm: $this->searchTerm,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
-
-        $this->dispatch('notification', [
-            'message' => 'Dashboard data refreshed',
-            'type' => 'info',
-        ]);
-    }
-
     #[Computed]
     public function dateRange(): Collection
     {
