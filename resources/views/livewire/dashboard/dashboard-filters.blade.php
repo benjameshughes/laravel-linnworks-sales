@@ -10,7 +10,15 @@
                     {{ number_format($this->totalOrders) }} orders
                 </span>
                 <span class="text-zinc-400">•</span>
-                <span class="flex items-center gap-1">
+                <span class="flex items-center gap-1"
+                      x-data="{
+                          lastSync: '{{ $this->lastSyncInfo->get('time_human') }}',
+                          updateTime() {
+                              // This will be called every minute to refresh the computed property
+                              $wire.$refresh();
+                          }
+                      }"
+                      x-init="setInterval(() => updateTime(), 60000)">
                     <flux:icon name="arrow-path" class="size-3 text-zinc-500" />
                     {{ $this->lastSyncInfo->get('time_human') }}
                 </span>

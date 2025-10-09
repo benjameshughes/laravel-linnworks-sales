@@ -198,10 +198,14 @@ final class DashboardFilters extends Component
     #[On('echo:sync-progress,SyncStarted')]
     public function handleSyncStarted(array $data): void
     {
-        $this->isSyncing = true;
-        $this->syncStage = 'started';
-        $this->syncMessage = 'Starting sync...';
-        $this->syncCount = 0;
+        // Only update UI if we're not already showing syncing state
+        // This prevents manual button click from being overridden
+        if (!$this->isSyncing) {
+            $this->isSyncing = true;
+            $this->syncStage = 'started';
+            $this->syncMessage = 'Starting sync...';
+            $this->syncCount = 0;
+        }
     }
 
     #[On('echo:sync-progress,SyncProgressUpdated')]
@@ -220,6 +224,10 @@ final class DashboardFilters extends Component
         $this->syncMessage = $data['success']
             ? "Sync completed: {$data['created']} created, {$data['updated']} updated"
             : 'Sync completed with errors';
+
+        // Clear cached computed properties to force fresh data
+        unset($this->lastSyncInfo);
+        unset($this->totalOrders);
 
         $this->dispatch('filters-updated',
             period: $this->period,
