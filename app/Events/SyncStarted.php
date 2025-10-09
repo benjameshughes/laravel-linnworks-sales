@@ -22,10 +22,6 @@ class SyncStarted implements ShouldBroadcastNow
         return new Channel('sync-progress');
     }
 
-    public function broadcastAs(): string
-    {
-        return 'sync.started';
-    }
 
     public function broadcastWith(): array
     {

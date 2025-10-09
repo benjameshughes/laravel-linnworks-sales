@@ -25,10 +25,6 @@ class SyncCompleted implements ShouldBroadcastNow
         return new Channel('sync-progress');
     }
 
-    public function broadcastAs(): string
-    {
-        return 'sync.completed';
-    }
 
     public function broadcastWith(): array
     {

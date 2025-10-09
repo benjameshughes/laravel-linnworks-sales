@@ -23,10 +23,6 @@ class SyncProgressUpdated implements ShouldBroadcastNow
         return new Channel('sync-progress');
     }
 
-    public function broadcastAs(): string
-    {
-        return 'sync.progress';
-    }
 
     public function broadcastWith(): array
     {

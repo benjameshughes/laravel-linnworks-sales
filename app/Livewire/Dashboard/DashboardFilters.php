@@ -195,7 +195,7 @@ final class DashboardFilters extends Component
             ->count();
     }
 
-    #[On('echo:sync-progress,sync.started')]
+    #[On('echo:sync-progress,SyncStarted')]
     public function handleSyncStarted(array $data): void
     {
         $this->isSyncing = true;
@@ -204,7 +204,7 @@ final class DashboardFilters extends Component
         $this->syncCount = 0;
     }
 
-    #[On('echo:sync-progress,sync.progress')]
+    #[On('echo:sync-progress,SyncProgressUpdated')]
     public function handleSyncProgress(array $data): void
     {
         $this->syncStage = $data['stage'];
@@ -212,7 +212,7 @@ final class DashboardFilters extends Component
         $this->syncCount = $data['count'] ?? 0;
     }
 
-    #[On('echo:sync-progress,sync.completed')]
+    #[On('echo:sync-progress,SyncCompleted')]
     public function handleSyncCompleted(array $data): void
     {
         $this->isSyncing = false;
