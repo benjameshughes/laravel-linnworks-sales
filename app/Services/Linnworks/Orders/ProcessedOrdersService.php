@@ -128,13 +128,13 @@ class ProcessedOrdersService
     public function getProcessedOrderById(int $userId, string $orderId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
+
         if (!$sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
-        $request = ApiRequest::post('Orders/GetProcessedOrderById', [
-            'orderId' => $orderId,
+        $request = ApiRequest::post('Orders/GetOrdersById', [
+            'pkOrderIds' => [$orderId],
         ]);
 
         Log::info('Fetching processed order details', [
@@ -143,6 +143,70 @@ class ProcessedOrdersService
         ]);
 
         return $this->client->makeRequest($request, $sessionToken);
+    }
+
+    /**
+     * Get processed orders with full details (including items) by IDs
+     */
+    public function getProcessedOrdersWithDetails(int $userId, array $orderIds): Collection
+    {
+        if (empty($orderIds)) {
+            return collect();
+        }
+
+        $sessionToken = $this->sessionManager->getValidSessionToken($userId);
+
+        if (!$sessionToken) {
+            Log::error('No valid session token available for getting processed order details');
+            return collect();
+        }
+
+        $orders = collect();
+
+        Log::info('Fetching processed order details', [
+            'user_id' => $userId,
+            'order_count' => count($orderIds),
+        ]);
+
+        foreach ($orderIds as $orderId) {
+            try {
+                $response = $this->getProcessedOrderById($userId, $orderId);
+
+                if ($response->isError()) {
+                    Log::warning('Failed to fetch processed order details', [
+                        'order_id' => $orderId,
+                        'error' => $response->error,
+                    ]);
+                    continue;
+                }
+
+                $orderData = $response->getData();
+                if ($orderData->isNotEmpty()) {
+                    // GetOrdersById returns array of orders, get first one
+                    $order = $orderData->first();
+                    if ($order) {
+                        $orders->push($order);
+                    }
+                }
+
+                // Rate limiting - be nice to Linnworks API
+                usleep(50000); // 50ms between requests
+
+            } catch (\Throwable $e) {
+                Log::error('Exception fetching processed order details', [
+                    'order_id' => $orderId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        Log::info('Fetched processed order details complete', [
+            'user_id' => $userId,
+            'requested_count' => count($orderIds),
+            'fetched_count' => $orders->count(),
+        ]);
+
+        return $orders;
     }
 
     /**
