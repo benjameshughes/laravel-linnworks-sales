@@ -327,8 +327,10 @@ class SyncProcessedOrders extends Command
                 'order_number' => $processedOrderData['order_number'],
                 'received_date' => $processedOrderData['received_date'] ? Carbon::parse($processedOrderData['received_date']) : null,
                 'processed_date' => $processedOrderData['processed_date'] ? Carbon::parse($processedOrderData['processed_date']) : null,
-                'channel_name' => $processedOrderData['channel_name'] ?? 'Unknown',
-                'sub_source' => $processedOrderData['sub_source'],
+                'channel_name' => \Illuminate\Support\Str::lower(str_replace(' ', '_', $processedOrderData['order_source'] ?? $processedOrderData['channel_name'] ?? 'Unknown')),
+                'sub_source' => isset($processedOrderData['subsource']) || isset($processedOrderData['sub_source'])
+                    ? \Illuminate\Support\Str::lower(str_replace(' ', '_', $processedOrderData['subsource'] ?? $processedOrderData['sub_source']))
+                    : null,
                 'currency' => $processedOrderData['currency'] ?? 'GBP',
                 'total_charge' => $processedOrderData['total_charge'] ?? 0,
                 'postage_cost' => $processedOrderData['postage_cost'] ?? 0,
