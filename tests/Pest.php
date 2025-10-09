@@ -8,3 +8,5 @@ uses(LinnworksTestCase::class)->in(
     'Feature/Livewire',
     'Unit/Services',
 );
+
+uses(Tests\TestCase::class)->in('Feature/Models');
