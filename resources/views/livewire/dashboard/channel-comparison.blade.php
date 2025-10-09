@@ -136,98 +136,13 @@
                     </flux:badge>
                 </div>
                 
-                <div class="h-80" wire:ignore>
-                    <canvas id="channelChart" width="400" height="300"></canvas>
+                <div class="h-80" wire:ignore
+                    x-data="channelChart(@js($this->chartData))"
+                    x-init="createChart()"
+                    @channel-data-updated.window="setTimeout(() => createChart(), 100)"
+                >
+                    <canvas width="400" height="300"></canvas>
                 </div>
-                
-                @script
-                <script>
-                    let channelChart = null;
-                    
-                    function createChannelChart() {
-                        const ctx = document.getElementById('channelChart');
-                        if (!ctx) return;
-                        
-                        const chartData = @json($this->chartData);
-                        
-                        if (channelChart) {
-                            channelChart.destroy();
-                        }
-                        
-                        channelChart = new Chart(ctx, {
-                            type: 'bar',
-                            data: {
-                                labels: chartData.labels,
-                                datasets: [{
-                                    label: 'Revenue (£)',
-                                    data: chartData.revenue,
-                                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                                    borderColor: 'rgb(59, 130, 246)',
-                                    borderWidth: 1,
-                                    yAxisID: 'y'
-                                }, {
-                                    label: 'Orders',
-                                    data: chartData.orders,
-                                    type: 'line',
-                                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                    borderColor: 'rgb(16, 185, 129)',
-                                    borderWidth: 2,
-                                    tension: 0.4,
-                                    yAxisID: 'y1'
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'top'
-                                    }
-                                },
-                                scales: {
-                                    x: {
-                                        ticks: {
-                                            maxRotation: 45,
-                                            minRotation: 45
-                                        }
-                                    },
-                                    y: {
-                                        beginAtZero: true,
-                                        position: 'left',
-                                        title: {
-                                            display: true,
-                                            text: 'Revenue (£)'
-                                        },
-                                        ticks: {
-                                            callback: function(value) {
-                                                return '£' + value.toLocaleString();
-                                            }
-                                        }
-                                    },
-                                    y1: {
-                                        type: 'linear',
-                                        display: true,
-                                        position: 'right',
-                                        title: {
-                                            display: true,
-                                            text: 'Orders'
-                                        },
-                                        grid: {
-                                            drawOnChartArea: false,
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                    }
-                    
-                    createChannelChart();
-                    
-                    Livewire.on('channelDataUpdated', () => {
-                        setTimeout(() => createChannelChart(), 100);
-                    });
-                </script>
-                @endscript
             </x-card>
 
             {{-- Market Share Pie Chart --}}
@@ -237,76 +152,13 @@
                     <flux:badge color="green" size="sm">Revenue %</flux:badge>
                 </div>
                 
-                <div class="h-80" wire:ignore>
-                    <canvas id="marketShareChart" width="400" height="300"></canvas>
+                <div class="h-80" wire:ignore
+                    x-data="marketShareChart(@js($this->chartData))"
+                    x-init="createChart()"
+                    @channel-data-updated.window="setTimeout(() => createChart(), 100)"
+                >
+                    <canvas width="400" height="300"></canvas>
                 </div>
-                
-                @script
-                <script>
-                    let marketShareChart = null;
-                    
-                    function createMarketShareChart() {
-                        const ctx = document.getElementById('marketShareChart');
-                        if (!ctx) return;
-                        
-                        const chartData = @json($this->chartData);
-                        
-                        if (marketShareChart) {
-                            marketShareChart.destroy();
-                        }
-                        
-                        // Calculate revenue percentages
-                        const total = chartData.revenue.reduce((a, b) => a + b, 0);
-                        const percentages = chartData.revenue.map(value => total > 0 ? (value / total) * 100 : 0);
-                        
-                        marketShareChart = new Chart(ctx, {
-                            type: 'doughnut',
-                            data: {
-                                labels: chartData.labels.slice(0, 6), // Limit to top 6 for readability
-                                datasets: [{
-                                    data: percentages.slice(0, 6),
-                                    backgroundColor: [
-                                        'rgba(59, 130, 246, 0.8)',
-                                        'rgba(16, 185, 129, 0.8)',
-                                        'rgba(245, 158, 11, 0.8)',
-                                        'rgba(239, 68, 68, 0.8)',
-                                        'rgba(139, 92, 246, 0.8)',
-                                        'rgba(236, 72, 153, 0.8)'
-                                    ],
-                                    borderWidth: 2,
-                                    borderColor: '#ffffff'
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'bottom',
-                                        labels: {
-                                            padding: 15,
-                                            usePointStyle: true
-                                        }
-                                    },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function(context) {
-                                                return context.label + ': ' + context.parsed.toFixed(1) + '%';
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                    }
-                    
-                    createMarketShareChart();
-                    
-                    Livewire.on('channelDataUpdated', () => {
-                        setTimeout(() => createMarketShareChart(), 100);
-                    });
-                </script>
-                @endscript
             </x-card>
         </div>
 
@@ -425,91 +277,13 @@
                             <flux:heading size="md">Daily Performance Trend</flux:heading>
                         </div>
                         
-                        <div class="h-64" wire:ignore>
-                            <canvas id="channelDetailChart" width="400" height="200"></canvas>
+                        <div class="h-64" wire:ignore
+                            x-data="channelDetailChart(@js($this->channelDetails))"
+                            x-init="createChart()"
+                            @channel-selected.window="setTimeout(() => createChart(), 100)"
+                        >
+                            <canvas width="400" height="200"></canvas>
                         </div>
-                        
-                        @script
-                        <script>
-                            let channelDetailChart = null;
-                            
-                            function createChannelDetailChart() {
-                                const ctx = document.getElementById('channelDetailChart');
-                                if (!ctx) return;
-                                
-                                const dailyData = @json($this->channelDetails['daily_data'] ?? []);
-                                
-                                if (channelDetailChart) {
-                                    channelDetailChart.destroy();
-                                }
-                                
-                                channelDetailChart = new Chart(ctx, {
-                                    type: 'line',
-                                    data: {
-                                        labels: dailyData.map(item => item.date),
-                                        datasets: [{
-                                            label: 'Revenue (£)',
-                                            data: dailyData.map(item => item.revenue),
-                                            borderColor: 'rgb(59, 130, 246)',
-                                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                            tension: 0.4,
-                                            fill: true,
-                                            yAxisID: 'y'
-                                        }, {
-                                            label: 'Orders',
-                                            data: dailyData.map(item => item.orders),
-                                            borderColor: 'rgb(16, 185, 129)',
-                                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                            tension: 0.4,
-                                            yAxisID: 'y1'
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        plugins: {
-                                            legend: {
-                                                position: 'top'
-                                            }
-                                        },
-                                        scales: {
-                                            y: {
-                                                beginAtZero: true,
-                                                position: 'left',
-                                                title: {
-                                                    display: true,
-                                                    text: 'Revenue (£)'
-                                                },
-                                                ticks: {
-                                                    callback: function(value) {
-                                                        return '£' + value.toLocaleString();
-                                                    }
-                                                }
-                                            },
-                                            y1: {
-                                                type: 'linear',
-                                                display: true,
-                                                position: 'right',
-                                                title: {
-                                                    display: true,
-                                                    text: 'Orders'
-                                                },
-                                                grid: {
-                                                    drawOnChartArea: false,
-                                                }
-                                            }
-                                        }
-                                    }
-                                });
-                            }
-                            
-                            createChannelDetailChart();
-                            
-                            Livewire.on('channelSelected', () => {
-                                setTimeout(() => createChannelDetailChart(), 100);
-                            });
-                        </script>
-                        @endscript
                     </div>
                     
                     {{-- Top Products for this Channel --}}
@@ -549,6 +323,6 @@
     </div>
 </div>
 
-@script
+@assets
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-@endscript
+@endassets

@@ -5,3 +5,8 @@
  */
 
 import './echo';
+
+/**
+ * Alpine.js chart components
+ */
+import './alpine-charts';
