@@ -26,6 +26,7 @@ class GetOpenOrderIdsJob implements ShouldQueue
     public function __construct(?string $startedBy = null)
     {
         $this->startedBy = $startedBy ?? 'system';
+        $this->onQueue('high');
     }
 
     /**

@@ -22,6 +22,7 @@ class ProcessProductJob implements ShouldQueue
     {
         $this->inventoryItem = $inventoryItem;
         $this->syncLogId = $syncLogId;
+        $this->onQueue('medium');
     }
 
     public function handle(): void

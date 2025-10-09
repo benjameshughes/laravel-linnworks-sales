@@ -24,7 +24,7 @@ class ProcessLinnworksOrders implements ShouldQueue
         public array $ordersData,
         public bool $forceUpdate = false
     ) {
-        $this->onQueue('linnworks-processing');
+        $this->onQueue('low');
     }
 
     /**

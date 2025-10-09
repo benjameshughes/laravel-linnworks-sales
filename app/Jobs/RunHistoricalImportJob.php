@@ -38,7 +38,7 @@ final class RunHistoricalImportJob implements ShouldQueue
         private readonly string $toDate,
         private readonly int $batchSize,
     ) {
-        $this->queue = 'imports';
+        $this->onQueue('low');
     }
 
     /**

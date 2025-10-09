@@ -26,6 +26,7 @@ class GetDetailedProductsJob implements ShouldQueue
     {
         $this->startedBy = $startedBy ?? 'system';
         $this->updateExistingOnly = $updateExistingOnly;
+        $this->onQueue('medium');
     }
 
     public function handle(LinnworksApiService $linnworksService): void

@@ -19,7 +19,9 @@ class GetInventoryCountJob implements ShouldQueue
     public function __construct(
         private readonly int $userId,
         private readonly int $maxRetries = 3,
-    ) {}
+    ) {
+        $this->onQueue('medium');
+    }
 
     public function handle(InventoryService $inventoryService): void
     {

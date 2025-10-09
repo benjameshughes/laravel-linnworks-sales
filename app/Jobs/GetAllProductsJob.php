@@ -23,6 +23,7 @@ class GetAllProductsJob implements ShouldQueue
     public function __construct(?string $startedBy = null)
     {
         $this->startedBy = $startedBy ?? 'system';
+        $this->onQueue('medium');
     }
 
     public function handle(LinnworksApiService $linnworksService): void

@@ -29,6 +29,7 @@ class GetOpenOrderDetailJob implements ShouldQueue
     {
         $this->orderUuids = $orderUuids;
         $this->syncLogId = $syncLogId;
+        $this->onQueue('high');
     }
 
     /**
