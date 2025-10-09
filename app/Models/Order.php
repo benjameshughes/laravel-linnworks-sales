@@ -317,9 +317,13 @@ class Order extends Model
             'linnworks_order_id' => $linnworksOrder->orderId,
             'order_id' => $linnworksOrder->orderId,
             'order_number' => $linnworksOrder->orderNumber,
-            'channel_name' => $linnworksOrder->orderSource, // Map to correct field
+            'channel_name' => $linnworksOrder->orderSource
+                ? \Illuminate\Support\Str::lower(str_replace(' ', '_', $linnworksOrder->orderSource))
+                : null,
             'source' => $linnworksOrder->orderSource,
-            'sub_source' => $linnworksOrder->subsource,
+            'sub_source' => $linnworksOrder->subsource
+                ? \Illuminate\Support\Str::lower(str_replace(' ', '_', $linnworksOrder->subsource))
+                : null,
             'received_date' => $linnworksOrder->receivedDate,
             'processed_date' => $linnworksOrder->processedDate,
             'currency' => $linnworksOrder->currency,
