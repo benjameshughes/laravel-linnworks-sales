@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\SyncLog;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -26,12 +27,27 @@ final class DashboardFilters extends Component
     public string $syncStage = '';
     public string $syncMessage = '';
     public int $syncCount = 0;
+    public int $rateLimitSeconds = 0;
 
     public function mount(): void
     {
         // Initialize custom dates to last 7 days
         $this->customTo = Carbon::now()->format('Y-m-d');
         $this->customFrom = Carbon::now()->subDays(7)->format('Y-m-d');
+
+        // Check initial rate limit status
+        $this->checkRateLimit();
+    }
+
+    public function checkRateLimit(): void
+    {
+        $key = 'sync-orders:' . auth()->id();
+
+        if (RateLimiter::tooManyAttempts($key, 1)) {
+            $this->rateLimitSeconds = RateLimiter::availableIn($key);
+        } else {
+            $this->rateLimitSeconds = 0;
+        }
     }
 
     public function updated($property): void
@@ -52,6 +68,24 @@ final class DashboardFilters extends Component
         if ($this->isSyncing) {
             return;
         }
+
+        // Rate limit: 1 sync per 2 minutes per user
+        $key = 'sync-orders:' . auth()->id();
+
+        if (RateLimiter::tooManyAttempts($key, 1)) {
+            $this->rateLimitSeconds = RateLimiter::availableIn($key);
+
+            $this->dispatch('notification', [
+                'message' => "Please wait {$this->rateLimitSeconds} seconds before syncing again.",
+                'type' => 'warning',
+            ]);
+
+            return;
+        }
+
+        $this->rateLimitSeconds = 0;
+
+        RateLimiter::hit($key, 120); // 2 minutes
 
         $this->isSyncing = true;
         $this->syncStage = 'queued';

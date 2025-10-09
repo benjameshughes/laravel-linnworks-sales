@@ -95,18 +95,32 @@
                     </flux:select>
                 </div>
 
-                <flux:button
-                    variant="primary"
-                    size="sm"
-                    wire:click="syncOrders"
-                    wire:target="syncOrders"
-                    wire:loading.attr="disabled"
-                    icon="cloud-arrow-down"
-                    class="flex-shrink-0"
-                >
-                    <span wire:loading.remove wire:target="syncOrders">Sync</span>
-                    <span wire:loading wire:target="syncOrders">Syncing</span>
-                </flux:button>
+                <div x-data="{
+                    rateLimitSeconds: @entangle('rateLimitSeconds'),
+                    countdown() {
+                        if (this.rateLimitSeconds > 0) {
+                            this.rateLimitSeconds--;
+                            if (this.rateLimitSeconds === 0) {
+                                $wire.checkRateLimit();
+                            }
+                        }
+                    }
+                }"
+                x-init="setInterval(() => countdown(), 1000)">
+                    <flux:button
+                        variant="primary"
+                        size="sm"
+                        wire:click="syncOrders"
+                        wire:target="syncOrders"
+                        ::disabled="$wire.isSyncing || rateLimitSeconds > 0"
+                        icon="cloud-arrow-down"
+                        class="flex-shrink-0"
+                    >
+                        <span x-show="!$wire.isSyncing && rateLimitSeconds === 0">Sync</span>
+                        <span x-show="$wire.isSyncing">Syncing</span>
+                        <span x-show="!$wire.isSyncing && rateLimitSeconds > 0" x-text="`Wait ${rateLimitSeconds}s`"></span>
+                    </flux:button>
+                </div>
             </div>
         </div>
     </div>
