@@ -110,9 +110,9 @@ class UpdateUnknownChannels extends Command
                             $this->line("[DRY RUN] Would update order {$localOrder->order_number}: {$source}" . ($subSource ? " / {$subSource}" : ""));
                             $this->totalUpdated++;
                         } else {
-                            $updateData = ['channel_name' => $source];
+                            $updateData = ['channel_name' => \Illuminate\Support\Str::lower(str_replace(' ', '_', $source))];
                             if ($subSource) {
-                                $updateData['sub_source'] = $subSource;
+                                $updateData['sub_source'] = \Illuminate\Support\Str::lower(str_replace(' ', '_', $subSource));
                             }
 
                             $localOrder->update($updateData);

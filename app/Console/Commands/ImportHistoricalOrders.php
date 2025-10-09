@@ -352,8 +352,10 @@ class ImportHistoricalOrders extends Command
                 'order_number' => $orderData['order_number'],
                 'received_date' => $orderData['received_date'] ? Carbon::parse($orderData['received_date']) : null,
                 'processed_date' => $orderData['processed_date'] ? Carbon::parse($orderData['processed_date']) : null,
-                'channel_name' => $orderData['order_source'] ?? $orderData['channel_name'] ?? 'Unknown',
-                'sub_source' => $orderData['subsource'] ?? $orderData['sub_source'] ?? null,
+                'channel_name' => \Illuminate\Support\Str::lower(str_replace(' ', '_', $orderData['order_source'] ?? $orderData['channel_name'] ?? 'Unknown')),
+                'sub_source' => isset($orderData['subsource']) || isset($orderData['sub_source'])
+                    ? \Illuminate\Support\Str::lower(str_replace(' ', '_', $orderData['subsource'] ?? $orderData['sub_source']))
+                    : null,
                 'currency' => $orderData['currency'] ?? 'GBP',
                 'total_charge' => $orderData['total_charge'] ?? 0,
                 'total_paid' => $orderData['total_charge'] ?? 0,
