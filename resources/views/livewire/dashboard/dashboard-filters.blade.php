@@ -1,16 +1,19 @@
 <div>
     {{-- Header with Controls --}}
-    <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700 p-3">
+    <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700 p-3 transition-all duration-300 hover:shadow-md">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             {{-- Left: Info --}}
             <div class="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                 <span>{{ $this->formattedDateRange }}</span>
                 <span class="text-zinc-400">•</span>
-                <span class="font-medium text-zinc-900 dark:text-zinc-100">
+                <span class="font-medium text-zinc-900 dark:text-zinc-100 transition-all duration-300"
+                      x-data="{ orders: {{ $this->totalOrders }} }"
+                      x-init="$watch('orders', () => { $el.classList.add('scale-110', 'text-blue-600', 'dark:text-blue-400'); setTimeout(() => $el.classList.remove('scale-110', 'text-blue-600', 'dark:text-blue-400'), 500) })"
+                      x-effect="orders = {{ $this->totalOrders }}">
                     {{ number_format($this->totalOrders) }} orders
                 </span>
                 <span class="text-zinc-400">•</span>
-                <span class="flex items-center gap-1"
+                <span class="flex items-center gap-1 transition-all duration-300"
                       x-data="{
                           lastSync: '{{ $this->lastSyncInfo->get('time_human') }}',
                           updateTime() {
@@ -19,13 +22,15 @@
                           }
                       }"
                       x-init="setInterval(() => updateTime(), 60000)">
-                    <flux:icon name="arrow-path" class="size-3 text-zinc-500" />
+                    <flux:icon name="arrow-path" class="size-3 text-zinc-500 transition-transform duration-500 hover:rotate-180" />
                     {{ $this->lastSyncInfo->get('time_human') }}
                 </span>
                 @if($this->lastSyncInfo->get('status') === 'success')
-                    <flux:badge color="green" size="sm">
-                        {{ number_format($this->lastSyncInfo->get('success_rate'), 1) }}%
-                    </flux:badge>
+                    <span x-data x-init="$el.classList.add('opacity-0', 'scale-95'); setTimeout(() => $el.classList.remove('opacity-0', 'scale-95'), 50)" class="transition-all duration-300">
+                        <flux:badge color="green" size="sm">
+                            {{ number_format($this->lastSyncInfo->get('success_rate'), 1) }}%
+                        </flux:badge>
+                    </span>
                 @endif
 
                 {{-- Loading indicator when filters change --}}
@@ -102,6 +107,9 @@
                             this.rateLimitSeconds--;
                             if (this.rateLimitSeconds === 0) {
                                 $wire.checkRateLimit();
+                                // Subtle pulse when button becomes available
+                                $el.querySelector('button').classList.add('animate-pulse');
+                                setTimeout(() => $el.querySelector('button').classList.remove('animate-pulse'), 1000);
                             }
                         }
                     }
@@ -114,11 +122,11 @@
                         wire:target="syncOrders"
                         ::disabled="$wire.isSyncing || rateLimitSeconds > 0"
                         icon="cloud-arrow-down"
-                        class="flex-shrink-0"
+                        class="flex-shrink-0 transition-all duration-300 hover:scale-105 active:scale-95"
                     >
-                        <span x-show="!$wire.isSyncing && rateLimitSeconds === 0">Sync</span>
-                        <span x-show="$wire.isSyncing">Syncing</span>
-                        <span x-show="!$wire.isSyncing && rateLimitSeconds > 0" x-text="`Wait ${rateLimitSeconds}s`"></span>
+                        <span x-show="!$wire.isSyncing && rateLimitSeconds === 0" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100">Sync</span>
+                        <span x-show="$wire.isSyncing" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100">Syncing</span>
+                        <span x-show="!$wire.isSyncing && rateLimitSeconds > 0" x-text="`Wait ${rateLimitSeconds}s`" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100"></span>
                     </flux:button>
                 </div>
             </div>
@@ -127,7 +135,13 @@
 
     {{-- Sync Progress Notification --}}
     @if($isSyncing)
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl shadow-sm p-4 mt-6">
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl shadow-sm p-4 mt-6"
+             x-data
+             x-init="$el.classList.add('opacity-0', 'translate-y-4'); setTimeout(() => $el.classList.remove('opacity-0', 'translate-y-4'), 50)"
+             x-transition:leave="transition ease-in duration-300"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-4"
+             class="transition-all duration-300">
             <div class="flex items-center gap-4">
                 <div class="flex-shrink-0">
                     <svg class="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -136,15 +150,15 @@
                     </svg>
                 </div>
                 <div class="flex-1">
-                    <div class="font-medium text-blue-900 dark:text-blue-100">{{ $syncMessage }}</div>
+                    <div class="font-medium text-blue-900 dark:text-blue-100 transition-all duration-300">{{ $syncMessage }}</div>
                     @if($syncCount > 0)
-                        <div class="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        <div class="text-sm text-blue-700 dark:text-blue-300 mt-1 transition-all duration-300">
                             {{ number_format($syncCount) }} orders
                         </div>
                     @endif
                 </div>
                 <div class="flex-shrink-0">
-                    <flux:badge color="blue" size="sm">
+                    <flux:badge color="blue" size="sm" class="transition-all duration-300">
                         {{ ucfirst(str_replace('-', ' ', $syncStage)) }}
                     </flux:badge>
                 </div>
