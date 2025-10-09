@@ -22,8 +22,19 @@
                           }
                       }"
                       x-init="setInterval(() => updateTime(), 60000)">
-                    <flux:icon name="arrow-path" class="size-3 text-zinc-500 transition-transform duration-500 hover:rotate-180" />
-                    {{ $this->lastSyncInfo->get('time_human') }}
+                    @if($isSyncing)
+                        <svg class="animate-spin size-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-blue-600 dark:text-blue-400">{{ $syncMessage }}</span>
+                        @if($syncCount > 0)
+                            <span class="text-blue-600 dark:text-blue-400 font-medium">• {{ number_format($syncCount) }}</span>
+                        @endif
+                    @else
+                        <flux:icon name="arrow-path" class="size-3 text-zinc-500 transition-transform duration-500 hover:rotate-180" />
+                        {{ $this->lastSyncInfo->get('time_human') }}
+                    @endif
                 </span>
                 @if($this->lastSyncInfo->get('status') === 'success')
                     <span x-data x-init="$el.classList.add('opacity-0', 'scale-95'); setTimeout(() => $el.classList.remove('opacity-0', 'scale-95'), 50)" class="transition-all duration-300">
@@ -133,36 +144,4 @@
         </div>
     </div>
 
-    {{-- Sync Progress Notification --}}
-    @if($isSyncing)
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl shadow-sm p-4 mt-6"
-             x-data
-             x-init="$el.classList.add('opacity-0', 'translate-y-4'); setTimeout(() => $el.classList.remove('opacity-0', 'translate-y-4'), 50)"
-             x-transition:leave="transition ease-in duration-300"
-             x-transition:leave-start="opacity-100 translate-y-0"
-             x-transition:leave-end="opacity-0 -translate-y-4"
-             class="transition-all duration-300">
-            <div class="flex items-center gap-4">
-                <div class="flex-shrink-0">
-                    <svg class="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </div>
-                <div class="flex-1">
-                    <div class="font-medium text-blue-900 dark:text-blue-100 transition-all duration-300">{{ $syncMessage }}</div>
-                    @if($syncCount > 0)
-                        <div class="text-sm text-blue-700 dark:text-blue-300 mt-1 transition-all duration-300">
-                            {{ number_format($syncCount) }} orders
-                        </div>
-                    @endif
-                </div>
-                <div class="flex-shrink-0">
-                    <flux:badge color="blue" size="sm" class="transition-all duration-300">
-                        {{ ucfirst(str_replace('-', ' ', $syncStage)) }}
-                    </flux:badge>
-                </div>
-            </div>
-        </div>
-    @endif
 </div>
