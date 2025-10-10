@@ -293,14 +293,24 @@
                             1
                         </div>
                         <div class="flex-1">
-                            <div class="font-medium text-gray-900 dark:text-white">Create a Developer Application</div>
+                            <div class="font-medium text-gray-900 dark:text-white">Install the Application</div>
                             <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                Go to the Linnworks Developer Portal and create a new application with type "External Application" or "System Integration".
+                                Click the button below to install this application on your Linnworks account. This will generate your Application ID, Secret, and Access Token.
                             </div>
-                            <a href="https://developer.linnworks.com/" target="_blank" class="inline-flex items-center gap-2 text-sm px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
-                                <flux:icon.arrow-top-right-on-square class="size-4" />
-                                Open Developer Portal
-                            </a>
+                            @php
+                                $appId = $applicationId ?: config('linnworks.application_id');
+                            @endphp
+                            @if($appId)
+                                <a href="https://apps.linnworks.net/Authorization/Authorize/{{ $appId }}" target="_blank" class="inline-flex items-center gap-2 text-sm px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                                    <flux:icon.arrow-top-right-on-square class="size-4" />
+                                    Install Application
+                                </a>
+                            @else
+                                <a href="https://developer.linnworks.com/" target="_blank" class="inline-flex items-center gap-2 text-sm px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                                    <flux:icon.arrow-top-right-on-square class="size-4" />
+                                    Open Developer Portal
+                                </a>
+                            @endif
                         </div>
                     </div>
 
@@ -309,9 +319,9 @@
                             2
                         </div>
                         <div>
-                            <div class="font-medium text-gray-900 dark:text-white">Get Application Credentials</div>
+                            <div class="font-medium text-gray-900 dark:text-white">Authorize the Application</div>
                             <div class="text-sm text-gray-600 dark:text-gray-400">
-                                Copy your Application ID and Application Secret from the application settings.
+                                After clicking "Install Application", you'll be redirected to Linnworks where you can authorize the app. This generates your credentials.
                             </div>
                         </div>
                     </div>
@@ -321,21 +331,9 @@
                             3
                         </div>
                         <div>
-                            <div class="font-medium text-gray-900 dark:text-white">Install Application</div>
+                            <div class="font-medium text-gray-900 dark:text-white">Copy Your Credentials</div>
                             <div class="text-sm text-gray-600 dark:text-gray-400">
-                                Click the installation URL provided in the Developer Portal to install the application on your Linnworks account.
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start space-x-3">
-                        <div class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
-                            4
-                        </div>
-                        <div>
-                            <div class="font-medium text-gray-900 dark:text-white">Get Access Token</div>
-                            <div class="text-sm text-gray-600 dark:text-gray-400">
-                                After installation, you'll receive an Access Token. Copy this token for use in the connection form above.
+                                After authorization, Linnworks will display your Application ID, Application Secret, and Access Token. Copy all three credentials and enter them in the connection form above.
                             </div>
                         </div>
                     </div>
