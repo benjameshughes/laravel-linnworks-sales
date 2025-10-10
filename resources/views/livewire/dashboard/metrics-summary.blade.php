@@ -7,7 +7,9 @@
                 <p class="text-3xl font-bold"
                    x-data="currencyCounter({{ $this->metrics->get('total_revenue') }})"
                    x-init="$watch('$wire.metrics.total_revenue', value => updateValue(value))"
-                   x-text="formattedValue">
+                   x-text="formattedValue"
+                   x-cloak>
+                    £{{ number_format($this->metrics->get('total_revenue'), 2) }}
                 </p>
                 @if($this->metrics->get('growth_rate') != 0)
                     <p class="text-sm text-blue-100 mt-1">
@@ -27,12 +29,15 @@
                 <p class="text-3xl font-bold"
                    x-data="integerCounter({{ $this->metrics->get('total_orders') }})"
                    x-init="$watch('$wire.metrics.total_orders', value => updateValue(value))"
-                   x-text="formattedValue">
+                   x-text="formattedValue"
+                   x-cloak>
+                    {{ number_format($this->metrics->get('total_orders')) }}
                 </p>
                 <p class="text-sm text-emerald-100 mt-1">
                     <span x-data="animatedCounter({{ $this->metrics->get('orders_per_day') }}, { decimals: 1 })"
                           x-init="$watch('$wire.metrics.orders_per_day', value => updateValue(value))"
-                          x-text="formattedValue"></span> per day
+                          x-text="formattedValue"
+                          x-cloak>{{ number_format($this->metrics->get('orders_per_day'), 1) }}</span> per day
                 </p>
             </div>
             <flux:icon name="shopping-bag" class="size-8 text-emerald-200" />
@@ -47,7 +52,9 @@
                 <p class="text-3xl font-bold"
                    x-data="currencyCounter({{ $this->metrics->get('average_order_value') }})"
                    x-init="$watch('$wire.metrics.average_order_value', value => updateValue(value))"
-                   x-text="formattedValue">
+                   x-text="formattedValue"
+                   x-cloak>
+                    £{{ number_format($this->metrics->get('average_order_value'), 2) }}
                 </p>
                 <p class="text-sm text-purple-100 mt-1">Per order value</p>
             </div>
@@ -63,7 +70,9 @@
                 <p class="text-3xl font-bold"
                    x-data="integerCounter({{ $this->metrics->get('total_items') }})"
                    x-init="$watch('$wire.metrics.total_items', value => updateValue(value))"
-                   x-text="formattedValue">
+                   x-text="formattedValue"
+                   x-cloak>
+                    {{ number_format($this->metrics->get('total_items')) }}
                 </p>
                 <p class="text-sm text-orange-100 mt-1">Total units</p>
             </div>
@@ -83,13 +92,16 @@
                     <p class="text-3xl font-bold"
                        x-data="currencyCounter({{ $this->bestDay['revenue'] }})"
                        x-init="$watch('$wire.bestDay.revenue', value => updateValue(value))"
-                       x-text="formattedValue">
+                       x-text="formattedValue"
+                       x-cloak>
+                        £{{ number_format($this->bestDay['revenue'], 2) }}
                     </p>
                     <p class="text-sm text-pink-100 mt-1">
                         {{ $this->bestDay['date'] }} •
                         <span x-data="integerCounter({{ $this->bestDay['orders'] }})"
                               x-init="$watch('$wire.bestDay.orders', value => updateValue(value))"
-                              x-text="formattedValue"></span> orders
+                              x-text="formattedValue"
+                              x-cloak>{{ number_format($this->bestDay['orders']) }}</span> orders
                     </p>
                 </div>
                 <flux:icon name="fire" class="size-8 text-pink-200" />
