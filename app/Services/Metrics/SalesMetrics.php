@@ -15,7 +15,7 @@ class SalesMetrics extends MetricBase
     use PreparesChartData;
 
     /**
-     * Cache calculated revenue per order to avoid recalculating repeatedly
+     * Cache calculated revenue per order to avoid recalculating repeatedly within a single request
      */
     private array $orderRevenueCache = [];
 
@@ -29,9 +29,7 @@ class SalesMetrics extends MetricBase
      */
     public function totalRevenue(): float
     {
-        return $this->cache('total_revenue', function () {
-            return (float) $this->data->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-        });
+        return (float) $this->data->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
     }
 
     /**
@@ -39,9 +37,7 @@ class SalesMetrics extends MetricBase
      */
     public function totalOrders(): int
     {
-        return $this->cache('total_orders', function () {
-            return $this->data->count();
-        });
+        return $this->data->count();
     }
 
     /**
@@ -49,12 +45,10 @@ class SalesMetrics extends MetricBase
      */
     public function averageOrderValue(): float
     {
-        return $this->cache('average_order_value', function () {
-            if ($this->totalOrders() === 0) {
-                return 0.0;
-            }
-            return $this->totalRevenue() / $this->totalOrders();
-        });
+        if ($this->totalOrders() === 0) {
+            return 0.0;
+        }
+        return $this->totalRevenue() / $this->totalOrders();
     }
 
     /**
@@ -63,25 +57,23 @@ class SalesMetrics extends MetricBase
      */
     public function totalItemsSold(): int
     {
-        return $this->cache('total_items_sold', function () {
-            $orderIds = $this->data->pluck('id')->toArray();
+        $orderIds = $this->data->pluck('id')->toArray();
 
-            if (empty($orderIds)) {
-                return 0;
-            }
+        if (empty($orderIds)) {
+            return 0;
+        }
 
-            // Try order_items table first
-            $fromTable = \App\Models\OrderItem::whereIn('order_id', $orderIds)->sum('quantity');
+        // Try order_items table first
+        $fromTable = \App\Models\OrderItem::whereIn('order_id', $orderIds)->sum('quantity');
 
-            // If no items in table, use JSON column as fallback
-            if ($fromTable === 0) {
-                return $this->data->sum(function ($order) {
-                    return collect($order->items ?? [])->sum('quantity');
-                });
-            }
+        // If no items in table, use JSON column as fallback
+        if ($fromTable === 0) {
+            return $this->data->sum(function ($order) {
+                return collect($order->items ?? [])->sum('quantity');
+            });
+        }
 
-            return $fromTable;
-        });
+        return $fromTable;
     }
 
     /**
@@ -89,9 +81,7 @@ class SalesMetrics extends MetricBase
      */
     public function totalProcessedOrders(): int
     {
-        return $this->cache('total_processed_orders', function () {
-            return $this->data->where('is_processed', true)->count();
-        });
+        return $this->data->where('is_processed', true)->count();
     }
 
     /**
@@ -99,9 +89,7 @@ class SalesMetrics extends MetricBase
      */
     public function totalOpenOrders(): int
     {
-        return $this->cache('total_open_orders', function () {
-            return $this->data->where('is_processed', false)->count();
-        });
+        return $this->data->where('is_processed', false)->count();
     }
 
     /**
@@ -109,11 +97,9 @@ class SalesMetrics extends MetricBase
      */
     public function processedOrdersRevenue(): float
     {
-        return $this->cache('processed_orders_revenue', function () {
-            return (float) $this->data
-                ->where('is_processed', true)
-                ->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-        });
+        return (float) $this->data
+            ->where('is_processed', true)
+            ->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
     }
 
     /**
@@ -121,11 +107,9 @@ class SalesMetrics extends MetricBase
      */
     public function openOrdersRevenue(): float
     {
-        return $this->cache('open_orders_revenue', function () {
-            return (float) $this->data
-                ->where('is_processed', false)
-                ->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-        });
+        return (float) $this->data
+            ->where('is_processed', false)
+            ->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
     }
 
     /**
@@ -160,34 +144,32 @@ class SalesMetrics extends MetricBase
      */
     public function topChannels(int $limit = 6): Collection
     {
-        return $this->cache("top_channels_{$limit}", function () use ($limit) {
-            $totalRevenue = $this->totalRevenue();
+        $totalRevenue = $this->totalRevenue();
 
-            return $this->data
-                ->groupBy(fn (Order $order) => $order->channel_name . '|' . ($order->sub_source ?? ''))
-                ->map(function (Collection $channelOrders, string $groupKey) use ($totalRevenue) {
-                    [$channel, $subsource] = explode('|', $groupKey, 2);
-                    $channelRevenue = $channelOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-                    $ordersCount = $channelOrders->count();
+        return $this->data
+            ->groupBy(fn (Order $order) => $order->channel_name . '|' . ($order->sub_source ?? ''))
+            ->map(function (Collection $channelOrders, string $groupKey) use ($totalRevenue) {
+                [$channel, $subsource] = explode('|', $groupKey, 2);
+                $channelRevenue = $channelOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+                $ordersCount = $channelOrders->count();
 
-                    $displayName = $subsource
-                        ? "{$subsource} ({$channel})"
-                        : $channel;
+                $displayName = $subsource
+                    ? "{$subsource} ({$channel})"
+                    : $channel;
 
-                    return collect([
-                        'name' => $displayName,
-                        'channel' => $channel,
-                        'subsource' => $subsource ?: null,
-                        'orders' => $ordersCount,
-                        'revenue' => $channelRevenue,
-                        'avg_order_value' => $ordersCount > 0 ? $channelRevenue / $ordersCount : 0,
-                        'percentage' => $totalRevenue > 0 ? ($channelRevenue / $totalRevenue) * 100 : 0,
-                    ]);
-                })
-                ->sortByDesc('revenue')
-                ->take($limit)
-                ->values();
-        });
+                return collect([
+                    'name' => $displayName,
+                    'channel' => $channel,
+                    'subsource' => $subsource ?: null,
+                    'orders' => $ordersCount,
+                    'revenue' => $channelRevenue,
+                    'avg_order_value' => $ordersCount > 0 ? $channelRevenue / $ordersCount : 0,
+                    'percentage' => $totalRevenue > 0 ? ($channelRevenue / $totalRevenue) * 100 : 0,
+                ]);
+            })
+            ->sortByDesc('revenue')
+            ->take($limit)
+            ->values();
     }
 
     /**
@@ -195,27 +177,25 @@ class SalesMetrics extends MetricBase
      */
     public function topChannelsGrouped(int $limit = 6): Collection
     {
-        return $this->cache("top_channels_grouped_{$limit}", function () use ($limit) {
-            $totalRevenue = $this->totalRevenue();
+        $totalRevenue = $this->totalRevenue();
 
-            return $this->data
-                ->groupBy(fn (Order $order) => $order->channel_name)
-                ->map(function (Collection $channelOrders, string $channel) use ($totalRevenue) {
-                    $channelRevenue = $channelOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-                    $ordersCount = $channelOrders->count();
+        return $this->data
+            ->groupBy(fn (Order $order) => $order->channel_name)
+            ->map(function (Collection $channelOrders, string $channel) use ($totalRevenue) {
+                $channelRevenue = $channelOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+                $ordersCount = $channelOrders->count();
 
-                    return collect([
-                        'name' => $channel,
-                        'orders' => $ordersCount,
-                        'revenue' => $channelRevenue,
-                        'avg_order_value' => $ordersCount > 0 ? $channelRevenue / $ordersCount : 0,
-                        'percentage' => $totalRevenue > 0 ? ($channelRevenue / $totalRevenue) * 100 : 0,
-                    ]);
-                })
-                ->sortByDesc('revenue')
-                ->take($limit)
-                ->values();
-        });
+                return collect([
+                    'name' => $channel,
+                    'orders' => $ordersCount,
+                    'revenue' => $channelRevenue,
+                    'avg_order_value' => $ordersCount > 0 ? $channelRevenue / $ordersCount : 0,
+                    'percentage' => $totalRevenue > 0 ? ($channelRevenue / $totalRevenue) * 100 : 0,
+                ]);
+            })
+            ->sortByDesc('revenue')
+            ->take($limit)
+            ->values();
     }
 
     /**
@@ -223,69 +203,67 @@ class SalesMetrics extends MetricBase
      */
     public function topProducts(int $limit = 5): Collection
     {
-        return $this->cache("top_products_{$limit}", function () use ($limit) {
-            $items = $this->data->flatMap(function (Order $order) {
-                return collect($order->items ?? [])->map(function (array $item) use ($order) {
-                    $quantity = (int) ($item['quantity'] ?? 0);
-                    $lineTotal = isset($item['line_total']) ? (float) $item['line_total'] : 0.0;
-                    $pricePerUnit = isset($item['price_per_unit']) ? (float) $item['price_per_unit'] : 0.0;
-                    $revenue = $lineTotal > 0 ? $lineTotal : $pricePerUnit * $quantity;
-
-                    return collect([
-                        'order_id' => $order->id,
-                        'sku' => $item['sku'] ?? 'unknown-sku',
-                        'title' => $item['item_title'] ?? null,
-                        'quantity' => $quantity,
-                        'revenue' => $revenue,
-                        'price_per_unit' => $pricePerUnit,
-                    ]);
-                });
-            });
-
-            if ($items->isEmpty()) {
-                return collect();
-            }
-
-            $grouped = $items->groupBy('sku')->map(function (Collection $productItems, string $sku) {
-                $revenue = $productItems->sum('revenue');
-                $quantity = $productItems->sum('quantity');
-                $orderCount = $productItems->pluck('order_id')->filter()->unique()->count();
-                $avgPrice = $quantity > 0 ? $revenue / $quantity : 0;
-                $title = $productItems->first()->get('title');
+        $items = $this->data->flatMap(function (Order $order) {
+            return collect($order->items ?? [])->map(function (array $item) use ($order) {
+                $quantity = (int) ($item['quantity'] ?? 0);
+                $lineTotal = isset($item['line_total']) ? (float) $item['line_total'] : 0.0;
+                $pricePerUnit = isset($item['price_per_unit']) ? (float) $item['price_per_unit'] : 0.0;
+                $revenue = $lineTotal > 0 ? $lineTotal : $pricePerUnit * $quantity;
 
                 return collect([
-                    'sku' => $sku,
-                    'title' => $title,
+                    'order_id' => $order->id,
+                    'sku' => $item['sku'] ?? 'unknown-sku',
+                    'title' => $item['item_title'] ?? null,
                     'quantity' => $quantity,
                     'revenue' => $revenue,
-                    'orders' => $orderCount,
-                    'avg_price' => $avgPrice,
+                    'price_per_unit' => $pricePerUnit,
                 ]);
             });
-
-            $skus = $grouped->keys()->all();
-            if (!empty($skus)) {
-                $products = \App\Models\Product::whereIn('sku', $skus)
-                    ->pluck('title', 'sku');
-
-                $grouped = $grouped->map(function (Collection $product, string $sku) use ($products) {
-                    if (!$product->get('title') && isset($products[$sku])) {
-                        $product->put('title', $products[$sku]);
-                    }
-
-                    if (!$product->get('title')) {
-                        $product->put('title', 'Unknown Product');
-                    }
-
-                    return $product;
-                });
-            }
-
-            return $grouped
-                ->sortByDesc('revenue')
-                ->take($limit)
-                ->values();
         });
+
+        if ($items->isEmpty()) {
+            return collect();
+        }
+
+        $grouped = $items->groupBy('sku')->map(function (Collection $productItems, string $sku) {
+            $revenue = $productItems->sum('revenue');
+            $quantity = $productItems->sum('quantity');
+            $orderCount = $productItems->pluck('order_id')->filter()->unique()->count();
+            $avgPrice = $quantity > 0 ? $revenue / $quantity : 0;
+            $title = $productItems->first()->get('title');
+
+            return collect([
+                'sku' => $sku,
+                'title' => $title,
+                'quantity' => $quantity,
+                'revenue' => $revenue,
+                'orders' => $orderCount,
+                'avg_price' => $avgPrice,
+            ]);
+        });
+
+        $skus = $grouped->keys()->all();
+        if (!empty($skus)) {
+            $products = \App\Models\Product::whereIn('sku', $skus)
+                ->pluck('title', 'sku');
+
+            $grouped = $grouped->map(function (Collection $product, string $sku) use ($products) {
+                if (!$product->get('title') && isset($products[$sku])) {
+                    $product->put('title', $products[$sku]);
+                }
+
+                if (!$product->get('title')) {
+                    $product->put('title', 'Unknown Product');
+                }
+
+                return $product;
+            });
+        }
+
+        return $grouped
+            ->sortByDesc('revenue')
+            ->take($limit)
+            ->values();
     }
 
     /**
@@ -293,63 +271,59 @@ class SalesMetrics extends MetricBase
      */
     public function dailySalesData(string $period, ?string $startDate = null, ?string $endDate = null): Collection
     {
-        $cacheKey = "daily_sales_data_{$period}" . ($startDate ? ':' . $startDate : '') . ($endDate ? ':' . $endDate : '');
+        if ($startDate && $endDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end = Carbon::parse($endDate)->startOfDay();
 
-        return $this->cache($cacheKey, function () use ($period, $startDate, $endDate) {
-            if ($startDate && $endDate) {
-                $start = Carbon::parse($startDate)->startOfDay();
-                $end = Carbon::parse($endDate)->startOfDay();
-
-                if ($start->greaterThan($end)) {
-                    [$start, $end] = [$end, $start];
-                }
-
-                return collect(CarbonPeriod::create($start, '1 day', $end))
-                    ->map(function (Carbon $date) {
-                        return $this->buildDailyBreakdown($date);
-                    });
+            if ($start->greaterThan($end)) {
+                [$start, $end] = [$end, $start];
             }
 
-            if ($period === 'yesterday') {
-                $date = Carbon::yesterday();
-                $dayOrders = $this->data;
-                $openOrders = $dayOrders->where('is_processed', false);
-                $processedOrders = $dayOrders->where('is_processed', true);
-
-                $revenue = $dayOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-                $openRevenue = $openOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-                $processedRevenue = $processedOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-                $orderCount = $dayOrders->count();
-
-                $itemsCount = $dayOrders->sum(function ($order) {
-                    return collect($order->items ?? [])->sum('quantity');
-                });
-
-                return collect([
-                    collect([
-                        'date' => $date->format('M j'),
-                        'iso_date' => $date->format('Y-m-d'),
-                        'day' => $date->format('D'),
-                        'revenue' => $revenue,
-                        'orders' => $orderCount,
-                        'items' => $itemsCount,
-                        'avg_order_value' => $orderCount > 0 ? $revenue / $orderCount : 0,
-                        'open_orders' => $openOrders->count(),
-                        'processed_orders' => $processedOrders->count(),
-                        'open_revenue' => $openRevenue,
-                        'processed_revenue' => $processedRevenue,
-                    ])
-                ]);
-            }
-
-            $days = (int) max(1, $period);
-
-            return collect(range($days - 1, 0))
-                ->map(function (int $daysAgo) {
-                    $date = Carbon::now()->subDays($daysAgo);
+            return collect(CarbonPeriod::create($start, '1 day', $end))
+                ->map(function (Carbon $date) {
                     return $this->buildDailyBreakdown($date);
                 });
-        });
+        }
+
+        if ($period === 'yesterday') {
+            $date = Carbon::yesterday();
+            $dayOrders = $this->data;
+            $openOrders = $dayOrders->where('is_processed', false);
+            $processedOrders = $dayOrders->where('is_processed', true);
+
+            $revenue = $dayOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+            $openRevenue = $openOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+            $processedRevenue = $processedOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+            $orderCount = $dayOrders->count();
+
+            $itemsCount = $dayOrders->sum(function ($order) {
+                return collect($order->items ?? [])->sum('quantity');
+            });
+
+            return collect([
+                collect([
+                    'date' => $date->format('M j'),
+                    'iso_date' => $date->format('Y-m-d'),
+                    'day' => $date->format('D'),
+                    'revenue' => $revenue,
+                    'orders' => $orderCount,
+                    'items' => $itemsCount,
+                    'avg_order_value' => $orderCount > 0 ? $revenue / $orderCount : 0,
+                    'open_orders' => $openOrders->count(),
+                    'processed_orders' => $processedOrders->count(),
+                    'open_revenue' => $openRevenue,
+                    'processed_revenue' => $processedRevenue,
+                ])
+            ]);
+        }
+
+        $days = (int) max(1, $period);
+
+        return collect(range($days - 1, 0))
+            ->map(function (int $daysAgo) {
+                $date = Carbon::now()->subDays($daysAgo);
+                return $this->buildDailyBreakdown($date);
+            });
     }
 
     protected function buildDailyBreakdown(Carbon $date): Collection
@@ -400,25 +374,21 @@ class SalesMetrics extends MetricBase
      */
     public function bestPerformingDay(?string $startDate = null, ?string $endDate = null): ?Collection
     {
-        $cacheKey = 'best_performing_day' . ($startDate ? ':' . $startDate : '') . ($endDate ? ':' . $endDate : '');
+        $period = '30'; // Default to last 30 days
 
-        return $this->cache($cacheKey, function () use ($startDate, $endDate) {
-            $period = '30'; // Default to last 30 days
+        if ($startDate && $endDate) {
+            $start = Carbon::parse($startDate);
+            $end = Carbon::parse($endDate);
+            $period = (string) max(1, $start->diffInDays($end));
+        }
 
-            if ($startDate && $endDate) {
-                $start = Carbon::parse($startDate);
-                $end = Carbon::parse($endDate);
-                $period = (string) max(1, $start->diffInDays($end));
-            }
+        $dailyData = $this->dailySalesData($period, $startDate, $endDate);
 
-            $dailyData = $this->dailySalesData($period, $startDate, $endDate);
+        if ($dailyData->isEmpty()) {
+            return null;
+        }
 
-            if ($dailyData->isEmpty()) {
-                return null;
-            }
-
-            return $dailyData->sortByDesc('revenue')->first();
-        });
+        return $dailyData->sortByDesc('revenue')->first();
     }
 
     /**
@@ -433,7 +403,7 @@ class SalesMetrics extends MetricBase
             ->reject(fn($channel) => $channel === 'DIRECT')
             ->sort()
             ->map(fn($channel) => collect([
-                'name' => $channel, 
+                'name' => $channel,
                 'label' => ucfirst($channel)
             ]))
             ->values();
@@ -603,13 +573,11 @@ class SalesMetrics extends MetricBase
      */
     public function getDoughnutChartData(): array
     {
-        return $this->cache('doughnut_chart_data', function () {
-            return $this->prepareDoughnutChartData(
-                $this->topChannels(),
-                'name',
-                'revenue'
-            );
-        });
+        return $this->prepareDoughnutChartData(
+            $this->topChannels(),
+            'name',
+            'revenue'
+        );
     }
 
     /**
@@ -617,13 +585,11 @@ class SalesMetrics extends MetricBase
      */
     public function getDoughnutChartDataGrouped(): array
     {
-        return $this->cache('doughnut_chart_data_grouped', function () {
-            return $this->prepareDoughnutChartData(
-                $this->topChannelsGrouped(),
-                'name',
-                'revenue'
-            );
-        });
+        return $this->prepareDoughnutChartData(
+            $this->topChannelsGrouped(),
+            'name',
+            'revenue'
+        );
     }
 
     /**
@@ -676,66 +642,19 @@ class SalesMetrics extends MetricBase
      */
     public function getOrderStatusDoughnutData(): array
     {
-        return $this->cache('order_status_doughnut_data', function () {
-            $processedOrders = $this->data->where('is_processed', true)->count();
-            $openOrders = $this->data->where('is_processed', false)->count();
-            
-            return [
-                'labels' => ['Processed Orders', 'Open Orders'],
-                'datasets' => [[
-                    'label' => 'Order Status Distribution',
-                    'data' => [$processedOrders, $openOrders],
-                    'backgroundColor' => ['#10B981', '#F59E0B'],
-                    'borderColor' => ['#059669', '#D97706'],
-                    'borderWidth' => 2,
-                ]],
-            ];
-        });
-    }
+        $processedOrders = $this->data->where('is_processed', true)->count();
+        $openOrders = $this->data->where('is_processed', false)->count();
 
-    /**
-     * Warm up the cache by running all expensive operations
-     */
-    public function warmUpCache(): void
-    {
-        $periods = ['1', 'yesterday', '7', '30', '90'];
-        
-        // Cache basic metrics
-        $this->totalRevenue();
-        $this->totalOrders();
-        $this->averageOrderValue();
-        $this->totalItemsSold();
-        
-        // Cache order status metrics
-        $this->totalProcessedOrders();
-        $this->totalOpenOrders();
-        $this->processedOrdersRevenue();
-        $this->openOrdersRevenue();
-        
-        // Cache top data
-        $this->topProducts(5);
-        $this->topProducts(10);
-        $this->topChannels(6);
-        $this->topChannels(10);
-        
-        // Cache chart data for all common periods
-        foreach ($periods as $period) {
-            $this->dailySalesData($period);
-            $this->getLineChartData($period);
-            $this->getBarChartData($period);
-            $this->getOrderCountChartData($period);
-        }
-        
-        // Cache other chart data
-        $this->getDoughnutChartData();
-        $this->getOrderStatusDoughnutData();
-        $this->recentOrders(15);
-        $this->recentOrders(25);
-        $this->availableChannels();
-        
-        // Mark cache as warmed
-        $this->putCache('_cache_status', 'warm');
-        $this->putCache('_last_warmed', now()->toISOString());
+        return [
+            'labels' => ['Processed Orders', 'Open Orders'],
+            'datasets' => [[
+                'label' => 'Order Status Distribution',
+                'data' => [$processedOrders, $openOrders],
+                'backgroundColor' => ['#10B981', '#F59E0B'],
+                'borderColor' => ['#059669', '#D97706'],
+                'borderWidth' => 2,
+            ]],
+        ];
     }
 
     private function calculateOrderRevenue(Order $order): float

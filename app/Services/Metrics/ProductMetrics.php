@@ -27,9 +27,7 @@ class ProductMetrics extends MetricBase
      */
     public function totalProductsSold(): int
     {
-        return $this->cache('total_products_sold', function () {
-            return $this->data->sum('quantity');
-        });
+        return $this->data->sum('quantity');
     }
 
     /**
@@ -37,9 +35,7 @@ class ProductMetrics extends MetricBase
      */
     public function totalProductRevenue(): float
     {
-        return $this->cache('total_product_revenue', function () {
-            return (float) $this->data->sum('line_total');
-        });
+        return (float) $this->data->sum('line_total');
     }
 
     /**
@@ -47,9 +43,7 @@ class ProductMetrics extends MetricBase
      */
     public function averageProductPrice(): float
     {
-        return $this->cache('average_product_price', function () {
-            return $this->data->count() > 0 ? $this->data->avg('price_per_unit') : 0;
-        });
+        return $this->data->count() > 0 ? $this->data->avg('price_per_unit') : 0;
     }
 
     /**
@@ -57,9 +51,7 @@ class ProductMetrics extends MetricBase
      */
     public function uniqueProducts(): int
     {
-        return $this->cache('unique_products', function () {
-            return $this->data->pluck('sku')->unique()->count();
-        });
+        return $this->data->pluck('sku')->unique()->count();
     }
 
     /**
@@ -67,33 +59,31 @@ class ProductMetrics extends MetricBase
      */
     public function topProductsBySales(int $limit = 10): Collection
     {
-        return $this->cache("top_products_by_sales_{$limit}", function () use ($limit) {
-            return $this->data
-                ->groupBy('sku')
-                ->map(function (Collection $items, string $sku) {
-                    $firstItem = $items->first();
-                    $product = Product::where('sku', $sku)->first();
-                    
-                    $badges = $product ? $this->badgeService->getProductBadges($product) : collect();
-                    
-                    return collect([
-                        'sku' => $sku,
-                        'title' => $product?->title ?? 'Unknown Product',
-                        'category' => $product?->category_name ?? 'Unknown Category',
-                        'quantity_sold' => $items->sum('quantity'),
-                        'revenue' => $items->sum('line_total'),
-                        'order_count' => $items->count(),
-                        'avg_price' => $items->avg('price_per_unit'),
-                        'stock_level' => $product?->stock_available ?? 0,
-                        'profit_margin' => $product?->getProfitMargin() ?? 0,
-                        'badges' => $badges,
-                        'product' => $product,
-                    ]);
-                })
-                ->sortByDesc('quantity_sold')
-                ->take($limit)
-                ->values();
-        });
+        return $this->data
+            ->groupBy('sku')
+            ->map(function (Collection $items, string $sku) {
+                $firstItem = $items->first();
+                $product = Product::where('sku', $sku)->first();
+
+                $badges = $product ? $this->badgeService->getProductBadges($product) : collect();
+
+                return collect([
+                    'sku' => $sku,
+                    'title' => $product?->title ?? 'Unknown Product',
+                    'category' => $product?->category_name ?? 'Unknown Category',
+                    'quantity_sold' => $items->sum('quantity'),
+                    'revenue' => $items->sum('line_total'),
+                    'order_count' => $items->count(),
+                    'avg_price' => $items->avg('price_per_unit'),
+                    'stock_level' => $product?->stock_available ?? 0,
+                    'profit_margin' => $product?->getProfitMargin() ?? 0,
+                    'badges' => $badges,
+                    'product' => $product,
+                ]);
+            })
+            ->sortByDesc('quantity_sold')
+            ->take($limit)
+            ->values();
     }
 
     /**
@@ -101,33 +91,31 @@ class ProductMetrics extends MetricBase
      */
     public function topProductsByRevenue(int $limit = 10): Collection
     {
-        return $this->cache("top_products_by_revenue_{$limit}", function () use ($limit) {
-            return $this->data
-                ->groupBy('sku')
-                ->map(function (Collection $items, string $sku) {
-                    $firstItem = $items->first();
-                    $product = Product::where('sku', $sku)->first();
-                    
-                    $badges = $product ? $this->badgeService->getProductBadges($product) : collect();
-                    
-                    return collect([
-                        'sku' => $sku,
-                        'title' => $product?->title ?? 'Unknown Product',
-                        'category' => $product?->category_name ?? 'Unknown Category',
-                        'quantity_sold' => $items->sum('quantity'),
-                        'revenue' => $items->sum('line_total'),
-                        'order_count' => $items->count(),
-                        'avg_price' => $items->avg('price_per_unit'),
-                        'stock_level' => $product?->stock_available ?? 0,
-                        'profit_margin' => $product?->getProfitMargin() ?? 0,
-                        'badges' => $badges,
-                        'product' => $product,
-                    ]);
-                })
-                ->sortByDesc('revenue')
-                ->take($limit)
-                ->values();
-        });
+        return $this->data
+            ->groupBy('sku')
+            ->map(function (Collection $items, string $sku) {
+                $firstItem = $items->first();
+                $product = Product::where('sku', $sku)->first();
+
+                $badges = $product ? $this->badgeService->getProductBadges($product) : collect();
+
+                return collect([
+                    'sku' => $sku,
+                    'title' => $product?->title ?? 'Unknown Product',
+                    'category' => $product?->category_name ?? 'Unknown Category',
+                    'quantity_sold' => $items->sum('quantity'),
+                    'revenue' => $items->sum('line_total'),
+                    'order_count' => $items->count(),
+                    'avg_price' => $items->avg('price_per_unit'),
+                    'stock_level' => $product?->stock_available ?? 0,
+                    'profit_margin' => $product?->getProfitMargin() ?? 0,
+                    'badges' => $badges,
+                    'product' => $product,
+                ]);
+            })
+            ->sortByDesc('revenue')
+            ->take($limit)
+            ->values();
     }
 
     /**
@@ -135,26 +123,24 @@ class ProductMetrics extends MetricBase
      */
     public function productsByCategory(): Collection
     {
-        return $this->cache('products_by_category', function () {
-            return $this->data
-                ->map(function ($item) {
-                    $product = Product::where('sku', $item['sku'])->first();
-                    $item['category_name'] = $product?->category_name ?? 'Unknown Category';
-                    return $item;
-                })
-                ->groupBy('category_name')
-                ->map(function (Collection $items, string $category) {
-                    return collect([
-                        'category' => $category,
-                        'product_count' => $items->pluck('sku')->unique()->count(),
-                        'quantity_sold' => $items->sum('quantity'),
-                        'revenue' => $items->sum('line_total'),
-                        'avg_price' => $items->avg('price_per_unit'),
-                    ]);
-                })
-                ->sortByDesc('revenue')
-                ->values();
-        });
+        return $this->data
+            ->map(function ($item) {
+                $product = Product::where('sku', $item['sku'])->first();
+                $item['category_name'] = $product?->category_name ?? 'Unknown Category';
+                return $item;
+            })
+            ->groupBy('category_name')
+            ->map(function (Collection $items, string $category) {
+                return collect([
+                    'category' => $category,
+                    'product_count' => $items->pluck('sku')->unique()->count(),
+                    'quantity_sold' => $items->sum('quantity'),
+                    'revenue' => $items->sum('line_total'),
+                    'avg_price' => $items->avg('price_per_unit'),
+                ]);
+            })
+            ->sortByDesc('revenue')
+            ->values();
     }
 
     /**
@@ -162,30 +148,28 @@ class ProductMetrics extends MetricBase
      */
     public function lowStockSellers(): Collection
     {
-        return $this->cache('low_stock_sellers', function () {
-            return $this->data
-                ->groupBy('sku')
-                ->map(function (Collection $items, string $sku) {
-                    $product = Product::where('sku', $sku)->first();
-                    
-                    if (!$product || $product->stock_available > $product->stock_minimum) {
-                        return null;
-                    }
-                    
-                    return collect([
-                        'sku' => $sku,
-                        'title' => $product->title ?? 'Unknown Product',
-                        'stock_available' => $product->stock_available,
-                        'stock_minimum' => $product->stock_minimum,
-                        'quantity_sold' => $items->sum('quantity'),
-                        'revenue' => $items->sum('line_total'),
-                        'urgency_score' => $items->sum('quantity') / max($product->stock_available, 1),
-                    ]);
-                })
-                ->filter()
-                ->sortByDesc('urgency_score')
-                ->values();
-        });
+        return $this->data
+            ->groupBy('sku')
+            ->map(function (Collection $items, string $sku) {
+                $product = Product::where('sku', $sku)->first();
+
+                if (!$product || $product->stock_available > $product->stock_minimum) {
+                    return null;
+                }
+
+                return collect([
+                    'sku' => $sku,
+                    'title' => $product->title ?? 'Unknown Product',
+                    'stock_available' => $product->stock_available,
+                    'stock_minimum' => $product->stock_minimum,
+                    'quantity_sold' => $items->sum('quantity'),
+                    'revenue' => $items->sum('line_total'),
+                    'urgency_score' => $items->sum('quantity') / max($product->stock_available, 1),
+                ]);
+            })
+            ->filter()
+            ->sortByDesc('urgency_score')
+            ->values();
     }
 
     /**
@@ -193,27 +177,25 @@ class ProductMetrics extends MetricBase
      */
     public function productSalesTrends(string $period = '30'): Collection
     {
-        return $this->cache("product_sales_trends_{$period}", function () use ($period) {
-            $days = (int) $period;
-            
-            return collect(range($days - 1, 0))
-                ->map(function (int $daysAgo) {
-                    $date = Carbon::now()->subDays($daysAgo);
-                    $dayItems = $this->data->filter(function ($item) use ($date) {
-                        return isset($item['received_date']) && 
-                               Carbon::parse($item['received_date'])->isSameDay($date);
-                    });
+        $days = (int) $period;
 
-                    return collect([
-                        'date' => $date->format('M j'),
-                        'day' => $date->format('D'),
-                        'products_sold' => $dayItems->sum('quantity'),
-                        'revenue' => $dayItems->sum('line_total'),
-                        'unique_products' => $dayItems->pluck('sku')->unique()->count(),
-                        'avg_price' => $dayItems->avg('price_per_unit') ?? 0,
-                    ]);
+        return collect(range($days - 1, 0))
+            ->map(function (int $daysAgo) {
+                $date = Carbon::now()->subDays($daysAgo);
+                $dayItems = $this->data->filter(function ($item) use ($date) {
+                    return isset($item['received_date']) &&
+                           Carbon::parse($item['received_date'])->isSameDay($date);
                 });
-        });
+
+                return collect([
+                    'date' => $date->format('M j'),
+                    'day' => $date->format('D'),
+                    'products_sold' => $dayItems->sum('quantity'),
+                    'revenue' => $dayItems->sum('line_total'),
+                    'unique_products' => $dayItems->pluck('sku')->unique()->count(),
+                    'avg_price' => $dayItems->avg('price_per_unit') ?? 0,
+                ]);
+            });
     }
 
     /**
@@ -254,57 +236,19 @@ class ProductMetrics extends MetricBase
      */
     public function getCategoryDistributionChart(): array
     {
-        return $this->cache('category_distribution_chart', function () {
-            $categories = $this->productsByCategory()->take(8);
-            
-            return [
-                'labels' => $categories->pluck('category')->toArray(),
-                'datasets' => [[
-                    'label' => 'Revenue by Category',
-                    'data' => $categories->pluck('revenue')->toArray(),
-                    'backgroundColor' => [
-                        '#3B82F6', '#10B981', '#F59E0B', '#EF4444', 
-                        '#8B5CF6', '#F97316', '#06B6D4', '#84CC16'
-                    ],
-                    'borderWidth' => 2,
-                ]],
-            ];
-        });
-    }
+        $categories = $this->productsByCategory()->take(8);
 
-    /**
-     * Warm up the cache by running all expensive operations
-     */
-    public function warmUpCache(): void
-    {
-        // Cache basic metrics
-        $this->totalProductsSold();
-        $this->totalProductRevenue();
-        $this->averageProductPrice();
-        $this->uniqueProducts();
-        
-        // Cache top products
-        $this->topProductsBySales(10);
-        $this->topProductsBySales(20);
-        $this->topProductsByRevenue(10);
-        $this->topProductsByRevenue(20);
-        
-        // Cache category data
-        $this->productsByCategory();
-        $this->getCategoryDistributionChart();
-        
-        // Cache low stock alerts
-        $this->lowStockSellers();
-        
-        // Cache trends for common periods
-        $periods = ['7', '30', '90'];
-        foreach ($periods as $period) {
-            $this->productSalesTrends($period);
-            $this->getProductSalesChartData($period);
-        }
-        
-        // Mark cache as warmed
-        $this->putCache('_cache_status', 'warm');
-        $this->putCache('_last_warmed', now()->toISOString());
+        return [
+            'labels' => $categories->pluck('category')->toArray(),
+            'datasets' => [[
+                'label' => 'Revenue by Category',
+                'data' => $categories->pluck('revenue')->toArray(),
+                'backgroundColor' => [
+                    '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
+                    '#8B5CF6', '#F97316', '#06B6D4', '#84CC16'
+                ],
+                'borderWidth' => 2,
+            ]],
+        ];
     }
 }
