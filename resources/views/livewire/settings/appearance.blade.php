@@ -15,7 +15,14 @@
                     </div>
                 </div>
 
-                <x-animations.theme-switcher class="w-full" />
+                <x-animations.animated-segmented-control
+                    :options="[
+                        ['value' => 'light', 'icon' => 'sun', 'label' => __('Light')],
+                        ['value' => 'dark', 'icon' => 'moon', 'label' => __('Dark')],
+                        ['value' => 'system', 'icon' => 'computer-desktop', 'label' => __('System')]
+                    ]"
+                    class="w-full"
+                />
 
                 <div class="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-lg">
                     <div class="flex items-start gap-2">
