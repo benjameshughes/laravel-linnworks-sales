@@ -63,6 +63,16 @@ final class TopChannels extends Component
     #[Computed]
     public function topChannels(): Collection
     {
+        // Try to use pre-warmed cache first (instant response)
+        $service = app(DashboardDataService::class);
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            if ($cached && isset($cached['top_channels'])) {
+                return collect($cached['top_channels']);
+            }
+        }
+
+        // Fallback to live calculation
         return $this->salesMetrics->topChannels(6);
     }
 

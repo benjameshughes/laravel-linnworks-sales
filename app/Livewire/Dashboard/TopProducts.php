@@ -63,6 +63,16 @@ final class TopProducts extends Component
     #[Computed]
     public function topProducts(): Collection
     {
+        // Try to use pre-warmed cache first (instant response)
+        $service = app(DashboardDataService::class);
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            if ($cached && isset($cached['top_products'])) {
+                return collect($cached['top_products']);
+            }
+        }
+
+        // Fallback to live calculation
         return $this->salesMetrics->topProducts(5);
     }
 

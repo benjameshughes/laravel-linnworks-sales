@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\OrdersSynced;
 use App\Jobs\GetOpenOrderDetailJob;
 use App\Models\Order;
 use App\Models\SyncLog;
@@ -156,6 +157,12 @@ class GetOpenOrderIdsJob implements ShouldQueue, ShouldBeUnique
                 'total_uuids' => $openOrderIds->count(),
                 'jobs_dispatched' => $jobsDispatched,
             ]);
+
+            // Dispatch event to warm metrics cache
+            OrdersSynced::dispatch(
+                ordersProcessed: $openOrderIds->count(),
+                syncType: 'open_orders'
+            );
 
         } catch (\Exception $e) {
             Log::error('Master job failed', ['error' => $e->getMessage()]);
