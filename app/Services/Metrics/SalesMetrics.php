@@ -315,11 +315,15 @@ class SalesMetrics extends MetricBase
                 $dayOrders = $this->data;
                 $openOrders = $dayOrders->where('is_processed', false);
                 $processedOrders = $dayOrders->where('is_processed', true);
-                
+
                 $revenue = $dayOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
                 $openRevenue = $openOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
                 $processedRevenue = $processedOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
                 $orderCount = $dayOrders->count();
+
+                $itemsCount = $dayOrders->sum(function ($order) {
+                    return collect($order->items ?? [])->sum('quantity');
+                });
 
                 return collect([
                     collect([
@@ -328,6 +332,7 @@ class SalesMetrics extends MetricBase
                         'day' => $date->format('D'),
                         'revenue' => $revenue,
                         'orders' => $orderCount,
+                        'items' => $itemsCount,
                         'avg_order_value' => $orderCount > 0 ? $revenue / $orderCount : 0,
                         'open_orders' => $openOrders->count(),
                         'processed_orders' => $processedOrders->count(),
@@ -360,12 +365,17 @@ class SalesMetrics extends MetricBase
         $processedRevenue = $processedOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
         $orderCount = $dayOrders->count();
 
+        $itemsCount = $dayOrders->sum(function ($order) {
+            return collect($order->items ?? [])->sum('quantity');
+        });
+
         return collect([
             'date' => $date->format('M j'),
             'iso_date' => $date->format('Y-m-d'),
             'day' => $date->format('D'),
             'revenue' => $revenue,
             'orders' => $orderCount,
+            'items' => $itemsCount,
             'avg_order_value' => $orderCount > 0 ? $revenue / $orderCount : 0,
             'open_orders' => $openOrders->count(),
             'processed_orders' => $processedOrders->count(),
@@ -517,6 +527,69 @@ class SalesMetrics extends MetricBase
                     'backgroundColor' => '#F59E0B',
                     'borderColor' => '#F59E0B',
                     'borderWidth' => 1,
+                ],
+            ],
+            'meta' => [
+                'iso_dates' => $chartData->pluck('iso_date')->toArray(),
+            ],
+        ];
+    }
+
+    /**
+     * Prepare data for orders vs revenue dual-axis chart
+     */
+    public function getOrdersVsRevenueChartData(string $period, ?string $startDate = null, ?string $endDate = null): array
+    {
+        $chartData = $this->dailySalesData($period, $startDate, $endDate);
+
+        return [
+            'labels' => $chartData->pluck('date')->toArray(),
+            'datasets' => [
+                [
+                    'label' => 'Orders',
+                    'data' => $chartData->pluck('orders')->toArray(),
+                    'borderColor' => '#3B82F6',
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
+                    'yAxisID' => 'y',
+                    'tension' => 0.4,
+                    'fill' => true,
+                    'borderWidth' => 2,
+                ],
+                [
+                    'label' => 'Revenue (£)',
+                    'data' => $chartData->pluck('revenue')->toArray(),
+                    'borderColor' => '#10B981',
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
+                    'yAxisID' => 'y1',
+                    'tension' => 0.4,
+                    'fill' => true,
+                    'borderWidth' => 2,
+                ],
+            ],
+            'meta' => [
+                'iso_dates' => $chartData->pluck('iso_date')->toArray(),
+            ],
+        ];
+    }
+
+    /**
+     * Prepare data for items sold trend chart
+     */
+    public function getItemsSoldChartData(string $period, ?string $startDate = null, ?string $endDate = null): array
+    {
+        $chartData = $this->dailySalesData($period, $startDate, $endDate);
+
+        return [
+            'labels' => $chartData->pluck('date')->toArray(),
+            'datasets' => [
+                [
+                    'label' => 'Items Sold',
+                    'data' => $chartData->pluck('items')->toArray(),
+                    'borderColor' => '#8B5CF6',
+                    'backgroundColor' => 'rgba(139, 92, 246, 0.1)',
+                    'tension' => 0.4,
+                    'fill' => true,
+                    'borderWidth' => 2,
                 ],
             ],
             'meta' => [
