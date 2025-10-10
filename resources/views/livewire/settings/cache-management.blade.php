@@ -145,19 +145,24 @@
                             </div>
                         @endif
 
-                        <button
-                            wire:click="warmCache"
-                            class="w-full px-4 py-2 rounded-lg font-medium transition-all duration-300 transform {{ $isWarming ? 'bg-orange-600 hover:bg-orange-700 text-white scale-105' : 'bg-purple-600 hover:bg-purple-700 text-white' }} disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            {{ $isWarming ? 'disabled' : '' }}
-                        >
-                            @if($isWarming)
-                                <flux:icon.fire class="size-5 animate-pulse" />
-                                <span>Warming...</span>
-                            @else
-                                <flux:icon.arrow-path class="size-5" />
-                                <span>Warm Cache Now</span>
-                            @endif
-                        </button>
+                        @if($isWarming)
+                            <flux:button
+                                disabled
+                                class="w-full !bg-orange-600 hover:!bg-orange-700 !text-white transform scale-105"
+                            >
+                                <flux:icon.fire class="animate-pulse" />
+                                Warming...
+                            </flux:button>
+                        @else
+                            <flux:button
+                                wire:click="warmCache"
+                                variant="primary"
+                                class="w-full"
+                                icon="arrow-path"
+                            >
+                                Warm Cache Now
+                            </flux:button>
+                        @endif
                     </div>
 
                     {{-- Clear Cache Control --}}
@@ -186,19 +191,24 @@
                             </div>
                         </div>
 
-                        <button
-                            wire:click="clearCache"
-                            class="w-full px-4 py-2 rounded-lg font-medium transition-all duration-300 transform {{ $isClearing ? 'bg-blue-600 hover:bg-blue-700 text-white scale-105' : 'bg-red-600 hover:bg-red-700 text-white' }} disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            {{ $isClearing ? 'disabled' : '' }}
-                        >
-                            @if($isClearing)
+                        @if($isClearing)
+                            <flux:button
+                                disabled
+                                class="w-full !bg-blue-600 hover:!bg-blue-700 !text-white transform scale-105"
+                            >
                                 <div class="size-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                <span>Clearing...</span>
-                            @else
-                                <flux:icon.trash class="size-5" />
-                                <span>Clear All Cache</span>
-                            @endif
-                        </button>
+                                Clearing...
+                            </flux:button>
+                        @else
+                            <flux:button
+                                wire:click="clearCache"
+                                variant="danger"
+                                class="w-full"
+                                icon="trash"
+                            >
+                                Clear All Cache
+                            </flux:button>
+                        @endif
                     </div>
                 </div>
             </x-animations.fade-in-up>
