@@ -27,15 +27,21 @@
         />
 
         <!-- Password -->
-        <flux:input
-            wire:model="password"
-            :label="__('Password')"
-            type="password"
-            required
-            autocomplete="new-password"
-            :placeholder="__('Password')"
-            viewable
-        />
+        <flux:field>
+            <flux:label>{{ __('Password') }}</flux:label>
+            <flux:input
+                wire:model="password"
+                type="password"
+                required
+                autocomplete="new-password"
+                placeholder="Password"
+                viewable
+            />
+            <flux:description>
+                Minimum 12 characters with uppercase, lowercase, numbers, and symbols
+            </flux:description>
+            <flux:error name="password" />
+        </flux:field>
 
         <!-- Confirm Password -->
         <flux:input

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\Dashboard\DashboardDataService;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,6 +23,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $this->configurePasswordValidation();
+    }
+
+    /**
+     * Configure default password validation rules
+     */
+    private function configurePasswordValidation(): void
+    {
+        Password::defaults(fn () => Password::min(12)
+            ->letters()           // Must contain letters
+            ->mixedCase()         // Upper AND lowercase required
+            ->numbers()           // At least one number
+            ->symbols()           // At least one special character
+            ->uncompromised()     // Check against pwned passwords database
+        );
     }
 }
