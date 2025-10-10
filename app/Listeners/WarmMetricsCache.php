@@ -23,7 +23,7 @@ final class WarmMetricsCache implements ShouldQueue
     /**
      * The name of the queue the job should be sent to.
      */
-    public string $queue = 'default';
+    public string $queue = 'low';
 
     /**
      * The number of seconds before the job should be processed.
