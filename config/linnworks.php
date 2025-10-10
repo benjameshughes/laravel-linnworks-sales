@@ -7,21 +7,18 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configuration for connecting to the Linnworks API.
-    | You'll need to obtain these credentials from your Linnworks account.
+    |
+    | NOTE: Credentials (application_id, application_secret, access_token) are
+    | stored encrypted in the database via the LinnworksConnection model.
+    | This config file only contains non-sensitive application settings.
     |
     */
 
     'base_url' => env('LINNWORKS_BASE_URL', 'https://api.linnworks.net'),
-    
+
+    // Application ID for UI purposes only (installation URL generation)
+    // Actual credentials are stored encrypted in the database
     'application_id' => env('LINNWORKS_APPLICATION_ID'),
-    
-    'application_secret' => env('LINNWORKS_APPLICATION_SECRET'),
-    
-    'redirect_uri' => env('LINNWORKS_REDIRECT_URI', 'https://localhost/linnworks/callback'),
-    
-    'server_id' => env('LINNWORKS_SERVER_ID'),
-    
-    'token' => env('LINNWORKS_TOKEN'),
 
     'session_ttl' => env('LINNWORKS_SESSION_TTL', 55),
 

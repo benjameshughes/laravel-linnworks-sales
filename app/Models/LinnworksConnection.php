@@ -29,6 +29,10 @@ class LinnworksConnection extends Model
     protected function casts(): array
     {
         return [
+            'application_id' => 'encrypted',
+            'application_secret' => 'encrypted',
+            'access_token' => 'encrypted',
+            'session_token' => 'encrypted',
             'session_expires_at' => 'datetime',
             'is_active' => 'boolean',
             'application_data' => 'array',

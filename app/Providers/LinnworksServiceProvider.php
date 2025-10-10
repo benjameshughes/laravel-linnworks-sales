@@ -29,10 +29,6 @@ class LinnworksServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Register value objects
-        $this->app->singleton(ApiCredentials::class, function () {
-            return ApiCredentials::fromConfig();
-        });
-
         $this->app->singleton(RateLimitConfig::class, function () {
             return RateLimitConfig::standard();
         });
@@ -54,7 +50,6 @@ class LinnworksServiceProvider extends ServiceProvider
         $this->app->singleton(AuthenticationService::class, function ($app) {
             return new AuthenticationService(
                 client: $app->make(LinnworksClient::class),
-                credentials: $app->make(ApiCredentials::class),
             );
         });
 
@@ -142,7 +137,6 @@ class LinnworksServiceProvider extends ServiceProvider
     public function provides(): array
     {
         return [
-            ApiCredentials::class,
             RateLimitConfig::class,
             RateLimiter::class,
             LinnworksClient::class,

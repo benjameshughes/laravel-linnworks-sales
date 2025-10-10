@@ -134,12 +134,12 @@ class LinnworksOAuthService
 
         // Step 2: Test the session token with a simple API call
         try {
-            // Use HTTPS and a different test endpoint
+            // Use HTTPS and test with a lightweight endpoint (GetStockLocations)
             $serverUrl = str_replace('http://', 'https://', $connection->server_location);
-            
+
             $response = Http::withHeaders([
                 'Authorization' => $connection->session_token,
-            ])->get("{$serverUrl}/api/Auth/AuthorizeByApplication");
+            ])->post("{$serverUrl}/api/Inventory/GetStockLocations");
 
             if ($response->successful()) {
                 Log::info('Linnworks connection test successful - session token works', [
@@ -222,7 +222,8 @@ class LinnworksOAuthService
      */
     public function getConnectionStatus(int $userId): array
     {
-        $connection = LinnworksConnection::forUser($userId)->first();
+        // Only check ACTIVE connections for status
+        $connection = LinnworksConnection::forUser($userId)->active()->first();
         
         if (!$connection) {
             return [
