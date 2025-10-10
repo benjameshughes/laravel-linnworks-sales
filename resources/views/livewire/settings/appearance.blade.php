@@ -4,7 +4,7 @@
     <x-settings.layout :heading="__('Appearance')" :subheading="__('Customize how the application looks on your device')">
         <div class="my-6 w-full">
             {{-- Theme Settings --}}
-            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+            <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
                         <flux:icon.swatch class="size-6 text-purple-600 dark:text-purple-400" />
@@ -44,7 +44,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </x-animations.fade-in-up>
         </div>
     </x-settings.layout>
 </section>

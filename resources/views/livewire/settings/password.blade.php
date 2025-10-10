@@ -4,7 +4,7 @@
     <x-settings.layout :heading="__('Update Password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
         <div class="my-6 w-full">
             {{-- Update Password --}}
-            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+            <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
                         <flux:icon.lock-closed class="size-6 text-green-600 dark:text-green-400" />
@@ -64,7 +64,7 @@
                         </flux:button>
                     </div>
                 </form>
-            </div>
+            </x-animations.fade-in-up>
         </div>
     </x-settings.layout>
 </section>

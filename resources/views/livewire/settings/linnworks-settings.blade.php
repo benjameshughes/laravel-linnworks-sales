@@ -19,7 +19,7 @@
             @endif
 
             {{-- Connection Status --}}
-            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+            <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                         <flux:icon.link class="size-6 text-blue-600 dark:text-blue-400" />
@@ -116,11 +116,11 @@
                         </flux:button>
                     </div>
                 @endif
-            </div>
+            </x-animations.fade-in-up>
 
             {{-- Open Orders Defaults (only show when connected) --}}
             @if($this->connectionStatus['connected'])
-                <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                <x-animations.fade-in-up :delay="200" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                     <div class="flex items-start gap-3">
                         <div class="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
                             <flux:icon.cog-6-tooth class="size-6 text-purple-600 dark:text-purple-400" />
@@ -187,12 +187,12 @@
                             Save Preferences
                         </flux:button>
                     </div>
-                </div>
+                </x-animations.fade-in-up>
             @endif
 
             {{-- Connection Form --}}
             @if($showForm)
-                <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                <x-animations.fade-in-up :delay="300" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                     <div class="flex items-start gap-3">
                         <div class="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
                             <flux:icon.key class="size-6 text-green-600 dark:text-green-400" />
@@ -251,11 +251,11 @@
                             </flux:button>
                         </div>
                     </form>
-                </div>
+                </x-animations.fade-in-up>
             @endif
 
             {{-- Instructions --}}
-            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+            <x-animations.fade-in-up :delay="400" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 bg-amber-100 dark:bg-amber-900/20 rounded-lg flex items-center justify-center">
                         <flux:icon.information-circle class="size-6 text-amber-600 dark:text-amber-400" />
@@ -345,7 +345,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </x-animations.fade-in-up>
         </div>
     </x-settings.layout>
 </section>

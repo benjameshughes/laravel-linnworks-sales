@@ -1,5 +1,5 @@
 {{-- Delete Account Section --}}
-<div class="bg-white dark:bg-zinc-900 rounded-xl border border-red-200 dark:border-red-900/50 p-6 space-y-6">
+<x-animations.fade-in-up :delay="200" class="bg-white dark:bg-zinc-900 rounded-xl border border-red-200 dark:border-red-900/50 p-6 space-y-6">
     <div class="flex items-start gap-3">
         <div class="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
             <flux:icon.trash class="size-6 text-red-600 dark:text-red-400" />
@@ -54,4 +54,4 @@
             </div>
         </form>
     </flux:modal>
-</div>
+</x-animations.fade-in-up>

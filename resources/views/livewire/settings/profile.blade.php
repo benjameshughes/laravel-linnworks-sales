@@ -4,7 +4,7 @@
     <x-settings.layout :heading="__('Profile')" :subheading="__('Update your name and email address')">
         <div class="my-6 w-full space-y-10">
             {{-- Profile Information --}}
-            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+            <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                         <flux:icon.user class="size-6 text-blue-600 dark:text-blue-400" />
@@ -70,7 +70,7 @@
                         </flux:button>
                     </div>
                 </form>
-            </div>
+            </x-animations.fade-in-up>
 
             <livewire:settings.delete-user-form />
         </div>

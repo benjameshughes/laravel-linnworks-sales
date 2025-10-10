@@ -5,7 +5,7 @@
         <div class="my-6 w-full space-y-10">
             {{-- Import Configuration --}}
             @if (!$isImporting && !$isCompleted)
-                <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                     <div class="flex items-start gap-3">
                         <div class="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                             <flux:icon.arrow-down-tray class="size-6 text-blue-600 dark:text-blue-400" />
@@ -46,10 +46,10 @@
                             </flux:button>
                         </div>
                     </div>
-                </div>
+                </x-animations.fade-in-up>
 
                 {{-- Help Text --}}
-                <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <x-animations.fade-in-up :delay="200" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                     <div class="flex gap-3">
                         <flux:icon.exclamation-triangle class="size-5 text-amber-500 flex-shrink-0 mt-0.5" />
                         <div class="flex-1">
@@ -62,12 +62,12 @@
                             </ul>
                         </div>
                     </div>
-                </div>
+                </x-animations.fade-in-up>
             @endif
 
             {{-- Progress Display --}}
             @if ($isImporting || $isCompleted)
-                <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                     {{-- Status Header --}}
                     <div class="flex items-center justify-between">
                         <flux:heading size="lg">
@@ -174,7 +174,7 @@
                             @endif
                         </div>
                     @endif
-                </div>
+                </x-animations.fade-in-up>
             @endif
         </div>
     </x-settings.layout>
