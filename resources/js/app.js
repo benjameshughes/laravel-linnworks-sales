@@ -18,6 +18,11 @@ window.Chart = Chart;
 import './alpine-charts';
 
 /**
+ * Alpine.js store for metrics
+ */
+import './alpine-store';
+
+/**
  * Alpine.js animated counter components
  */
 import './alpine-counter';

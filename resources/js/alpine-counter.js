@@ -1,78 +1,74 @@
-// Animated Counter Component
+// Animated Counter Component with number ticking
 // Usage: x-data="animatedCounter(initialValue, options)"
 Alpine.data('animatedCounter', (initialValue = 0, options = {}) => ({
-    displayValue: initialValue,
-    targetValue: initialValue,
-    isAnimating: false,
+    current: initialValue,
+    target: initialValue,
+    storeKey: options.storeKey || null,
 
     // Configuration
-    duration: options.duration || 1000, // Base duration in ms
     prefix: options.prefix || '',
     suffix: options.suffix || '',
     decimals: options.decimals ?? 0,
     separator: options.separator || ',',
-    minDuration: options.minDuration || 300,
-    maxDuration: options.maxDuration || 2000,
+    duration: options.duration || 1000, // Duration for animation
 
     init() {
-        // Watch for updates to the target value
-        this.$watch('targetValue', (newValue, oldValue) => {
-            if (newValue !== oldValue) {
-                this.animateTo(newValue);
-            }
-        });
+        // If we have a storeKey, check if there's a previous value to animate from
+        if (this.storeKey && this.$store.metrics[this.storeKey] !== 0) {
+            // Start from the stored value and animate to new value
+            this.current = this.$store.metrics[this.storeKey];
+            this.animateCounter(initialValue);
+        }
+
+        // Update store with current value
+        if (this.storeKey) {
+            this.$store.metrics[this.storeKey] = initialValue;
+        }
     },
 
-    // Update the target (call this from Livewire)
+    // Update the target value and animate
     updateValue(newValue) {
-        this.targetValue = parseFloat(newValue) || 0;
+        const target = parseFloat(newValue) || 0;
+        this.animateCounter(target);
     },
 
-    animateTo(endValue) {
-        if (this.isAnimating) return;
-
-        const startValue = this.displayValue;
-        const change = endValue - startValue;
+    // Animate counter from current to target
+    animateCounter(targetValue) {
+        this.target = targetValue;
+        const start = this.current;
+        const change = targetValue - start;
 
         // No animation needed if values are the same
         if (change === 0) return;
 
-        // Calculate smart duration based on difference
-        const diffMagnitude = Math.abs(change);
-        const calculatedDuration = Math.min(
-            this.maxDuration,
-            Math.max(
-                this.minDuration,
-                Math.log10(diffMagnitude + 1) * 200 // Logarithmic scaling
-            )
-        );
+        // Calculate duration based on magnitude of change (faster for small changes)
+        const magnitude = Math.abs(change);
+        const calculatedDuration = Math.min(2000, Math.max(300, Math.log10(magnitude + 1) * 400));
 
-        this.isAnimating = true;
+        const increment = change / calculatedDuration;
         const startTime = performance.now();
 
-        const animate = (currentTime) => {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / calculatedDuration, 1);
+        const animate = () => {
+            const elapsed = performance.now() - startTime;
 
-            // Easing function: easeOutQuart for that "settling" effect
-            const eased = 1 - Math.pow(1 - progress, 4);
-
-            this.displayValue = startValue + (change * eased);
-
-            if (progress < 1) {
+            if (elapsed < calculatedDuration) {
+                this.current = start + (change * (elapsed / calculatedDuration));
                 requestAnimationFrame(animate);
             } else {
-                this.displayValue = endValue;
-                this.isAnimating = false;
+                this.current = targetValue;
+                // Update store with final value
+                if (this.storeKey) {
+                    this.$store.metrics[this.storeKey] = targetValue;
+                }
             }
         };
 
         requestAnimationFrame(animate);
     },
 
-    // Format the display value
+    // Format the current value
     get formattedValue() {
-        const num = this.displayValue;
+        const num = this.current;
         const fixed = num.toFixed(this.decimals);
         const parts = fixed.split('.');
 
@@ -85,13 +81,14 @@ Alpine.data('animatedCounter', (initialValue = 0, options = {}) => ({
 }));
 
 // Currency Counter - Specialized for money
-Alpine.data('currencyCounter', (initialValue = 0, currency = '£') => ({
+Alpine.data('currencyCounter', (initialValue = 0, currency = '£', storeKey = null) => ({
     ...Alpine.raw(Alpine.data('animatedCounter')(initialValue, {
         prefix: currency,
         decimals: 2,
         separator: ',',
         minDuration: 400,
-        maxDuration: 1500
+        maxDuration: 1500,
+        storeKey: storeKey
     }))
 }));
 
@@ -107,11 +104,12 @@ Alpine.data('percentageCounter', (initialValue = 0) => ({
 }));
 
 // Integer Counter - Specialized for whole numbers (orders, items, etc)
-Alpine.data('integerCounter', (initialValue = 0) => ({
+Alpine.data('integerCounter', (initialValue = 0, storeKey = null) => ({
     ...Alpine.raw(Alpine.data('animatedCounter')(initialValue, {
         decimals: 0,
         separator: ',',
         minDuration: 300,
-        maxDuration: 1200
+        maxDuration: 1200,
+        storeKey: storeKey
     }))
 }));

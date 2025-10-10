@@ -1,15 +1,35 @@
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 transition-opacity duration-200" wire:loading.class="opacity-50">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 transition-opacity duration-200"
+     wire:loading.class="opacity-50">
     {{-- Total Revenue --}}
     <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white h-32">
         <div class="flex items-center justify-between h-full">
             <div>
                 <p class="text-blue-100 text-sm font-medium">Total Revenue</p>
                 <p class="text-3xl font-bold"
-                   x-data="currencyCounter({{ $this->metrics->get('total_revenue') }})"
-                   x-init="$watch('$wire.metrics.total_revenue', value => updateValue(value))"
-                   x-text="formattedValue"
-                   x-cloak>
-                    £{{ number_format($this->metrics->get('total_revenue'), 2) }}
+                   wire:key="revenue-{{ $this->metrics->get('total_revenue') }}"
+                   x-data="{
+                       current: $store.metrics.revenue || 0,
+                       target: {{ $this->metrics->get('total_revenue') }}
+                   }"
+                   x-init="
+                       let start = current;
+                       let change = target - start;
+                       let duration = 800;
+                       let startTime = Date.now();
+
+                       let doAnimate = () => {
+                           let elapsed = Date.now() - startTime;
+                           if (elapsed < duration) {
+                               current = start + (change * (elapsed / duration));
+                               requestAnimationFrame(doAnimate);
+                           } else {
+                               current = target;
+                               $store.metrics.revenue = target;
+                           }
+                       };
+                       requestAnimationFrame(doAnimate);
+                   "
+                   x-text="'£' + Math.round(current).toLocaleString()">
                 </p>
                 @if($this->metrics->get('growth_rate') != 0)
                     <p class="text-sm text-blue-100 mt-1">
@@ -27,17 +47,32 @@
             <div>
                 <p class="text-emerald-100 text-sm font-medium">Total Orders</p>
                 <p class="text-3xl font-bold"
-                   x-data="integerCounter({{ $this->metrics->get('total_orders') }})"
-                   x-init="$watch('$wire.metrics.total_orders', value => updateValue(value))"
-                   x-text="formattedValue"
-                   x-cloak>
-                    {{ number_format($this->metrics->get('total_orders')) }}
+                   wire:key="orders-{{ $this->metrics->get('total_orders') }}"
+                   x-data="{
+                       current: $store.metrics.orders || 0,
+                       target: {{ $this->metrics->get('total_orders') }}
+                   }"
+                   x-init="
+                       let start = current;
+                       let change = target - start;
+                       let duration = 800;
+                       let startTime = Date.now();
+                       let doAnimate = () => {
+                           let elapsed = Date.now() - startTime;
+                           if (elapsed < duration) {
+                               current = start + (change * (elapsed / duration));
+                               requestAnimationFrame(doAnimate);
+                           } else {
+                               current = target;
+                               $store.metrics.orders = target;
+                           }
+                       };
+                       requestAnimationFrame(doAnimate);
+                   "
+                   x-text="Math.round(current).toLocaleString()">
                 </p>
                 <p class="text-sm text-emerald-100 mt-1">
-                    <span x-data="animatedCounter({{ $this->metrics->get('orders_per_day') }}, { decimals: 1 })"
-                          x-init="$watch('$wire.metrics.orders_per_day', value => updateValue(value))"
-                          x-text="formattedValue"
-                          x-cloak>{{ number_format($this->metrics->get('orders_per_day'), 1) }}</span> per day
+                    {{ number_format($this->metrics->get('orders_per_day'), 1) }} per day
                 </p>
             </div>
             <flux:icon name="shopping-bag" class="size-8 text-emerald-200" />
@@ -50,11 +85,29 @@
             <div>
                 <p class="text-purple-100 text-sm font-medium">Average Order</p>
                 <p class="text-3xl font-bold"
-                   x-data="currencyCounter({{ $this->metrics->get('average_order_value') }})"
-                   x-init="$watch('$wire.metrics.average_order_value', value => updateValue(value))"
-                   x-text="formattedValue"
-                   x-cloak>
-                    £{{ number_format($this->metrics->get('average_order_value'), 2) }}
+                   wire:key="avg-{{ $this->metrics->get('average_order_value') }}"
+                   x-data="{
+                       current: $store.metrics.avgOrder || 0,
+                       target: {{ $this->metrics->get('average_order_value') }}
+                   }"
+                   x-init="
+                       let start = current;
+                       let change = target - start;
+                       let duration = 800;
+                       let startTime = Date.now();
+                       let doAnimate = () => {
+                           let elapsed = Date.now() - startTime;
+                           if (elapsed < duration) {
+                               current = start + (change * (elapsed / duration));
+                               requestAnimationFrame(doAnimate);
+                           } else {
+                               current = target;
+                               $store.metrics.avgOrder = target;
+                           }
+                       };
+                       requestAnimationFrame(doAnimate);
+                   "
+                   x-text="'£' + Math.round(current).toLocaleString()">
                 </p>
                 <p class="text-sm text-purple-100 mt-1">Per order value</p>
             </div>
@@ -68,11 +121,29 @@
             <div>
                 <p class="text-orange-100 text-sm font-medium">Items Sold</p>
                 <p class="text-3xl font-bold"
-                   x-data="integerCounter({{ $this->metrics->get('total_items') }})"
-                   x-init="$watch('$wire.metrics.total_items', value => updateValue(value))"
-                   x-text="formattedValue"
-                   x-cloak>
-                    {{ number_format($this->metrics->get('total_items')) }}
+                   wire:key="items-{{ $this->metrics->get('total_items') }}"
+                   x-data="{
+                       current: $store.metrics.items || 0,
+                       target: {{ $this->metrics->get('total_items') }}
+                   }"
+                   x-init="
+                       let start = current;
+                       let change = target - start;
+                       let duration = 800;
+                       let startTime = Date.now();
+                       let doAnimate = () => {
+                           let elapsed = Date.now() - startTime;
+                           if (elapsed < duration) {
+                               current = start + (change * (elapsed / duration));
+                               requestAnimationFrame(doAnimate);
+                           } else {
+                               current = target;
+                               $store.metrics.items = target;
+                           }
+                       };
+                       requestAnimationFrame(doAnimate);
+                   "
+                   x-text="Math.round(current).toLocaleString()">
                 </p>
                 <p class="text-sm text-orange-100 mt-1">Total units</p>
             </div>
@@ -90,19 +161,31 @@
                         <flux:icon name="star" class="size-3 text-pink-200" />
                     </div>
                     <p class="text-3xl font-bold"
-                       x-data="currencyCounter({{ $this->bestDay['revenue'] }})"
-                       x-init="$watch('$wire.bestDay.revenue', value => updateValue(value))"
-                       x-text="formattedValue"
-                       x-cloak>
-                        £{{ number_format($this->bestDay['revenue'], 2) }}
+                       wire:key="best-{{ $this->bestDay['revenue'] }}"
+                       x-data="{
+                           current: $store.metrics.bestDayRevenue || 0,
+                           target: {{ $this->bestDay['revenue'] }}
+                       }"
+                       x-init="
+                           let start = current;
+                           let change = target - start;
+                           let duration = 800;
+                           let startTime = Date.now();
+                           let doAnimate = () => {
+                               let elapsed = Date.now() - startTime;
+                               if (elapsed < duration) {
+                                   current = start + (change * (elapsed / duration));
+                                   requestAnimationFrame(doAnimate);
+                               } else {
+                                   current = target;
+                                   $store.metrics.bestDayRevenue = target;
+                               }
+                           };
+                           requestAnimationFrame(doAnimate);
+                       "
+                       x-text="'£' + Math.round(current).toLocaleString()">
                     </p>
-                    <p class="text-sm text-pink-100 mt-1">
-                        {{ $this->bestDay['date'] }} •
-                        <span x-data="integerCounter({{ $this->bestDay['orders'] }})"
-                              x-init="$watch('$wire.bestDay.orders', value => updateValue(value))"
-                              x-text="formattedValue"
-                              x-cloak>{{ number_format($this->bestDay['orders']) }}</span> orders
-                    </p>
+                    <p class="text-sm text-pink-100 mt-1">{{ $this->bestDay['date'] }} • {{ $this->bestDay['orders'] }} orders</p>
                 </div>
                 <flux:icon name="fire" class="size-8 text-pink-200" />
             </div>
