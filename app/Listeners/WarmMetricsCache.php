@@ -105,10 +105,10 @@ final class WarmMetricsCache implements ShouldQueue
 
             // Broadcast that this period was warmed
             CachePeriodWarmed::dispatch(
-                period: "{$period}d",
-                orders: $cacheData['orders'],
-                revenue: $cacheData['revenue'],
-                items: $cacheData['items']
+                "{$period}d",
+                $cacheData['orders'],
+                $cacheData['revenue'],
+                $cacheData['items']
             );
         } catch (\Throwable $e) {
             Log::error('Failed to warm cache for period', [
