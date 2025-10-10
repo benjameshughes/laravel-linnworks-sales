@@ -86,7 +86,7 @@
                 </div>
 
                 <div class="relative min-w-[140px] flex-1 lg:flex-initial lg:w-36">
-                    <flux:select wire:model.live="period" size="sm">
+                    <flux:select wire:model.live.debounce.300ms="period" size="sm">
                         <flux:select.option value="1">Last 24 hours</flux:select.option>
                         <flux:select.option value="yesterday">Yesterday</flux:select.option>
                         <flux:select.option value="7">Last 7 days</flux:select.option>
@@ -115,7 +115,7 @@
                 @endif
 
                 <div class="relative min-w-[140px] flex-1 lg:flex-initial lg:w-36">
-                    <flux:select wire:model.live="channel" size="sm">
+                    <flux:select wire:model.live.debounce.300ms="channel" size="sm">
                         <flux:select.option value="all">All Channels</flux:select.option>
                         @foreach($this->availableChannels as $channelOption)
                             <flux:select.option value="{{ $channelOption->get('name') }}">
