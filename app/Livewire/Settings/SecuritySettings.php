@@ -14,22 +14,18 @@ class SecuritySettings extends Component
     public string $newDomain = '';
     public string $newEmail = '';
 
-    public function __construct(
-        private readonly SettingsService $settings
-    ) {}
-
-    public function mount(): void
+    public function mount(SettingsService $settings): void
     {
         // Check authorization
         if (!auth()->user()->can('manage-security')) {
             abort(403);
         }
 
-        $this->allowedDomains = $this->settings->getArray('security.allowed_domains');
-        $this->allowedEmails = $this->settings->getArray('security.allowed_emails');
+        $this->allowedDomains = $settings->getArray('security.allowed_domains');
+        $this->allowedEmails = $settings->getArray('security.allowed_emails');
     }
 
-    public function addDomain(): void
+    public function addDomain(SettingsService $settings): void
     {
         $this->validate([
             'newDomain' => ['required', 'string', 'regex:/^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/'],
@@ -41,24 +37,24 @@ class SecuritySettings extends Component
 
         if (!in_array($domain, $this->allowedDomains)) {
             $this->allowedDomains[] = $domain;
-            $this->settings->set('security.allowed_domains', $this->allowedDomains, auth()->id());
+            $settings->set('security.allowed_domains', $this->allowedDomains, auth()->id());
         }
 
         $this->newDomain = '';
         $this->dispatch('domain-added');
     }
 
-    public function removeDomain(string $domain): void
+    public function removeDomain(string $domain, SettingsService $settings): void
     {
         $this->allowedDomains = array_values(array_filter(
             $this->allowedDomains,
             fn($d) => $d !== $domain
         ));
 
-        $this->settings->set('security.allowed_domains', $this->allowedDomains, auth()->id());
+        $settings->set('security.allowed_domains', $this->allowedDomains, auth()->id());
     }
 
-    public function addEmail(): void
+    public function addEmail(SettingsService $settings): void
     {
         $this->validate([
             'newEmail' => ['required', 'email'],
@@ -68,21 +64,21 @@ class SecuritySettings extends Component
 
         if (!in_array($email, $this->allowedEmails)) {
             $this->allowedEmails[] = $email;
-            $this->settings->set('security.allowed_emails', $this->allowedEmails, auth()->id());
+            $settings->set('security.allowed_emails', $this->allowedEmails, auth()->id());
         }
 
         $this->newEmail = '';
         $this->dispatch('email-added');
     }
 
-    public function removeEmail(string $email): void
+    public function removeEmail(string $email, SettingsService $settings): void
     {
         $this->allowedEmails = array_values(array_filter(
             $this->allowedEmails,
             fn($e) => $e !== $email
         ));
 
-        $this->settings->set('security.allowed_emails', $this->allowedEmails, auth()->id());
+        $settings->set('security.allowed_emails', $this->allowedEmails, auth()->id());
     }
 
     public function render()
