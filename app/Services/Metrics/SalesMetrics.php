@@ -170,8 +170,13 @@ class SalesMetrics extends MetricBase
                     $channelRevenue = $channelOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
                     $ordersCount = $channelOrders->count();
 
+                    $displayName = $subsource
+                        ? "{$subsource} ({$channel})"
+                        : $channel;
+
                     return collect([
-                        'name' => $channel,
+                        'name' => $displayName,
+                        'channel' => $channel,
                         'subsource' => $subsource ?: null,
                         'orders' => $ordersCount,
                         'revenue' => $channelRevenue,
