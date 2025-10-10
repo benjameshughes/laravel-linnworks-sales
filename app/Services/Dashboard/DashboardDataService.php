@@ -35,8 +35,10 @@ class DashboardDataService
      */
     public function getCachedMetrics(string $period, string $channel = 'all'): ?array
     {
-        // Only support caching for standard periods without search/custom dates
-        if (!in_array($period, ['7', '30', '90']) || $channel !== 'all') {
+        $cacheablePeriods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+
+        // Only support caching for configured periods without search/custom dates
+        if (!in_array($period, $cacheablePeriods) || $channel !== 'all') {
             return null;
         }
 
@@ -79,7 +81,7 @@ class DashboardDataService
      * Check if we can use pre-warmed cache for current filters
      *
      * Cache is only available for:
-     * - Standard periods: 7, 30, 90 days
+     * - Configured cacheable periods (from config/dashboard.php)
      * - "all" channel filter
      * - No search term
      * - No custom date range
@@ -91,7 +93,9 @@ class DashboardDataService
         ?string $customFrom = null,
         ?string $customTo = null
     ): bool {
-        return in_array($period, ['7', '30', '90'])
+        $cacheablePeriods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+
+        return in_array($period, $cacheablePeriods)
             && $channel === 'all'
             && $searchTerm === ''
             && $customFrom === null

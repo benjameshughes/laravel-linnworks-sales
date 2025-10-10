@@ -46,6 +46,7 @@ final class SalesTrendChart extends Component
     #[Computed]
     public function orders(): Collection
     {
+        \Log::warning('SalesTrendChart: orders() computed property called - THIS SHOULD NOT HAPPEN IF CACHE IS HIT');
         return app(DashboardDataService::class)->getOrders(
             period: $this->period,
             channel: $this->channel,
@@ -70,15 +71,23 @@ final class SalesTrendChart extends Component
             $cached = $service->getCachedMetrics($this->period, $this->channel);
             if ($cached) {
                 if ($this->viewMode === 'orders' && isset($cached['chart_orders'])) {
+                    \Log::info('SalesTrendChart: Using cached chart_orders');
                     return $cached['chart_orders'];
                 }
                 if ($this->viewMode === 'revenue' && isset($cached['chart_line'])) {
+                    \Log::info('SalesTrendChart: Using cached chart_line');
                     return $cached['chart_line'];
                 }
             }
         }
 
         // Fallback to live calculation
+        \Log::warning('SalesTrendChart: Cache MISS - calculating from SalesMetrics', [
+            'period' => $this->period,
+            'channel' => $this->channel,
+            'viewMode' => $this->viewMode
+        ]);
+
         if ($this->viewMode === 'orders') {
             return $this->salesMetrics->getOrderCountChartData($this->period, $this->customFrom, $this->customTo);
         }

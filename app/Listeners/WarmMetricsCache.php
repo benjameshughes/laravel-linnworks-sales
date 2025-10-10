@@ -43,7 +43,7 @@ final class WarmMetricsCache implements ShouldQueue
             'sync_type' => $event->syncType,
         ]);
 
-        $periods = ['7', '30', '90'];
+        $periods = config('dashboard.cacheable_periods', ['7', '30', '90']);
         $channels = ['all']; // Can add specific channels later
 
         // Broadcast that warming has started
