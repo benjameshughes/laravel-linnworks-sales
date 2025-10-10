@@ -116,18 +116,18 @@ final class MetricsSummary extends Component
     }
 
     #[Computed]
-    public function bestDay(): ?array
+    public function bestDay(): Collection|array|null
     {
         // Try cache first
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
             $cached = $service->getCachedMetrics($this->period, $this->channel);
             if ($cached && isset($cached['best_day'])) {
-                return $cached['best_day'];
+                return $cached['best_day']; // This will be a Collection from cache
             }
         }
 
-        // Fallback to live calculation
+        // Fallback to live calculation (returns Collection)
         $startDate = $this->dateRange->get('start')?->format('Y-m-d');
         $endDate = $this->dateRange->get('end')?->format('Y-m-d');
 
