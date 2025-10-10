@@ -19,6 +19,12 @@ class SalesMetrics extends MetricBase
      */
     private array $orderRevenueCache = [];
 
+    /**
+     * Cache for daily sales data to avoid recalculating for every chart method
+     */
+    private ?Collection $dailySalesCache = null;
+    private ?string $dailySalesCacheKey = null;
+
     public function __construct(Collection $data)
     {
         parent::__construct($data);
@@ -267,9 +273,30 @@ class SalesMetrics extends MetricBase
     }
 
     /**
-     * Get daily sales data for chart visualization
+     * Get daily sales data for chart visualization (with memoization)
      */
     public function dailySalesData(string $period, ?string $startDate = null, ?string $endDate = null): Collection
+    {
+        // Create cache key from parameters
+        $cacheKey = md5($period . $startDate . $endDate);
+
+        // Return cached result if available
+        if ($this->dailySalesCacheKey === $cacheKey && $this->dailySalesCache !== null) {
+            return $this->dailySalesCache;
+        }
+
+        // Calculate and cache the result
+        $result = $this->calculateDailySalesData($period, $startDate, $endDate);
+        $this->dailySalesCache = $result;
+        $this->dailySalesCacheKey = $cacheKey;
+
+        return $result;
+    }
+
+    /**
+     * Internal method to calculate daily sales data
+     */
+    private function calculateDailySalesData(string $period, ?string $startDate, ?string $endDate): Collection
     {
         if ($startDate && $endDate) {
             $start = Carbon::parse($startDate)->startOfDay();
