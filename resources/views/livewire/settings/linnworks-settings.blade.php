@@ -276,18 +276,31 @@
         {{-- Instructions Card --}}
         <x-card>
             <flux:heading size="lg" class="mb-4">How to Get Your Linnworks Credentials</flux:heading>
-            
+
+            <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 mb-6">
+                <div class="flex items-start space-x-2">
+                    <flux:icon.information-circle class="size-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div class="text-sm text-amber-800 dark:text-amber-200">
+                        <strong>One-time setup:</strong> You'll need to create and install a Linnworks app to get your credentials. This only needs to be done once, then you can reconnect anytime with the same credentials.
+                    </div>
+                </div>
+            </div>
+
             <div class="prose prose-sm dark:prose-invert max-w-none">
                 <div class="space-y-4">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
                             1
                         </div>
-                        <div>
+                        <div class="flex-1">
                             <div class="font-medium text-gray-900 dark:text-white">Create a Developer Application</div>
-                            <div class="text-sm text-gray-600 dark:text-gray-400">
-                                Go to the <a href="https://apps.linnworks.net" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Linnworks Developer Portal</a> and create a new application with type "External Application".
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                Go to the Linnworks Developer Portal and create a new application with type "External Application" or "System Integration".
                             </div>
+                            <a href="https://developer.linnworks.com/" target="_blank" class="inline-flex items-center gap-2 text-sm px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                                <flux:icon.arrow-top-right-on-square class="size-4" />
+                                Open Developer Portal
+                            </a>
                         </div>
                     </div>
 
