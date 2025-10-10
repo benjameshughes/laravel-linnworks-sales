@@ -93,6 +93,8 @@ final class WarmMetricsCache implements ShouldQueue
                 'chart_line' => $metrics->getLineChartData($period),
                 'chart_orders' => $metrics->getOrderCountChartData($period),
                 'chart_doughnut' => $metrics->getDoughnutChartData(),
+                'chart_items' => $metrics->getItemsSoldChartData($period, $startDate, $endDate),
+                'chart_orders_revenue' => $metrics->getOrdersVsRevenueChartData($period, $startDate, $endDate),
                 'recent_orders' => $metrics->recentOrders(15),
                 'best_day' => $metrics->bestPerformingDay($startDate, $endDate),
                 'warmed_at' => now()->toISOString(),
