@@ -48,45 +48,49 @@ class SessionManager
      */
     public function refreshSessionToken(int $userId): ?SessionToken
     {
-        $connection = LinnworksConnection::where('user_id', $userId)->first();
-        
+        $connection = LinnworksConnection::where('user_id', $userId)->active()->first();
+
         if (!$connection) {
-            Log::warning('No Linnworks connection found for user', ['user_id' => $userId]);
+            Log::warning('No active Linnworks connection found for user', ['user_id' => $userId]);
             return null;
         }
 
         try {
-            // Get new session token
-            $sessionToken = $this->authService->createSessionToken($connection->access_token);
-            
+            // Get new session token using database credentials (automatically decrypted by model)
+            $sessionToken = $this->authService->createSessionToken(
+                $connection->application_id,
+                $connection->application_secret,
+                $connection->access_token
+            );
+
             if ($sessionToken) {
                 // Cache the new token
                 $this->cacheSessionToken($userId, $sessionToken);
-                
+
                 $connection->fill([
                     'session_token' => $sessionToken->token,
                     'server_location' => $sessionToken->server,
                     'session_expires_at' => $sessionToken->expiresAt,
                     'status' => 'active',
                 ])->save();
-                
+
                 Log::info('Session token refreshed successfully', [
                     'user_id' => $userId,
                     'expires_at' => $sessionToken->expiresAt->toISOString(),
                 ]);
-                
+
                 return $sessionToken;
             }
-            
+
             Log::error('Failed to refresh session token', ['user_id' => $userId]);
             return null;
-            
+
         } catch (\Exception $e) {
             Log::error('Error refreshing session token', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return null;
         }
     }

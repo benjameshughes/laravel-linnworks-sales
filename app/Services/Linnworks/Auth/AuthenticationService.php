@@ -17,18 +17,17 @@ class AuthenticationService
 
     public function __construct(
         private readonly LinnworksClient $client,
-        private readonly ApiCredentials $credentials,
     ) {}
 
     /**
      * Generate installation URL for OAuth flow
      */
-    public function generateInstallUrl(): string
+    public function generateInstallUrl(string $applicationId, string $applicationSecret, string $redirectUri): string
     {
         $params = http_build_query([
-            'ApplicationId' => $this->credentials->applicationId,
-            'ApplicationSecret' => $this->credentials->applicationSecret,
-            'RedirectUri' => $this->credentials->redirectUri,
+            'ApplicationId' => $applicationId,
+            'ApplicationSecret' => $applicationSecret,
+            'RedirectUri' => $redirectUri,
         ]);
 
         return self::INSTALL_URL . '?' . $params;
@@ -36,16 +35,23 @@ class AuthenticationService
 
     /**
      * Exchange installation token for session token
+     *
+     * @param string $applicationId Application ID from database
+     * @param string $applicationSecret Application Secret from database
+     * @param string $installationToken Installation/Access token from database
      */
-    public function exchangeInstallationToken(string $installationToken): ?SessionToken
-    {
+    public function exchangeInstallationToken(
+        string $applicationId,
+        string $applicationSecret,
+        string $installationToken
+    ): ?SessionToken {
         Log::info('Exchanging installation token for session token', [
             'token_length' => strlen($installationToken),
         ]);
 
         $request = ApiRequest::post('Auth/AuthorizeByApplication', [
-            'ApplicationId' => $this->credentials->applicationId,
-            'ApplicationSecret' => $this->credentials->applicationSecret,
+            'ApplicationId' => $applicationId,
+            'ApplicationSecret' => $applicationSecret,
             'Token' => $installationToken,
         ])->withoutAuth();
 
@@ -60,7 +66,7 @@ class AuthenticationService
         }
 
         $data = $response->getData();
-        
+
         if ($data->isEmpty()) {
             Log::error('Empty response when exchanging installation token');
             return null;
@@ -68,14 +74,14 @@ class AuthenticationService
 
         try {
             $sessionToken = SessionToken::fromApiResponse($data->toArray());
-            
+
             Log::info('Installation token exchanged successfully', [
                 'server' => $sessionToken->server,
                 'expires_at' => $sessionToken->expiresAt->toISOString(),
             ]);
-            
+
             return $sessionToken;
-            
+
         } catch (\Exception $e) {
             Log::error('Error creating session token from response', [
                 'error' => $e->getMessage(),
@@ -87,10 +93,17 @@ class AuthenticationService
 
     /**
      * Create session token from installation token
+     *
+     * @param string $applicationId Application ID from database
+     * @param string $applicationSecret Application Secret from database
+     * @param string $installationToken Installation/Access token from database
      */
-    public function createSessionToken(string $installationToken): ?SessionToken
-    {
-        return $this->exchangeInstallationToken($installationToken);
+    public function createSessionToken(
+        string $applicationId,
+        string $applicationSecret,
+        string $installationToken
+    ): ?SessionToken {
+        return $this->exchangeInstallationToken($applicationId, $applicationSecret, $installationToken);
     }
 
     /**
@@ -122,12 +135,18 @@ class AuthenticationService
 
     /**
      * Create or update user connection
+     *
+     * @deprecated Use LinnworksOAuthService::createConnection() instead
      */
-    public function createConnection(int $userId, string $installationToken): ?LinnworksConnection
-    {
+    public function createConnection(
+        int $userId,
+        string $applicationId,
+        string $applicationSecret,
+        string $installationToken
+    ): ?LinnworksConnection {
         // First exchange the installation token
-        $sessionToken = $this->exchangeInstallationToken($installationToken);
-        
+        $sessionToken = $this->exchangeInstallationToken($applicationId, $applicationSecret, $installationToken);
+
         if (!$sessionToken) {
             Log::error('Cannot create connection: failed to exchange installation token', [
                 'user_id' => $userId,
@@ -149,8 +168,8 @@ class AuthenticationService
             $connection = LinnworksConnection::updateOrCreate(
                 ['user_id' => $userId],
                 [
-                    'application_id' => $this->credentials->applicationId,
-                    'application_secret' => $this->credentials->applicationSecret,
+                    'application_id' => $applicationId,
+                    'application_secret' => $applicationSecret,
                     'access_token' => $installationToken,
                     'session_token' => $sessionToken->token,
                     'server_location' => $sessionToken->server,
@@ -171,7 +190,7 @@ class AuthenticationService
             ]);
 
             return $connection;
-            
+
         } catch (\Exception $e) {
             Log::error('Error creating connection', [
                 'user_id' => $userId,
@@ -187,8 +206,13 @@ class AuthenticationService
     public function validateConnection(LinnworksConnection $connection): bool
     {
         try {
-            $sessionToken = $this->createSessionToken($connection->access_token);
-            
+            // Credentials are automatically decrypted from database by model
+            $sessionToken = $this->createSessionToken(
+                $connection->application_id,
+                $connection->application_secret,
+                $connection->access_token
+            );
+
             if (!$sessionToken) {
                 Log::warning('Connection validation failed: cannot create session token', [
                     'connection_id' => $connection->id,
@@ -198,7 +222,7 @@ class AuthenticationService
             }
 
             $isValid = $this->testConnection($sessionToken);
-            
+
             if (!$isValid) {
                 Log::warning('Connection validation failed: connection test failed', [
                     'connection_id' => $connection->id,
@@ -207,7 +231,7 @@ class AuthenticationService
             }
 
             return $isValid;
-            
+
         } catch (\Exception $e) {
             Log::error('Error validating connection', [
                 'connection_id' => $connection->id,
@@ -247,7 +271,12 @@ class AuthenticationService
      */
     public function getConnectionStatus(LinnworksConnection $connection): array
     {
-            $sessionToken = $this->createSessionToken($connection->access_token);
+        // Credentials are automatically decrypted from database by model
+        $sessionToken = $this->createSessionToken(
+            $connection->application_id,
+            $connection->application_secret,
+            $connection->access_token
+        );
         $isValid = $sessionToken ? $this->testConnection($sessionToken) : false;
 
         return [
