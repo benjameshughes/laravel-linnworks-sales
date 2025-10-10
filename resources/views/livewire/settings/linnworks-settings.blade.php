@@ -2,7 +2,7 @@
     @include('partials.settings-heading')
 
     <x-settings.layout :heading="__('Linnworks Integration')" :subheading="__('Connect your Linnworks account to sync sales data automatically')">
-        <div class="w-full max-w-4xl space-y-6">
+        <div class="my-6 w-full space-y-10">
             {{-- Flash Messages --}}
             @if (session('success'))
                 <div class="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
@@ -19,21 +19,29 @@
             @endif
 
             {{-- Connection Status --}}
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <flux:heading size="lg">Connection Status</flux:heading>
+            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                        <flux:icon.link class="size-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between">
+                            <flux:heading size="lg">Connection Status</flux:heading>
 
-                    @if($this->connectionStatus['connected'])
-                        <flux:badge color="green" size="sm">
-                            <flux:icon.check-circle class="size-4" />
-                            Connected
-                        </flux:badge>
-                    @else
-                        <flux:badge color="red" size="sm">
-                            <flux:icon.x-circle class="size-4" />
-                            Not Connected
-                        </flux:badge>
-                    @endif
+                            @if($this->connectionStatus['connected'])
+                                <flux:badge color="green" size="sm">
+                                    <flux:icon.check-circle class="size-4" />
+                                    Connected
+                                </flux:badge>
+                            @else
+                                <flux:badge color="red" size="sm">
+                                    <flux:icon.x-circle class="size-4" />
+                                    Not Connected
+                                </flux:badge>
+                            @endif
+                        </div>
+                        <flux:subheading>Manage your Linnworks API connection</flux:subheading>
+                    </div>
                 </div>
 
                 @if($this->connectionStatus['connected'])
@@ -100,7 +108,9 @@
                     </div>
 
                     {{-- Connect Button --}}
-                    <div>
+                    <flux:separator />
+
+                    <div class="flex justify-start">
                         <flux:button wire:click="showConnectionForm" type="button" variant="primary" icon="link">
                             Connect to Linnworks
                         </flux:button>
@@ -110,28 +120,15 @@
 
             {{-- Open Orders Defaults (only show when connected) --}}
             @if($this->connectionStatus['connected'])
-                <flux:separator />
-
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <div>
+                <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                    <div class="flex items-start gap-3">
+                        <div class="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                            <flux:icon.cog-6-tooth class="size-6 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div class="flex-1">
                             <flux:heading size="lg">Open Orders Defaults</flux:heading>
                             <flux:subheading>Choose the Linnworks view and fulfilment location used when syncing open orders</flux:subheading>
                         </div>
-                        <flux:button
-                            wire:click="refreshSourceCatalog"
-                            size="sm"
-                            variant="outline"
-                            icon="arrow-path"
-                            :disabled="$isRefreshingSources"
-                        >
-                            <span wire:loading wire:target="refreshSourceCatalog">
-                                Refreshing...
-                            </span>
-                            <span wire:loading.remove wire:target="refreshSourceCatalog">
-                                Refresh from Linnworks
-                            </span>
-                        </flux:button>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -168,7 +165,24 @@
                         </flux:field>
                     </div>
 
-                    <div class="flex justify-end">
+                    <flux:separator />
+
+                    <div class="flex items-center justify-between">
+                        <flux:button
+                            wire:click="refreshSourceCatalog"
+                            size="sm"
+                            variant="outline"
+                            icon="arrow-path"
+                            :disabled="$isRefreshingSources"
+                        >
+                            <span wire:loading wire:target="refreshSourceCatalog">
+                                Refreshing...
+                            </span>
+                            <span wire:loading.remove wire:target="refreshSourceCatalog">
+                                Refresh from Linnworks
+                            </span>
+                        </flux:button>
+
                         <flux:button wire:click="savePreferences" variant="primary" icon="check">
                             Save Preferences
                         </flux:button>
@@ -178,11 +192,15 @@
 
             {{-- Connection Form --}}
             @if($showForm)
-                <flux:separator />
-
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <flux:heading size="lg">Connect to Linnworks</flux:heading>
+                <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                    <div class="flex items-start gap-3">
+                        <div class="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                            <flux:icon.key class="size-6 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div class="flex-1">
+                            <flux:heading size="lg">Connect to Linnworks</flux:heading>
+                            <flux:subheading>Enter your Linnworks API credentials</flux:subheading>
+                        </div>
                         <flux:button wire:click="hideConnectionForm" type="button" size="sm" variant="ghost" icon="x-mark" />
                     </div>
 
@@ -222,6 +240,8 @@
                             <flux:description>Generated when you install the application on your Linnworks account</flux:description>
                         </flux:field>
 
+                        <flux:separator />
+
                         <div class="flex justify-end gap-3">
                             <flux:button type="button" wire:click="hideConnectionForm" variant="ghost">
                                 Cancel
@@ -235,10 +255,16 @@
             @endif
 
             {{-- Instructions --}}
-            <flux:separator />
-
-            <div class="space-y-4">
-                <flux:heading size="lg">How to Get Your Linnworks Credentials</flux:heading>
+            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-10 h-10 bg-amber-100 dark:bg-amber-900/20 rounded-lg flex items-center justify-center">
+                        <flux:icon.information-circle class="size-6 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div class="flex-1">
+                        <flux:heading size="lg">How to Get Your Linnworks Credentials</flux:heading>
+                        <flux:subheading>Step-by-step guide to connect your account</flux:subheading>
+                    </div>
+                </div>
 
                 <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
                     <div class="flex items-start gap-2">

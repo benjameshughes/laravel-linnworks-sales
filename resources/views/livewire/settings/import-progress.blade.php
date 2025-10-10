@@ -2,11 +2,19 @@
     @include('partials.settings-heading')
 
     <x-settings.layout :heading="__('Import Orders')" :subheading="__('Import historical orders from Linnworks with real-time progress tracking')">
-        <div class="w-full max-w-4xl space-y-6">
+        <div class="my-6 w-full space-y-10">
             {{-- Import Configuration --}}
             @if (!$isImporting && !$isCompleted)
-                <div class="space-y-4">
-                    <flux:heading size="lg">Configure Import</flux:heading>
+                <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                    <div class="flex items-start gap-3">
+                        <div class="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                            <flux:icon.arrow-down-tray class="size-6 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div class="flex-1">
+                            <flux:heading size="lg">Configure Import</flux:heading>
+                            <flux:subheading>Set the date range and batch size for your import</flux:subheading>
+                        </div>
+                    </div>
 
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -30,10 +38,28 @@
                             <flux:description>Number of orders to fetch per API request. Higher values are faster but may hit rate limits</flux:description>
                         </flux:field>
 
-                        <div>
+                        <flux:separator />
+
+                        <div class="flex justify-end">
                             <flux:button variant="primary" wire:click="startImport" icon="arrow-down-tray">
                                 Start Import
                             </flux:button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Help Text --}}
+                <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                    <div class="flex gap-3">
+                        <flux:icon.exclamation-triangle class="size-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-amber-900 dark:text-amber-100 mb-1">Important Notes</h4>
+                            <ul class="text-sm text-amber-800 dark:text-amber-200 space-y-1 list-disc list-inside">
+                                <li>This will import all processed orders from Linnworks within the specified date range</li>
+                                <li>Large imports may take several minutes to complete</li>
+                                <li>Existing orders will be updated with the latest data</li>
+                                <li>The page will update in real-time as the import progresses</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -41,7 +67,7 @@
 
             {{-- Progress Display --}}
             @if ($isImporting || $isCompleted)
-                <div class="space-y-6">
+                <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                     {{-- Status Header --}}
                     <div class="flex items-center justify-between">
                         <flux:heading size="lg">
@@ -148,24 +174,6 @@
                             @endif
                         </div>
                     @endif
-                </div>
-            @endif
-
-            {{-- Help Text --}}
-            @if (!$isImporting && !$isCompleted)
-                <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                    <div class="flex gap-3">
-                        <flux:icon.exclamation-triangle class="size-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-amber-900 dark:text-amber-100 mb-1">Important Notes</h4>
-                            <ul class="text-sm text-amber-800 dark:text-amber-200 space-y-1 list-disc list-inside">
-                                <li>This will import all processed orders from Linnworks within the specified date range</li>
-                                <li>Large imports may take several minutes to complete</li>
-                                <li>Existing orders will be updated with the latest data</li>
-                                <li>The page will update in real-time as the import progresses</li>
-                            </ul>
-                        </div>
-                    </div>
                 </div>
             @endif
         </div>
