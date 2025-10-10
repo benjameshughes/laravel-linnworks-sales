@@ -50,6 +50,9 @@ class DashboardDataService
                 $orders = $this->loadOrders($period, $channel, '', null, null);
                 $metrics = new SalesMetrics($orders);
 
+                $startDate = Carbon::now()->subDays((int) $period)->startOfDay()->format('Y-m-d');
+                $endDate = Carbon::now()->endOfDay()->format('Y-m-d');
+
                 return [
                     'revenue' => $metrics->totalRevenue(),
                     'orders' => $metrics->totalOrders(),
@@ -63,6 +66,7 @@ class DashboardDataService
                     'chart_orders' => $metrics->getOrderCountChartData($period),
                     'chart_doughnut' => $metrics->getDoughnutChartData(),
                     'recent_orders' => $metrics->recentOrders(15),
+                    'best_day' => $metrics->bestPerformingDay($startDate, $endDate),
                     'warmed_at' => now()->toISOString(),
                 ];
             }

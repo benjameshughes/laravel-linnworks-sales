@@ -78,6 +78,9 @@ final class WarmMetricsCache implements ShouldQueue
             $metrics = new SalesMetrics($orders);
 
             // Build comprehensive metrics data
+            $startDate = now()->subDays((int) $period)->startOfDay()->format('Y-m-d');
+            $endDate = now()->endOfDay()->format('Y-m-d');
+
             $cacheData = [
                 'revenue' => $metrics->totalRevenue(),
                 'orders' => $metrics->totalOrders(),
@@ -91,6 +94,7 @@ final class WarmMetricsCache implements ShouldQueue
                 'chart_orders' => $metrics->getOrderCountChartData($period),
                 'chart_doughnut' => $metrics->getDoughnutChartData(),
                 'recent_orders' => $metrics->recentOrders(15),
+                'best_day' => $metrics->bestPerformingDay($startDate, $endDate),
                 'warmed_at' => now()->toISOString(),
             ];
 

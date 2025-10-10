@@ -115,6 +115,25 @@ final class MetricsSummary extends Component
         );
     }
 
+    #[Computed]
+    public function bestDay(): ?array
+    {
+        // Try cache first
+        $service = app(DashboardDataService::class);
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            if ($cached && isset($cached['best_day'])) {
+                return $cached['best_day'];
+            }
+        }
+
+        // Fallback to live calculation
+        $startDate = $this->dateRange->get('start')?->format('Y-m-d');
+        $endDate = $this->dateRange->get('end')?->format('Y-m-d');
+
+        return $this->salesMetrics->bestPerformingDay($startDate, $endDate);
+    }
+
     public function render()
     {
         return view('livewire.dashboard.metrics-summary');
