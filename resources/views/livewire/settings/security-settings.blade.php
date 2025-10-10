@@ -16,7 +16,7 @@
                 </div>
 
                 @if(count($allowedDomains) > 0)
-                    <div class="flex flex-wrap gap-2 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg">
+                    <div class="flex flex-wrap gap-2">
                         @foreach($allowedDomains as $domain)
                             <flux:badge size="lg" color="blue" class="flex items-center gap-2">
                                 {{ $domain }}
@@ -76,7 +76,7 @@
                 </div>
 
                 @if(count($allowedEmails) > 0)
-                    <div class="flex flex-wrap gap-2 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg">
+                    <div class="flex flex-wrap gap-2">
                         @foreach($allowedEmails as $email)
                             <flux:badge size="lg" color="purple" class="flex items-center gap-2">
                                 {{ $email }}

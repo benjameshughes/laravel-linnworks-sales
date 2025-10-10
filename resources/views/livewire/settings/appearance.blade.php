@@ -15,13 +15,11 @@
                     </div>
                 </div>
 
-                <div class="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg">
-                    <flux:radio.group x-data variant="segmented" x-model="$flux.appearance" class="w-full">
-                        <flux:radio value="light" icon="sun" class="flex-1">{{ __('Light') }}</flux:radio>
-                        <flux:radio value="dark" icon="moon" class="flex-1">{{ __('Dark') }}</flux:radio>
-                        <flux:radio value="system" icon="computer-desktop" class="flex-1">{{ __('System') }}</flux:radio>
-                    </flux:radio.group>
-                </div>
+                <flux:radio.group x-data variant="segmented" x-model="$flux.appearance" class="w-full">
+                    <flux:radio value="light" icon="sun" class="flex-1">{{ __('Light') }}</flux:radio>
+                    <flux:radio value="dark" icon="moon" class="flex-1">{{ __('Dark') }}</flux:radio>
+                    <flux:radio value="system" icon="computer-desktop" class="flex-1">{{ __('System') }}</flux:radio>
+                </flux:radio.group>
 
                 <div class="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-lg">
                     <div class="flex items-start gap-2">
