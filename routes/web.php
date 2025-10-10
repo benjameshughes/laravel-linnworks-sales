@@ -40,4 +40,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('settings/import', ImportProgress::class)->name('settings.import');
 });
 
+Route::middleware(['auth', 'can:manage-security'])->group(function () {
+    Route::get('settings/security', \App\Livewire\Settings\SecuritySettings::class)->name('settings.security');
+});
+
 require __DIR__.'/auth.php';

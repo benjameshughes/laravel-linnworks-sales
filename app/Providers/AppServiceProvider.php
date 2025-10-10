@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use App\Services\Dashboard\DashboardDataService;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -24,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configurePasswordValidation();
+        $this->configureAuthorizationGates();
     }
 
     /**
@@ -38,5 +41,26 @@ class AppServiceProvider extends ServiceProvider
             ->symbols()           // At least one special character
             ->uncompromised()     // Check against pwned passwords database
         );
+    }
+
+    /**
+     * Configure authorization gates
+     */
+    private function configureAuthorizationGates(): void
+    {
+        // Security management gate
+        Gate::define('manage-security', function (User $user) {
+            return $user->is_admin;
+        });
+
+        // User management gate
+        Gate::define('manage-users', function (User $user) {
+            return $user->is_admin;
+        });
+
+        // Settings management gate (for non-security settings)
+        Gate::define('manage-settings', function (User $user) {
+            return $user->is_admin;
+        });
     }
 }

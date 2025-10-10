@@ -6,6 +6,10 @@
             <flux:navlist.item :href="route('settings.appearance')" wire:navigate>{{ __('Appearance') }}</flux:navlist.item>
             <flux:navlist.item :href="route('settings.linnworks')" wire:navigate>{{ __('Linnworks') }}</flux:navlist.item>
             <flux:navlist.item :href="route('settings.import')" wire:navigate>{{ __('Import Orders') }}</flux:navlist.item>
+
+            @can('manage-security')
+                <flux:navlist.item :href="route('settings.security')" wire:navigate>{{ __('Security') }}</flux:navlist.item>
+            @endcan
         </flux:navlist>
     </div>
 
