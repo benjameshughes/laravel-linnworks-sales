@@ -49,9 +49,9 @@ final class WarmMetricsCache implements ShouldQueue
         // Broadcast that warming has started
         CacheWarmingStarted::dispatch(collect($periods)->map(fn($p) => "{$p}d")->toArray());
 
-        // Use Concurrency::defer() to warm all caches in parallel
-        // This runs AFTER the response is sent to the user
-        Concurrency::defer(
+        // Use Concurrency::run() to warm all caches in parallel
+        // This waits for all tasks to complete
+        Concurrency::run(
             collect($periods)->flatMap(function (string $period) use ($channels) {
                 return collect($channels)->map(function (string $channel) use ($period) {
                     return function () use ($period, $channel) {
@@ -61,9 +61,9 @@ final class WarmMetricsCache implements ShouldQueue
             })->toArray()
         );
 
-        Log::info('Queued cache warming tasks for concurrent execution');
+        Log::info('Cache warming tasks completed');
 
-        // Broadcast completion
+        // Broadcast completion AFTER all tasks are done
         CacheWarmingCompleted::dispatch(count($periods));
     }
 

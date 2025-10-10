@@ -26,11 +26,6 @@ final class CachePeriodWarmed implements ShouldBroadcastNow
         return new Channel('cache-management');
     }
 
-    public function broadcastAs(): string
-    {
-        return 'CachePeriodWarmed';
-    }
-
     public function broadcastWith(): array
     {
         return [

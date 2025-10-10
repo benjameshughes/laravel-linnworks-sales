@@ -23,11 +23,6 @@ final class CacheCleared implements ShouldBroadcastNow
         return new Channel('cache-management');
     }
 
-    public function broadcastAs(): string
-    {
-        return 'CacheCleared';
-    }
-
     public function broadcastWith(): array
     {
         return [

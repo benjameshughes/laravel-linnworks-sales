@@ -14,7 +14,7 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-final class CacheManagement extends Component
+class CacheManagement extends Component
 {
     public bool $isWarming = false;
     public bool $isClearing = false;
@@ -51,7 +51,7 @@ final class CacheManagement extends Component
     #[Computed]
     public function queuedJobs(): int
     {
-        return DB::table('jobs')->where('queue', 'default')->count();
+        return DB::table('jobs')->where('queue', 'low')->count();
     }
 
     #[Computed]
