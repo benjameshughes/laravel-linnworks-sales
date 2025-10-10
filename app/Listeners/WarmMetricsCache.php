@@ -8,18 +8,16 @@ use App\Events\CachePeriodWarmed;
 use App\Events\CacheWarmingCompleted;
 use App\Events\CacheWarmingStarted;
 use App\Events\OrdersSynced;
-use App\Services\Dashboard\DashboardDataService;
-use App\Services\Metrics\SalesMetrics;
+use App\Jobs\WarmPeriodCacheJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Concurrency;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Warm metrics cache when orders are synced
  *
- * Uses Concurrency::defer() to warm all period caches in parallel
- * after the HTTP response is sent, ensuring zero impact on sync performance.
+ * Dispatches individual jobs for each period to avoid memory issues.
+ * Jobs are dispatched to queue and processed sequentially by queue worker.
  */
 final class WarmMetricsCache implements ShouldQueue
 {
@@ -35,6 +33,9 @@ final class WarmMetricsCache implements ShouldQueue
 
     /**
      * Handle the event.
+     *
+     * Dispatches individual WarmPeriodCacheJob for each period/channel combination.
+     * This prevents memory issues by processing one period at a time in the queue worker.
      */
     public function handle(OrdersSynced $event): void
     {
@@ -49,80 +50,27 @@ final class WarmMetricsCache implements ShouldQueue
         // Broadcast that warming has started
         CacheWarmingStarted::dispatch(collect($periods)->map(fn($p) => "{$p}d")->toArray());
 
-        // Use Concurrency::run() to warm all caches in parallel
-        // This waits for all tasks to complete
-        Concurrency::run(
-            collect($periods)->flatMap(function (string $period) use ($channels) {
-                return collect($channels)->map(function (string $channel) use ($period) {
-                    return function () use ($period, $channel) {
-                        $this->warmCacheForPeriod($period, $channel);
-                    };
-                });
-            })->toArray()
-        );
+        // Dispatch individual jobs for each period/channel combination
+        // Jobs are queued and processed sequentially, preventing memory buildup
+        $jobs = collect($periods)->flatMap(function (string $period) use ($channels) {
+            return collect($channels)->map(function (string $channel) use ($period) {
+                return new WarmPeriodCacheJob($period, $channel);
+            });
+        });
 
-        Log::info('Cache warming tasks completed');
+        // Dispatch all jobs to the 'low' priority queue
+        Bus::batch($jobs->all())
+            ->onQueue('low')
+            ->name('warm-metrics-cache')
+            ->finally(function () use ($periods) {
+                Log::info('Cache warming batch completed');
+                CacheWarmingCompleted::dispatch(count($periods));
+            })
+            ->dispatch();
 
-        // Broadcast completion AFTER all tasks are done
-        CacheWarmingCompleted::dispatch(count($periods));
-    }
-
-    /**
-     * Warm cache for a specific period and channel
-     */
-    private function warmCacheForPeriod(string $period, string $channel): void
-    {
-        try {
-            $service = app(DashboardDataService::class);
-            $orders = $service->getOrders($period, $channel);
-            $metrics = new SalesMetrics($orders);
-
-            // Build comprehensive metrics data
-            $startDate = now()->subDays((int) $period)->startOfDay()->format('Y-m-d');
-            $endDate = now()->endOfDay()->format('Y-m-d');
-
-            $cacheData = [
-                'revenue' => $metrics->totalRevenue(),
-                'orders' => $metrics->totalOrders(),
-                'items' => $metrics->totalItemsSold(),
-                'avg_order_value' => $metrics->averageOrderValue(),
-                'processed_orders' => $metrics->totalProcessedOrders(),
-                'open_orders' => $metrics->totalOpenOrders(),
-                'top_channels' => $metrics->topChannels(6),
-                'top_products' => $metrics->topProducts(5),
-                'chart_line' => $metrics->getLineChartData($period),
-                'chart_orders' => $metrics->getOrderCountChartData($period),
-                'chart_doughnut' => $metrics->getDoughnutChartData(),
-                'chart_items' => $metrics->getItemsSoldChartData($period, $startDate, $endDate),
-                'chart_orders_revenue' => $metrics->getOrdersVsRevenueChartData($period, $startDate, $endDate),
-                'recent_orders' => $metrics->recentOrders(15),
-                'best_day' => $metrics->bestPerformingDay($startDate, $endDate),
-                'warmed_at' => now()->toISOString(),
-            ];
-
-            // Cache for 1 hour (will be refreshed when new orders sync)
-            $cacheKey = "metrics_{$period}d_{$channel}";
-            Cache::put($cacheKey, $cacheData, 3600);
-
-            Log::debug("Cache warmed successfully", [
-                'cache_key' => $cacheKey,
-                'orders_count' => $orders->count(),
-            ]);
-
-            // Broadcast that this period was warmed
-            CachePeriodWarmed::dispatch(
-                "{$period}d",
-                $cacheData['orders'],
-                $cacheData['revenue'],
-                $cacheData['items']
-            );
-        } catch (\Throwable $e) {
-            Log::error('Failed to warm cache for period', [
-                'period' => $period,
-                'channel' => $channel,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        Log::info('Cache warming jobs dispatched', [
+            'job_count' => $jobs->count(),
+        ]);
     }
 
     /**
@@ -130,10 +78,11 @@ final class WarmMetricsCache implements ShouldQueue
      */
     public function failed(OrdersSynced $event, \Throwable $exception): void
     {
-        Log::error('WarmMetricsCache listener failed', [
+        Log::error('WarmMetricsCache listener failed to dispatch jobs', [
             'orders_processed' => $event->ordersProcessed,
             'sync_type' => $event->syncType,
             'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
         ]);
     }
 }
