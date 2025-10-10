@@ -52,13 +52,19 @@ final class DashboardFilters extends Component
 
     public function updated($property): void
     {
+        // Clear custom dates when switching away from custom period
+        if ($property === 'period' && $this->period !== 'custom') {
+            $this->customFrom = null;
+            $this->customTo = null;
+        }
+
         if (in_array($property, ['period', 'channel', 'searchTerm', 'customFrom', 'customTo'])) {
             $this->dispatch('filters-updated',
                 period: $this->period,
                 channel: $this->channel,
                 searchTerm: $this->searchTerm,
-                customFrom: $this->customFrom,
-                customTo: $this->customTo
+                customFrom: $this->period === 'custom' ? $this->customFrom : null,
+                customTo: $this->period === 'custom' ? $this->customTo : null
             );
         }
     }

@@ -67,22 +67,41 @@ final class SalesTrendChart extends Component
     {
         // Try to use pre-warmed cache first (instant response)
         $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+
+        \Log::info('SalesTrendChart: chartData() called', [
+            'period' => $this->period,
+            'channel' => $this->channel,
+            'searchTerm' => $this->searchTerm,
+            'customFrom' => $this->customFrom,
+            'customTo' => $this->customTo,
+            'viewMode' => $this->viewMode,
+        ]);
+
+        $canUseCache = $service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo);
+        \Log::info('SalesTrendChart: canUseCachedMetrics = ' . ($canUseCache ? 'TRUE' : 'FALSE'));
+
+        if ($canUseCache) {
             $cached = $service->getCachedMetrics($this->period, $this->channel);
+            \Log::info('SalesTrendChart: getCachedMetrics returned: ' . ($cached ? 'DATA' : 'NULL'));
+
             if ($cached) {
+                \Log::info('SalesTrendChart: Cache has keys: ' . implode(', ', array_keys($cached)));
+
                 if ($this->viewMode === 'orders' && isset($cached['chart_orders'])) {
-                    \Log::info('SalesTrendChart: Using cached chart_orders');
+                    \Log::info('SalesTrendChart: ✅ Using cached chart_orders');
                     return $cached['chart_orders'];
                 }
                 if ($this->viewMode === 'revenue' && isset($cached['chart_line'])) {
-                    \Log::info('SalesTrendChart: Using cached chart_line');
+                    \Log::info('SalesTrendChart: ✅ Using cached chart_line');
                     return $cached['chart_line'];
                 }
+
+                \Log::warning('SalesTrendChart: Cache exists but missing key for viewMode: ' . $this->viewMode);
             }
         }
 
         // Fallback to live calculation
-        \Log::warning('SalesTrendChart: Cache MISS - calculating from SalesMetrics', [
+        \Log::warning('SalesTrendChart: ❌ Cache MISS - calculating from SalesMetrics', [
             'period' => $this->period,
             'channel' => $this->channel,
             'viewMode' => $this->viewMode
