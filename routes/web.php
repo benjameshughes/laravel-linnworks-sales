@@ -44,4 +44,8 @@ Route::middleware(['auth', 'can:manage-security'])->group(function () {
     Route::get('settings/security', \App\Livewire\Settings\SecuritySettings::class)->name('settings.security');
 });
 
+Route::middleware(['auth', 'can:manage-cache'])->group(function () {
+    Route::get('settings/cache', \App\Livewire\Settings\CacheManagement::class)->name('settings.cache');
+});
+
 require __DIR__.'/auth.php';

@@ -10,6 +10,10 @@
             @can('manage-security')
                 <flux:navlist.item :href="route('settings.security')" wire:navigate>{{ __('Security') }}</flux:navlist.item>
             @endcan
+
+            @can('manage-cache')
+                <flux:navlist.item :href="route('settings.cache')" wire:navigate>{{ __('Cache') }}</flux:navlist.item>
+            @endcan
         </flux:navlist>
     </div>
 
