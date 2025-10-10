@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Events\CachePeriodWarmed;
+use App\Events\CacheWarmingCompleted;
+use App\Events\CacheWarmingStarted;
 use App\Events\OrdersSynced;
 use App\Services\Dashboard\DashboardDataService;
 use App\Services\Metrics\SalesMetrics;
@@ -43,6 +46,9 @@ final class WarmMetricsCache implements ShouldQueue
         $periods = ['7', '30', '90'];
         $channels = ['all']; // Can add specific channels later
 
+        // Broadcast that warming has started
+        CacheWarmingStarted::dispatch(collect($periods)->map(fn($p) => "{$p}d")->toArray());
+
         // Use Concurrency::defer() to warm all caches in parallel
         // This runs AFTER the response is sent to the user
         Concurrency::defer(
@@ -56,6 +62,9 @@ final class WarmMetricsCache implements ShouldQueue
         );
 
         Log::info('Queued cache warming tasks for concurrent execution');
+
+        // Broadcast completion
+        CacheWarmingCompleted::dispatch(count($periods));
     }
 
     /**
@@ -93,6 +102,14 @@ final class WarmMetricsCache implements ShouldQueue
                 'cache_key' => $cacheKey,
                 'orders_count' => $orders->count(),
             ]);
+
+            // Broadcast that this period was warmed
+            CachePeriodWarmed::dispatch(
+                period: "{$period}d",
+                orders: $cacheData['orders'],
+                revenue: $cacheData['revenue'],
+                items: $cacheData['items']
+            );
         } catch (\Throwable $e) {
             Log::error('Failed to warm cache for period', [
                 'period' => $period,

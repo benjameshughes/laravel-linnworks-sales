@@ -105,34 +105,100 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg space-y-3">
+                    {{-- Warm Cache Control --}}
+                    <div class="p-4 rounded-lg space-y-3 transition-all duration-300 {{ $isWarming ? 'bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700' : 'bg-zinc-50 dark:bg-zinc-800/50 border-2 border-transparent' }}">
                         <div class="flex items-start gap-2">
-                            <flux:icon.arrow-path class="size-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
-                            <div>
-                                <h4 class="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Warm Cache</h4>
-                                <p class="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                                    Pre-calculate and store metrics for all periods. Takes ~30 seconds to complete.
+                            <div class="flex-shrink-0 mt-0.5">
+                                @if($isWarming)
+                                    <flux:icon.fire class="size-5 text-orange-600 dark:text-orange-400 animate-pulse" />
+                                @else
+                                    <flux:icon.arrow-path class="size-5 text-purple-600 dark:text-purple-400" />
+                                @endif
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-sm {{ $isWarming ? 'text-orange-900 dark:text-orange-100' : 'text-zinc-900 dark:text-zinc-100' }}">
+                                    Warm Cache
+                                </h4>
+                                <p class="text-xs {{ $isWarming ? 'text-orange-600 dark:text-orange-400' : 'text-zinc-600 dark:text-zinc-400' }} mt-1">
+                                    @if($isWarming)
+                                        Warming cache... {{ count($warmingPeriods) }}/3 periods completed
+                                    @else
+                                        Pre-calculate and store metrics for all periods. Takes ~30 seconds to complete.
+                                    @endif
                                 </p>
                             </div>
                         </div>
-                        <flux:button wire:click="warmCache" variant="primary" icon="arrow-path" class="w-full">
-                            Warm Cache Now
-                        </flux:button>
+
+                        @if($isWarming)
+                            <div class="space-y-2">
+                                @foreach(['7d', '30d', '90d'] as $period)
+                                    <div class="flex items-center gap-2 text-xs">
+                                        @if(in_array($period, $warmingPeriods))
+                                            <flux:icon.check-circle class="size-4 text-green-600 dark:text-green-400" />
+                                            <span class="text-green-700 dark:text-green-300">{{ $period }} period cached</span>
+                                        @else
+                                            <div class="size-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+                                            <span class="text-orange-700 dark:text-orange-300">Warming {{ $period }}...</span>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <button
+                            wire:click="warmCache"
+                            class="w-full px-4 py-2 rounded-lg font-medium transition-all duration-300 transform {{ $isWarming ? 'bg-orange-600 hover:bg-orange-700 text-white scale-105' : 'bg-purple-600 hover:bg-purple-700 text-white' }} disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            {{ $isWarming ? 'disabled' : '' }}
+                        >
+                            @if($isWarming)
+                                <flux:icon.fire class="size-5 animate-pulse" />
+                                <span>Warming...</span>
+                            @else
+                                <flux:icon.arrow-path class="size-5" />
+                                <span>Warm Cache Now</span>
+                            @endif
+                        </button>
                     </div>
 
-                    <div class="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg space-y-3">
+                    {{-- Clear Cache Control --}}
+                    <div class="p-4 rounded-lg space-y-3 transition-all duration-300 {{ $isClearing ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-700' : 'bg-zinc-50 dark:bg-zinc-800/50 border-2 border-transparent' }}">
                         <div class="flex items-start gap-2">
-                            <flux:icon.trash class="size-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                            <div>
-                                <h4 class="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Clear Cache</h4>
-                                <p class="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                                    Remove all cached metrics. Next dashboard load will recalculate from database.
+                            <div class="flex-shrink-0 mt-0.5">
+                                @if($isClearing)
+                                    <svg class="size-5 text-blue-600 dark:text-blue-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                    </svg>
+                                @else
+                                    <flux:icon.trash class="size-5 text-red-600 dark:text-red-400" />
+                                @endif
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-sm {{ $isClearing ? 'text-blue-900 dark:text-blue-100' : 'text-zinc-900 dark:text-zinc-100' }}">
+                                    Clear Cache
+                                </h4>
+                                <p class="text-xs {{ $isClearing ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-600 dark:text-zinc-400' }} mt-1">
+                                    @if($isClearing)
+                                        Clearing cache... This will complete momentarily.
+                                    @else
+                                        Remove all cached metrics. Next dashboard load will recalculate from database.
+                                    @endif
                                 </p>
                             </div>
                         </div>
-                        <flux:button wire:click="clearCache" variant="danger" icon="trash" class="w-full">
-                            Clear All Cache
-                        </flux:button>
+
+                        <button
+                            wire:click="clearCache"
+                            class="w-full px-4 py-2 rounded-lg font-medium transition-all duration-300 transform {{ $isClearing ? 'bg-blue-600 hover:bg-blue-700 text-white scale-105' : 'bg-red-600 hover:bg-red-700 text-white' }} disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            {{ $isClearing ? 'disabled' : '' }}
+                        >
+                            @if($isClearing)
+                                <div class="size-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Clearing...</span>
+                            @else
+                                <flux:icon.trash class="size-5" />
+                                <span>Clear All Cache</span>
+                            @endif
+                        </button>
                     </div>
                 </div>
             </x-animations.fade-in-up>

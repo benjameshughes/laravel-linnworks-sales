@@ -4,16 +4,22 @@ declare(strict_types=1);
 
 namespace App\Livewire\Settings;
 
+use App\Events\CacheCleared;
 use App\Events\OrdersSynced;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
 final class CacheManagement extends Component
 {
+    public bool $isWarming = false;
+    public bool $isClearing = false;
+    public array $warmingPeriods = [];
+
     public function mount(): void
     {
         // Check authorization
@@ -81,23 +87,58 @@ final class CacheManagement extends Component
 
     public function warmCache(): void
     {
+        $this->isWarming = true;
+        $this->warmingPeriods = [];
+
         // Dispatch the OrdersSynced event to trigger cache warming
         OrdersSynced::dispatch(0, 'manual_warm');
 
         $this->dispatch('cache-warming-triggered');
-        session()->flash('cache-warmed', 'Cache warming has been queued. It will complete in ~30 seconds.');
     }
 
     public function clearCache(): void
     {
+        $this->isClearing = true;
+
         $keys = ['metrics_7d_all', 'metrics_30d_all', 'metrics_90d_all'];
 
         foreach ($keys as $key) {
             Cache::forget($key);
         }
 
+        // Broadcast cache cleared event
+        CacheCleared::dispatch();
+
         $this->dispatch('cache-cleared');
-        session()->flash('cache-cleared', 'All dashboard metric caches have been cleared.');
+    }
+
+    #[On('echo:cache-management,CacheWarmingStarted')]
+    public function handleWarmingStarted(array $data): void
+    {
+        $this->isWarming = true;
+        $this->warmingPeriods = [];
+    }
+
+    #[On('echo:cache-management,CachePeriodWarmed')]
+    public function handlePeriodWarmed(array $data): void
+    {
+        $this->warmingPeriods[] = $data['period'];
+        unset($this->cacheStatus); // Reset computed property
+    }
+
+    #[On('echo:cache-management,CacheWarmingCompleted')]
+    public function handleWarmingCompleted(array $data): void
+    {
+        $this->isWarming = false;
+        $this->warmingPeriods = [];
+        unset($this->cacheStatus); // Reset computed property
+    }
+
+    #[On('echo:cache-management,CacheCleared')]
+    public function handleCacheCleared(array $data): void
+    {
+        $this->isClearing = false;
+        unset($this->cacheStatus); // Reset computed property
     }
 
     public function render()
