@@ -1,11 +1,22 @@
 <div class="transition-opacity duration-200" wire:loading.class="opacity-50">
     <x-chart-widget
-        type="bar"
+        type="line"
         :chart-key="$this->chartKey"
         :data="$this->chartData"
-        title="Daily Revenue"
-        subtitle="Revenue per day for {{ $this->periodLabel }}"
-        icon="currency-pound"
+        title="{{ $viewMode === 'items' ? 'Items Sold' : 'Orders vs Revenue' }}"
+        subtitle="{{ $this->periodLabel }}"
+        icon="{{ $viewMode === 'items' ? 'cube' : 'chart-bar' }}"
         height="250px"
-    />
+    >
+        <x-slot:actions>
+            <flux:radio.group
+                wire:model.live="viewMode"
+                variant="segmented"
+                class="[&>label]:transition-all [&>label]:duration-200"
+            >
+                <flux:radio value="orders_revenue" icon="chart-bar">Orders/Revenue</flux:radio>
+                <flux:radio value="items" icon="cube">Items</flux:radio>
+            </flux:radio.group>
+        </x-slot:actions>
+    </x-chart-widget>
 </div>
