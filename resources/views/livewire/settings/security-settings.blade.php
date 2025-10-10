@@ -4,7 +4,7 @@
     <x-settings.layout :heading="__('Security Settings')" :subheading="__('Manage allowed email domains and security policies')">
         <div class="my-6 w-full space-y-10">
             {{-- Allowed Domains Section --}}
-            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+            <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                         <flux:icon.shield-check class="size-6 text-blue-600 dark:text-blue-400" />
@@ -17,18 +17,20 @@
 
                 @if(count($allowedDomains) > 0)
                     <div class="flex flex-wrap gap-2">
-                        @foreach($allowedDomains as $domain)
-                            <flux:badge size="lg" color="blue" class="flex items-center gap-2">
-                                {{ $domain }}
-                                <button
-                                    wire:click="removeDomain('{{ $domain }}')"
-                                    class="hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                                    type="button"
-                                    aria-label="Remove domain"
-                                >
-                                    <flux:icon.x-mark class="size-4" />
-                                </button>
-                            </flux:badge>
+                        @foreach($allowedDomains as $index => $domain)
+                            <x-animations.stagger-item :index="$index" class="inline-block">
+                                <flux:badge size="lg" color="blue" class="flex items-center gap-2">
+                                    {{ $domain }}
+                                    <button
+                                        wire:click="removeDomain('{{ $domain }}')"
+                                        class="hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                        type="button"
+                                        aria-label="Remove domain"
+                                    >
+                                        <flux:icon.x-mark class="size-4" />
+                                    </button>
+                                </flux:badge>
+                            </x-animations.stagger-item>
                         @endforeach
                     </div>
                 @else
@@ -61,10 +63,10 @@
                         <flux:error name="newDomain" />
                     </flux:field>
                 </div>
-            </div>
+            </x-animations.fade-in-up>
 
             {{-- Allowed Individual Emails Section --}}
-            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+            <x-animations.fade-in-up :delay="200" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
                         <flux:icon.user-plus class="size-6 text-purple-600 dark:text-purple-400" />
@@ -77,18 +79,20 @@
 
                 @if(count($allowedEmails) > 0)
                     <div class="flex flex-wrap gap-2">
-                        @foreach($allowedEmails as $email)
-                            <flux:badge size="lg" color="purple" class="flex items-center gap-2">
-                                {{ $email }}
-                                <button
-                                    wire:click="removeEmail('{{ $email }}')"
-                                    class="hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                                    type="button"
-                                    aria-label="Remove email"
-                                >
-                                    <flux:icon.x-mark class="size-4" />
-                                </button>
-                            </flux:badge>
+                        @foreach($allowedEmails as $index => $email)
+                            <x-animations.stagger-item :index="$index" class="inline-block">
+                                <flux:badge size="lg" color="purple" class="flex items-center gap-2">
+                                    {{ $email }}
+                                    <button
+                                        wire:click="removeEmail('{{ $email }}')"
+                                        class="hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                        type="button"
+                                        aria-label="Remove email"
+                                    >
+                                        <flux:icon.x-mark class="size-4" />
+                                    </button>
+                                </flux:badge>
+                            </x-animations.stagger-item>
                         @endforeach
                     </div>
                 @else
@@ -119,10 +123,10 @@
                         <flux:error name="newEmail" />
                     </flux:field>
                 </div>
-            </div>
+            </x-animations.fade-in-up>
 
             {{-- Password Requirements Info (Read-only) --}}
-            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+            <x-animations.fade-in-up :delay="300" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
                         <flux:icon.lock-closed class="size-6 text-green-600 dark:text-green-400" />
@@ -157,7 +161,7 @@
                         </li>
                     </ul>
                 </div>
-            </div>
+            </x-animations.fade-in-up>
         </div>
     </x-settings.layout>
 </section>
