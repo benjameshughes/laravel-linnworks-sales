@@ -19,6 +19,7 @@ final class DailyRevenueChart extends Component
     public string $searchTerm = '';
     public ?string $customFrom = null;
     public ?string $customTo = null;
+    public string $viewMode = 'orders_revenue'; // 'orders_revenue' or 'items'
 
     public function mount(): void
     {
@@ -63,7 +64,11 @@ final class DailyRevenueChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        return $this->salesMetrics->getBarChartData($this->period);
+        if ($this->viewMode === 'items') {
+            return $this->salesMetrics->getItemsSoldChartData($this->period, $this->customFrom, $this->customTo);
+        }
+
+        return $this->salesMetrics->getOrdersVsRevenueChartData($this->period, $this->customFrom, $this->customTo);
     }
 
     #[Computed]
@@ -86,7 +91,12 @@ final class DailyRevenueChart extends Component
     #[Computed]
     public function chartKey(): string
     {
-        return "daily-bar-{$this->period}-{$this->channel}-{$this->searchTerm}-{$this->customFrom}-{$this->customTo}";
+        return "daily-bar-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->searchTerm}-{$this->customFrom}-{$this->customTo}";
+    }
+
+    public function setViewMode(string $mode): void
+    {
+        $this->viewMode = $mode;
     }
 
     public function render()

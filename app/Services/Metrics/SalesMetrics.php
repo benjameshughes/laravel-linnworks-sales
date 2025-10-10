@@ -156,7 +156,7 @@ class SalesMetrics extends MetricBase
     }
 
     /**
-     * Get top performing channels by revenue
+     * Get top performing channels by revenue (grouped by channel + subsource)
      */
     public function topChannels(int $limit = 6): Collection
     {
@@ -178,6 +178,34 @@ class SalesMetrics extends MetricBase
                         'name' => $displayName,
                         'channel' => $channel,
                         'subsource' => $subsource ?: null,
+                        'orders' => $ordersCount,
+                        'revenue' => $channelRevenue,
+                        'avg_order_value' => $ordersCount > 0 ? $channelRevenue / $ordersCount : 0,
+                        'percentage' => $totalRevenue > 0 ? ($channelRevenue / $totalRevenue) * 100 : 0,
+                    ]);
+                })
+                ->sortByDesc('revenue')
+                ->take($limit)
+                ->values();
+        });
+    }
+
+    /**
+     * Get top performing channels by revenue (grouped by channel only, no subsource)
+     */
+    public function topChannelsGrouped(int $limit = 6): Collection
+    {
+        return $this->cache("top_channels_grouped_{$limit}", function () use ($limit) {
+            $totalRevenue = $this->totalRevenue();
+
+            return $this->data
+                ->groupBy(fn (Order $order) => $order->channel_name)
+                ->map(function (Collection $channelOrders, string $channel) use ($totalRevenue) {
+                    $channelRevenue = $channelOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+                    $ordersCount = $channelOrders->count();
+
+                    return collect([
+                        'name' => $channel,
                         'orders' => $ordersCount,
                         'revenue' => $channelRevenue,
                         'avg_order_value' => $ordersCount > 0 ? $channelRevenue / $ordersCount : 0,
@@ -287,11 +315,15 @@ class SalesMetrics extends MetricBase
                 $dayOrders = $this->data;
                 $openOrders = $dayOrders->where('is_processed', false);
                 $processedOrders = $dayOrders->where('is_processed', true);
-                
+
                 $revenue = $dayOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
                 $openRevenue = $openOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
                 $processedRevenue = $processedOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
                 $orderCount = $dayOrders->count();
+
+                $itemsCount = $dayOrders->sum(function ($order) {
+                    return collect($order->items ?? [])->sum('quantity');
+                });
 
                 return collect([
                     collect([
@@ -300,6 +332,7 @@ class SalesMetrics extends MetricBase
                         'day' => $date->format('D'),
                         'revenue' => $revenue,
                         'orders' => $orderCount,
+                        'items' => $itemsCount,
                         'avg_order_value' => $orderCount > 0 ? $revenue / $orderCount : 0,
                         'open_orders' => $openOrders->count(),
                         'processed_orders' => $processedOrders->count(),
@@ -332,12 +365,17 @@ class SalesMetrics extends MetricBase
         $processedRevenue = $processedOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
         $orderCount = $dayOrders->count();
 
+        $itemsCount = $dayOrders->sum(function ($order) {
+            return collect($order->items ?? [])->sum('quantity');
+        });
+
         return collect([
             'date' => $date->format('M j'),
             'iso_date' => $date->format('Y-m-d'),
             'day' => $date->format('D'),
             'revenue' => $revenue,
             'orders' => $orderCount,
+            'items' => $itemsCount,
             'avg_order_value' => $orderCount > 0 ? $revenue / $orderCount : 0,
             'open_orders' => $openOrders->count(),
             'processed_orders' => $processedOrders->count(),
@@ -498,7 +536,70 @@ class SalesMetrics extends MetricBase
     }
 
     /**
-     * Prepare data for doughnut charts
+     * Prepare data for orders vs revenue dual-axis chart
+     */
+    public function getOrdersVsRevenueChartData(string $period, ?string $startDate = null, ?string $endDate = null): array
+    {
+        $chartData = $this->dailySalesData($period, $startDate, $endDate);
+
+        return [
+            'labels' => $chartData->pluck('date')->toArray(),
+            'datasets' => [
+                [
+                    'label' => 'Orders',
+                    'data' => $chartData->pluck('orders')->toArray(),
+                    'borderColor' => '#3B82F6',
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
+                    'yAxisID' => 'y',
+                    'tension' => 0.4,
+                    'fill' => true,
+                    'borderWidth' => 2,
+                ],
+                [
+                    'label' => 'Revenue (£)',
+                    'data' => $chartData->pluck('revenue')->toArray(),
+                    'borderColor' => '#10B981',
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
+                    'yAxisID' => 'y1',
+                    'tension' => 0.4,
+                    'fill' => true,
+                    'borderWidth' => 2,
+                ],
+            ],
+            'meta' => [
+                'iso_dates' => $chartData->pluck('iso_date')->toArray(),
+            ],
+        ];
+    }
+
+    /**
+     * Prepare data for items sold trend chart
+     */
+    public function getItemsSoldChartData(string $period, ?string $startDate = null, ?string $endDate = null): array
+    {
+        $chartData = $this->dailySalesData($period, $startDate, $endDate);
+
+        return [
+            'labels' => $chartData->pluck('date')->toArray(),
+            'datasets' => [
+                [
+                    'label' => 'Items Sold',
+                    'data' => $chartData->pluck('items')->toArray(),
+                    'borderColor' => '#8B5CF6',
+                    'backgroundColor' => 'rgba(139, 92, 246, 0.1)',
+                    'tension' => 0.4,
+                    'fill' => true,
+                    'borderWidth' => 2,
+                ],
+            ],
+            'meta' => [
+                'iso_dates' => $chartData->pluck('iso_date')->toArray(),
+            ],
+        ];
+    }
+
+    /**
+     * Prepare data for doughnut charts (with subsource breakdown)
      */
     public function getDoughnutChartData(): array
     {
@@ -512,7 +613,21 @@ class SalesMetrics extends MetricBase
     }
 
     /**
-     * Prepare data for order count charts (showing open vs processed)
+     * Prepare data for doughnut charts (grouped by channel only)
+     */
+    public function getDoughnutChartDataGrouped(): array
+    {
+        return $this->cache('doughnut_chart_data_grouped', function () {
+            return $this->prepareDoughnutChartData(
+                $this->topChannelsGrouped(),
+                'name',
+                'revenue'
+            );
+        });
+    }
+
+    /**
+     * Prepare data for order count charts (showing open vs processed as line chart)
      */
     public function getOrderCountChartData(string $period, ?string $startDate = null, ?string $endDate = null): array
     {
@@ -522,18 +637,32 @@ class SalesMetrics extends MetricBase
             'labels' => $chartData->pluck('date')->toArray(),
             'datasets' => [
                 [
+                    'label' => 'Total Orders',
+                    'data' => $chartData->pluck('orders')->toArray(),
+                    'borderColor' => '#3B82F6',
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
+                    'tension' => 0.4,
+                    'fill' => true,
+                    'borderWidth' => 2,
+                ],
+                [
                     'label' => 'Processed Orders',
                     'data' => $chartData->pluck('processed_orders')->toArray(),
-                    'backgroundColor' => '#10B981',
                     'borderColor' => '#10B981',
-                    'borderWidth' => 1,
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
+                    'tension' => 0.4,
+                    'fill' => true,
+                    'borderWidth' => 2,
                 ],
                 [
                     'label' => 'Open Orders',
                     'data' => $chartData->pluck('open_orders')->toArray(),
-                    'backgroundColor' => '#F59E0B',
                     'borderColor' => '#F59E0B',
-                    'borderWidth' => 1,
+                    'backgroundColor' => 'rgba(245, 158, 11, 0.1)',
+                    'tension' => 0.4,
+                    'fill' => true,
+                    'borderWidth' => 2,
+                    'borderDash' => [5, 5],
                 ],
             ],
             'meta' => [

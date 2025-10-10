@@ -19,6 +19,7 @@ final class ChannelDistributionChart extends Component
     public string $searchTerm = '';
     public ?string $customFrom = null;
     public ?string $customTo = null;
+    public string $viewMode = 'detailed'; // 'detailed' (subsource breakdown) or 'grouped' (channel only)
 
     public function mount(): void
     {
@@ -63,13 +64,22 @@ final class ChannelDistributionChart extends Component
     #[Computed]
     public function chartData(): array
     {
+        if ($this->viewMode === 'grouped') {
+            return $this->salesMetrics->getDoughnutChartDataGrouped();
+        }
+
         return $this->salesMetrics->getDoughnutChartData();
     }
 
     #[Computed]
     public function chartKey(): string
     {
-        return "channel-doughnut-{$this->period}-{$this->channel}-{$this->searchTerm}-{$this->customFrom}-{$this->customTo}";
+        return "channel-doughnut-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->searchTerm}-{$this->customFrom}-{$this->customTo}";
+    }
+
+    public function setViewMode(string $mode): void
+    {
+        $this->viewMode = $mode;
     }
 
     public function render()

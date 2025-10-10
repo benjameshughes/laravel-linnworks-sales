@@ -19,6 +19,7 @@ final class SalesTrendChart extends Component
     public string $searchTerm = '';
     public ?string $customFrom = null;
     public ?string $customTo = null;
+    public string $viewMode = 'revenue'; // 'revenue' or 'orders'
 
     public function mount(): void
     {
@@ -63,7 +64,11 @@ final class SalesTrendChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        return $this->salesMetrics->getLineChartData($this->period);
+        if ($this->viewMode === 'orders') {
+            return $this->salesMetrics->getOrderCountChartData($this->period, $this->customFrom, $this->customTo);
+        }
+
+        return $this->salesMetrics->getLineChartData($this->period, $this->customFrom, $this->customTo);
     }
 
     #[Computed]
@@ -86,7 +91,12 @@ final class SalesTrendChart extends Component
     #[Computed]
     public function chartKey(): string
     {
-        return "sales-trend-{$this->period}-{$this->channel}-{$this->searchTerm}-{$this->customFrom}-{$this->customTo}";
+        return "sales-trend-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->searchTerm}-{$this->customFrom}-{$this->customTo}";
+    }
+
+    public function setViewMode(string $mode): void
+    {
+        $this->viewMode = $mode;
     }
 
     public function render()
