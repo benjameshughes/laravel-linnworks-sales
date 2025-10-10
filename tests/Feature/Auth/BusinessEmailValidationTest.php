@@ -60,6 +60,7 @@ test('email validation is case insensitive', function () {
         ->call('register')
         ->assertHasNoErrors();
 
+    // The email should be normalized to lowercase when stored
     expect(User::where('email', 'john@testcompany.com')->exists())->toBeTrue();
 });
 

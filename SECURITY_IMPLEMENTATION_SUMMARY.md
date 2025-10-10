@@ -208,7 +208,7 @@ Route::middleware(['auth', 'can:manage-security'])->group(function () {
 **Files Modified:** 2
 
 **Features:**
-- Custom rate limiters configured in `bootstrap/app.php`
+- Custom rate limiters configured in `AppServiceProvider`
 - Applied to authentication routes
 - Three rate limiters:
   - **Login:** 5 attempts per minute (by email + IP)
@@ -216,7 +216,7 @@ Route::middleware(['auth', 'can:manage-security'])->group(function () {
   - **API:** 60 requests per minute (by user ID or IP)
 
 **Key Files:**
-- `bootstrap/app.php` - Rate limiter configuration
+- `app/Providers/AppServiceProvider.php` - Rate limiter configuration
 - `routes/auth.php` - Applied throttle middleware
 
 **Rate Limiter Configuration:**

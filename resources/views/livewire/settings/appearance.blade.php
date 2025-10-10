@@ -15,14 +15,21 @@
                     </div>
                 </div>
 
-                <x-animations.animated-segmented-control
-                    :options="[
-                        ['value' => 'light', 'icon' => 'sun', 'label' => __('Light')],
-                        ['value' => 'dark', 'icon' => 'moon', 'label' => __('Dark')],
-                        ['value' => 'system', 'icon' => 'computer-desktop', 'label' => __('System')]
-                    ]"
+                {{-- Theme switcher with subtle animations --}}
+                <div
+                    x-data
                     class="w-full"
-                />
+                >
+                    <flux:radio.group
+                        variant="segmented"
+                        x-model="$flux.appearance"
+                        class="w-full [&>label]:transition-all [&>label]:duration-200 [&>label:hover]:scale-[1.02] [&>label:active]:scale-[0.98]"
+                    >
+                        <flux:radio value="light" icon="sun" class="flex-1">{{ __('Light') }}</flux:radio>
+                        <flux:radio value="dark" icon="moon" class="flex-1">{{ __('Dark') }}</flux:radio>
+                        <flux:radio value="system" icon="computer-desktop" class="flex-1">{{ __('System') }}</flux:radio>
+                    </flux:radio.group>
+                </div>
 
                 <div class="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-lg">
                     <div class="flex items-start gap-2">

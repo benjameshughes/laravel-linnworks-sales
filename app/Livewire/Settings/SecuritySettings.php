@@ -6,7 +6,7 @@ use App\Services\SettingsService;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
-#[Layout('components.layouts.settings')]
+#[Layout('components.layouts.app')]
 class SecuritySettings extends Component
 {
     public array $allowedDomains = [];

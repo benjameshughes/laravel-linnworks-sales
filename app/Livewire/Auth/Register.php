@@ -26,12 +26,14 @@ class Register extends Component
      */
     public function register(): void
     {
+        // Normalize email to lowercase before validation for better UX
+        $this->email = strtolower(trim($this->email));
+
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
                 'string',
-                'lowercase',
                 'email',
                 'max:255',
                 'unique:'.User::class,
