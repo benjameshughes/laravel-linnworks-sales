@@ -13,7 +13,6 @@ use App\Services\Linnworks\Orders\OpenOrdersService;
 use App\Services\Linnworks\Orders\OrdersApiService;
 use App\Services\Linnworks\Orders\ProcessedOrdersService;
 use App\Services\Linnworks\Products\ProductsApiService;
-use App\ValueObjects\Linnworks\ApiCredentials;
 use App\ValueObjects\Linnworks\SessionToken;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -34,7 +33,6 @@ class LinnworksApiService
         private readonly ProductsApiService $products,
         private readonly FetchOrdersWithDetails $fetchOrdersWithDetails,
         private readonly CheckAndUpdateProcessedOrders $checkProcessedOrders,
-        private readonly ApiCredentials $credentials,
     ) {}
 
     /**
@@ -42,8 +40,7 @@ class LinnworksApiService
      */
     public function isConfigured(): bool
     {
-        return $this->credentials->isValid()
-            && LinnworksConnection::query()->active()->exists();
+        return LinnworksConnection::query()->active()->exists();
     }
 
     /**

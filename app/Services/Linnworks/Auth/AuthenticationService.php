@@ -4,7 +4,6 @@ namespace App\Services\Linnworks\Auth;
 
 use App\Models\LinnworksConnection;
 use App\Services\Linnworks\Core\LinnworksClient;
-use App\ValueObjects\Linnworks\ApiCredentials;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\SessionToken;
 use Illuminate\Support\Facades\Log;
