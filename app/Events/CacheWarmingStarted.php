@@ -23,6 +23,11 @@ final class CacheWarmingStarted implements ShouldBroadcastNow
         return new Channel('cache-management');
     }
 
+    public function broadcastAs(): string
+    {
+        return 'CacheWarmingStarted';
+    }
+
     public function broadcastWith(): array
     {
         return [
