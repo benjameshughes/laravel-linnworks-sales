@@ -16,3 +16,8 @@ window.Chart = Chart;
  * Alpine.js chart components
  */
 import './alpine-charts';
+
+/**
+ * Alpine.js animated counter components
+ */
+import './alpine-counter';
