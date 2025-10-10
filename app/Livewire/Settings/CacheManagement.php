@@ -122,9 +122,6 @@ class CacheManagement extends Component
     #[On('echo:cache-management,CachePeriodWarmed')]
     public function handlePeriodWarmed(array $data): void
     {
-        // Add a subtle delay for smoother UI animation
-        usleep(150000); // 150ms delay - just enough for smooth transition
-
         $this->warmingPeriods[] = $data['period'];
         unset($this->cacheStatus); // Reset computed property
     }
@@ -140,9 +137,6 @@ class CacheManagement extends Component
     #[On('echo:cache-management,CacheCleared')]
     public function handleCacheCleared(array $data): void
     {
-        // Add a subtle delay for the water animation
-        usleep(200000); // 200ms delay
-
         $this->isClearing = false;
         unset($this->cacheStatus); // Reset computed property
     }
