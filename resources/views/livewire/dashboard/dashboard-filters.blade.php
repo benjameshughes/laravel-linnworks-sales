@@ -15,11 +15,28 @@
                 <span class="text-zinc-400">•</span>
                 <span class="flex items-center gap-1"
                       x-data="{
-                          lastSync: '{{ $this->lastSyncInfo->get('time_human') }}',
                           elapsed: 0,
                           interval: null,
                           displayText: '{{ $this->lastSyncInfo->get('time_human') }}',
+                          isSyncing: @entangle('isSyncing'),
+                          init() {
+                              this.startTimer();
+                              // Watch for sync state changes
+                              this.$watch('isSyncing', (value) => {
+                                  if (!value) {
+                                      // Sync just completed, reset timer
+                                      this.elapsed = 0;
+                                      this.startTimer();
+                                  }
+                              });
+                          },
+                          startTimer() {
+                              if (this.interval) clearInterval(this.interval);
+                              this.interval = setInterval(() => this.updateTime(), 1000);
+                          },
                           updateTime() {
+                              if (this.isSyncing) return; // Don't update while syncing
+
                               this.elapsed++;
 
                               // If less than 60 seconds, show seconds count
@@ -35,8 +52,7 @@
                                   this.displayText = '1 minute ago';
                               }
                           }
-                      }"
-                      x-init="interval = setInterval(() => updateTime(), 1000)">
+                      }">
                     @if($isSyncing)
                         <span class="flex items-center gap-1"
                               x-transition:enter="transition ease-out duration-300"

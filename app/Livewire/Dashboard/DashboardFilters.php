@@ -265,6 +265,19 @@ final class DashboardFilters extends Component
         $this->isSyncing = false;
         $this->syncStage = 'completed';
         $this->syncMessage = 'Sync complete!';
+
+        // Clear cached computed properties to force fresh data
+        unset($this->lastSyncInfo);
+        unset($this->totalOrders);
+
+        // Trigger data refresh across all dashboard components
+        $this->dispatch('filters-updated',
+            period: $this->period,
+            channel: $this->channel,
+            searchTerm: $this->searchTerm,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
     }
 
     public function render()
