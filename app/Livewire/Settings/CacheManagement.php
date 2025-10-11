@@ -88,6 +88,21 @@ class CacheManagement extends Component
             return null;
         }
 
+        // Determine which period is currently being processed
+        $currentPeriod = null;
+        if (!$batch->finished_at) {
+            $periods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+            $cacheStatus = $this->cacheStatus;
+
+            foreach ($periods as $period) {
+                $periodKey = "{$period}d";
+                if (!($cacheStatus[$periodKey]['exists'] ?? false)) {
+                    $currentPeriod = $periodKey;
+                    break; // First period without cache is currently warming
+                }
+            }
+        }
+
         return [
             'id' => $batch->id,
             'name' => $batch->name,
@@ -101,6 +116,7 @@ class CacheManagement extends Component
             'finished' => $batch->finished_at !== null,
             'created_at' => $batch->created_at,
             'finished_at' => $batch->finished_at,
+            'current_period' => $currentPeriod,
         ];
     }
 

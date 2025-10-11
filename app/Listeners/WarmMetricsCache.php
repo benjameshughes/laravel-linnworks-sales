@@ -27,9 +27,23 @@ final class WarmMetricsCache implements ShouldQueue
     public string $queue = 'low';
 
     /**
-     * The number of seconds before the job should be processed.
+     * Determine the time at which the listener should timeout.
      */
-    public int $delay = 30; // Wait 30s after sync completes
+    public function retryUntil(): \DateTime
+    {
+        return now()->addMinutes(5);
+    }
+
+    /**
+     * Get the number of seconds before the job should be processed.
+     *
+     * Manual warming has no delay for immediate feedback.
+     * Auto warming after sync waits 30s to ensure sync is fully complete.
+     */
+    public function delay(OrdersSynced $event): int
+    {
+        return $event->syncType === 'manual_warm' ? 0 : 30;
+    }
 
     /**
      * Handle the event.

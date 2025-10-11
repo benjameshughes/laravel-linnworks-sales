@@ -74,7 +74,9 @@
                             }
 
                             // Check if this period has activity overlays to show
-                            $isCurrentlyWarming = $currentlyWarmingPeriod === $period;
+                            // Use batch's current_period if available, fallback to component state
+                            $batchCurrentPeriod = $this->activeBatch['current_period'] ?? null;
+                            $isCurrentlyWarming = ($batchCurrentPeriod === $period) || ($currentlyWarmingPeriod === $period);
                             $isQueuedForWarming = $isWarming && !$isCurrentlyWarming && !$status['exists'];
                         @endphp
 
@@ -164,6 +166,8 @@
                                 <span class="text-sm font-medium text-indigo-900 dark:text-indigo-100">
                                     @if($this->activeBatch['finished'])
                                         Completed
+                                    @elseif($this->activeBatch['current_period'])
+                                        Warming {{ $this->activeBatch['current_period'] }}
                                     @else
                                         Processing Jobs
                                     @endif
