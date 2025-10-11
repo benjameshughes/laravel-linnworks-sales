@@ -190,6 +190,9 @@ class CacheManagement extends Component
         unset($this->cacheStatus);
         unset($this->activeBatch);
         unset($this->recentCacheWarming);
+
+        // Force Livewire to re-render to show updated cache status
+        $this->dispatch('$refresh');
     }
 
     #[On('echo:cache-management,CacheWarmingCompleted')]
@@ -202,6 +205,9 @@ class CacheManagement extends Component
         unset($this->cacheStatus);
         unset($this->activeBatch);
         unset($this->recentCacheWarming);
+
+        // Force Livewire to re-render the component
+        $this->dispatch('$refresh');
     }
 
     #[On('echo:cache-management,CacheCleared')]
