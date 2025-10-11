@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Actions\Linnworks\Orders\SyncRecentOrders;
+use App\Jobs\SyncRecentOrdersJob;
 use App\Models\Order;
 use App\Models\SyncLog;
 use Carbon\Carbon;
@@ -108,7 +108,7 @@ final class DashboardFilters extends Component
 
             $processedWindow = max((int) config('linnworks.sync.default_date_range', 30), $windowDays);
 
-            \App\Jobs\SyncRecentOrdersJob::dispatch(
+            SyncRecentOrdersJob::dispatch(
                 openWindowDays: $windowDays,
                 processedWindowDays: $processedWindow,
                 forceUpdate: false,
