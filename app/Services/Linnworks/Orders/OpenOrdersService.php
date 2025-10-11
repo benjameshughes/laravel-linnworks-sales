@@ -401,12 +401,10 @@ class OpenOrdersService
 
         do {
             $payload = [
-                'request' => [
-                    'ViewId' => $viewId,
-                    'LocationId' => $locationId ?? '00000000-0000-0000-0000-000000000000',
-                    'EntriesPerPage' => $entriesPerPage,
-                    'PageNumber' => $page,
-                ],
+                'ViewId' => $viewId,
+                'LocationId' => $locationId ?? '00000000-0000-0000-0000-000000000000',
+                'EntriesPerPage' => $entriesPerPage,
+                'PageNumber' => $page,
             ];
 
             $request = ApiRequest::post('OpenOrders/GetOpenOrderIds', $payload)->asJson();

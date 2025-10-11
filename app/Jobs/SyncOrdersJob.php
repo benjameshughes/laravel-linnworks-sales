@@ -89,17 +89,29 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
                 $this->markMissingOrdersAsClosed($openOrderIds);
             }
 
-            // Step 4: Fetch recent open orders with FULL details
+            // Step 4: Fetch FULL details for recent open orders
+            // Filter to recent orders (last 90 days) for efficiency
             event(new SyncProgressUpdated('fetching-open', 'Fetching open order details...'));
 
-            $openOrders = $api->getRecentOpenOrders(
-                userId: null,
-                days: 90,
-                maxOrders: (int) config('linnworks.sync.max_open_orders', 1000),
-            );
+            $recentCutoff = Carbon::now()->subDays(90)->startOfDay();
+            $maxOpenOrders = (int) config('linnworks.sync.max_open_orders', 1000);
 
-            Log::info('Open orders with details fetched', [
-                'open_orders_count' => $openOrders->count(),
+            // Get full order details using GetOpenOrdersDetails API
+            $recentOpenOrderIds = $openOrderIds->take($maxOpenOrders)->toArray();
+            $openOrders = $api->getOpenOrderDetails($recentOpenOrderIds);
+
+            // Filter to recent orders only (received within last 90 days)
+            $openOrders = $openOrders->filter(function ($order) use ($recentCutoff) {
+                if (!$order instanceof \App\DataTransferObjects\LinnworksOrder) {
+                    return true; // Keep if not a DTO (will be converted later)
+                }
+                return $order->receivedDate === null || $order->receivedDate->greaterThanOrEqualTo($recentCutoff);
+            })->values();
+
+            Log::info('Open orders with FULL details fetched', [
+                'total_open_ids' => $openOrderIds->count(),
+                'fetched_details' => $openOrders->count(),
+                'cutoff_date' => $recentCutoff->toDateString(),
             ]);
 
             event(new SyncProgressUpdated('fetched-open', "Fetched {$openOrders->count()} open orders", $openOrders->count()));
