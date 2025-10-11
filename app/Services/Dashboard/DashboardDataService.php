@@ -166,14 +166,14 @@ class DashboardDataService
             )
             ->when($status !== 'all', function ($query) use ($status) {
                 if ($status === 'open_paid') {
-                    // Show open orders that have been paid (revenue orders needing fulfillment)
-                    $query->where('is_open', true)->where('is_paid', true);
+                    // Show ALL paid orders (both open and processed)
+                    $query->where('is_paid', true);
                 } elseif ($status === 'open') {
-                    // Show all open orders (regardless of payment status)
-                    $query->where('is_open', true);
+                    // Show open paid orders (paid orders needing fulfillment)
+                    $query->where('is_open', true)->where('is_paid', true);
                 } elseif ($status === 'processed') {
-                    // Show closed/processed orders (completed)
-                    $query->where('is_open', false);
+                    // Show processed paid orders (paid orders already fulfilled)
+                    $query->where('is_processed', true)->where('is_paid', true);
                 }
             })
             ->orderByDesc('received_date')

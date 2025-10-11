@@ -204,14 +204,14 @@ final class DashboardFilters extends Component
             )
             ->when($this->status !== 'all', function ($query) {
                 if ($this->status === 'open_paid') {
-                    // Show open orders that have been paid (revenue orders needing fulfillment)
-                    $query->where('is_open', true)->where('is_paid', true);
+                    // Show ALL paid orders (both open and processed)
+                    $query->where('is_paid', true);
                 } elseif ($this->status === 'open') {
-                    // Show all open orders (regardless of payment status)
-                    $query->where('is_open', true);
+                    // Show open paid orders (paid orders needing fulfillment)
+                    $query->where('is_open', true)->where('is_paid', true);
                 } elseif ($this->status === 'processed') {
-                    // Show closed/processed orders (completed)
-                    $query->where('is_open', false);
+                    // Show processed paid orders (paid orders already fulfilled)
+                    $query->where('is_processed', true)->where('is_paid', true);
                 }
             })
             ->count();
