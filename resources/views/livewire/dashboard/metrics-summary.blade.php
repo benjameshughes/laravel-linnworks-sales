@@ -6,34 +6,30 @@
             <div>
                 <p class="text-blue-100 text-sm font-medium">Total Revenue</p>
                 <p class="text-3xl font-bold"
+                   wire:key="revenue-{{ $this->metrics->get('total_revenue') }}"
                    x-data="{
-                       displayed: {{ $this->metrics->get('total_revenue') }},
-                       target: {{ $this->metrics->get('total_revenue') }},
-                       animating: false
+                       current: $store.metrics.revenue || 0,
+                       target: {{ $this->metrics->get('total_revenue') }}
                    }"
                    x-init="
-                       $watch('target', (newVal, oldVal) => {
-                           if (animating || newVal === oldVal) return;
-                           animating = true;
-                           let start = displayed;
-                           let change = newVal - start;
-                           let duration = 800;
-                           let startTime = Date.now();
+                       let start = current;
+                       let change = target - start;
+                       let duration = 800;
+                       let startTime = Date.now();
 
-                           let doAnimate = () => {
-                               let elapsed = Date.now() - startTime;
-                               if (elapsed < duration) {
-                                   displayed = start + (change * (elapsed / duration));
-                                   requestAnimationFrame(doAnimate);
-                               } else {
-                                   displayed = newVal;
-                                   animating = false;
-                               }
-                           };
-                           requestAnimationFrame(doAnimate);
-                       });
+                       let doAnimate = () => {
+                           let elapsed = Date.now() - startTime;
+                           if (elapsed < duration) {
+                               current = start + (change * (elapsed / duration));
+                               requestAnimationFrame(doAnimate);
+                           } else {
+                               current = target;
+                               $store.metrics.revenue = target;
+                           }
+                       };
+                       requestAnimationFrame(doAnimate);
                    "
-                   x-text="'£' + Math.round(displayed).toLocaleString()">
+                   x-text="'£' + Math.round(current).toLocaleString()">
                 </p>
                 @if($this->metrics->get('growth_rate') != 0)
                     <p class="text-sm text-blue-100 mt-1">
@@ -51,34 +47,29 @@
             <div>
                 <p class="text-emerald-100 text-sm font-medium">Total Orders</p>
                 <p class="text-3xl font-bold"
+                   wire:key="orders-{{ $this->metrics->get('total_orders') }}"
                    x-data="{
-                       displayed: {{ $this->metrics->get('total_orders') }},
-                       target: {{ $this->metrics->get('total_orders') }},
-                       animating: false
+                       current: $store.metrics.orders || 0,
+                       target: {{ $this->metrics->get('total_orders') }}
                    }"
                    x-init="
-                       $watch('target', (newVal, oldVal) => {
-                           if (animating || newVal === oldVal) return;
-                           animating = true;
-                           let start = displayed;
-                           let change = newVal - start;
-                           let duration = 800;
-                           let startTime = Date.now();
-
-                           let doAnimate = () => {
-                               let elapsed = Date.now() - startTime;
-                               if (elapsed < duration) {
-                                   displayed = start + (change * (elapsed / duration));
-                                   requestAnimationFrame(doAnimate);
-                               } else {
-                                   displayed = newVal;
-                                   animating = false;
-                               }
-                           };
-                           requestAnimationFrame(doAnimate);
-                       });
+                       let start = current;
+                       let change = target - start;
+                       let duration = 800;
+                       let startTime = Date.now();
+                       let doAnimate = () => {
+                           let elapsed = Date.now() - startTime;
+                           if (elapsed < duration) {
+                               current = start + (change * (elapsed / duration));
+                               requestAnimationFrame(doAnimate);
+                           } else {
+                               current = target;
+                               $store.metrics.orders = target;
+                           }
+                       };
+                       requestAnimationFrame(doAnimate);
                    "
-                   x-text="Math.round(displayed).toLocaleString()">
+                   x-text="Math.round(current).toLocaleString()">
                 </p>
                 <p class="text-sm text-emerald-100 mt-1">
                     {{ number_format($this->metrics->get('orders_per_day'), 1) }} per day
@@ -94,34 +85,29 @@
             <div>
                 <p class="text-purple-100 text-sm font-medium">Average Order</p>
                 <p class="text-3xl font-bold"
+                   wire:key="avg-{{ $this->metrics->get('average_order_value') }}"
                    x-data="{
-                       displayed: {{ $this->metrics->get('average_order_value') }},
-                       target: {{ $this->metrics->get('average_order_value') }},
-                       animating: false
+                       current: $store.metrics.avgOrder || 0,
+                       target: {{ $this->metrics->get('average_order_value') }}
                    }"
                    x-init="
-                       $watch('target', (newVal, oldVal) => {
-                           if (animating || newVal === oldVal) return;
-                           animating = true;
-                           let start = displayed;
-                           let change = newVal - start;
-                           let duration = 800;
-                           let startTime = Date.now();
-
-                           let doAnimate = () => {
-                               let elapsed = Date.now() - startTime;
-                               if (elapsed < duration) {
-                                   displayed = start + (change * (elapsed / duration));
-                                   requestAnimationFrame(doAnimate);
-                               } else {
-                                   displayed = newVal;
-                                   animating = false;
-                               }
-                           };
-                           requestAnimationFrame(doAnimate);
-                       });
+                       let start = current;
+                       let change = target - start;
+                       let duration = 800;
+                       let startTime = Date.now();
+                       let doAnimate = () => {
+                           let elapsed = Date.now() - startTime;
+                           if (elapsed < duration) {
+                               current = start + (change * (elapsed / duration));
+                               requestAnimationFrame(doAnimate);
+                           } else {
+                               current = target;
+                               $store.metrics.avgOrder = target;
+                           }
+                       };
+                       requestAnimationFrame(doAnimate);
                    "
-                   x-text="'£' + Math.round(displayed).toLocaleString()">
+                   x-text="'£' + Math.round(current).toLocaleString()">
                 </p>
                 <p class="text-sm text-purple-100 mt-1">Per order value</p>
             </div>
@@ -135,34 +121,29 @@
             <div>
                 <p class="text-orange-100 text-sm font-medium">Items Sold</p>
                 <p class="text-3xl font-bold"
+                   wire:key="items-{{ $this->metrics->get('total_items') }}"
                    x-data="{
-                       displayed: {{ $this->metrics->get('total_items') }},
-                       target: {{ $this->metrics->get('total_items') }},
-                       animating: false
+                       current: $store.metrics.items || 0,
+                       target: {{ $this->metrics->get('total_items') }}
                    }"
                    x-init="
-                       $watch('target', (newVal, oldVal) => {
-                           if (animating || newVal === oldVal) return;
-                           animating = true;
-                           let start = displayed;
-                           let change = newVal - start;
-                           let duration = 800;
-                           let startTime = Date.now();
-
-                           let doAnimate = () => {
-                               let elapsed = Date.now() - startTime;
-                               if (elapsed < duration) {
-                                   displayed = start + (change * (elapsed / duration));
-                                   requestAnimationFrame(doAnimate);
-                               } else {
-                                   displayed = newVal;
-                                   animating = false;
-                               }
-                           };
-                           requestAnimationFrame(doAnimate);
-                       });
+                       let start = current;
+                       let change = target - start;
+                       let duration = 800;
+                       let startTime = Date.now();
+                       let doAnimate = () => {
+                           let elapsed = Date.now() - startTime;
+                           if (elapsed < duration) {
+                               current = start + (change * (elapsed / duration));
+                               requestAnimationFrame(doAnimate);
+                           } else {
+                               current = target;
+                               $store.metrics.items = target;
+                           }
+                       };
+                       requestAnimationFrame(doAnimate);
                    "
-                   x-text="Math.round(displayed).toLocaleString()">
+                   x-text="Math.round(current).toLocaleString()">
                 </p>
                 <p class="text-sm text-orange-100 mt-1">Total units</p>
             </div>
@@ -180,34 +161,29 @@
                         <flux:icon name="star" class="size-3 text-pink-200" />
                     </div>
                     <p class="text-3xl font-bold"
+                       wire:key="best-{{ $this->bestDay['revenue'] }}"
                        x-data="{
-                           displayed: {{ $this->bestDay['revenue'] }},
-                           target: {{ $this->bestDay['revenue'] }},
-                           animating: false
+                           current: $store.metrics.bestDayRevenue || 0,
+                           target: {{ $this->bestDay['revenue'] }}
                        }"
                        x-init="
-                           $watch('target', (newVal, oldVal) => {
-                               if (animating || newVal === oldVal) return;
-                               animating = true;
-                               let start = displayed;
-                               let change = newVal - start;
-                               let duration = 800;
-                               let startTime = Date.now();
-
-                               let doAnimate = () => {
-                                   let elapsed = Date.now() - startTime;
-                                   if (elapsed < duration) {
-                                       displayed = start + (change * (elapsed / duration));
-                                       requestAnimationFrame(doAnimate);
-                                   } else {
-                                       displayed = newVal;
-                                       animating = false;
-                                   }
-                               };
-                               requestAnimationFrame(doAnimate);
-                           });
+                           let start = current;
+                           let change = target - start;
+                           let duration = 800;
+                           let startTime = Date.now();
+                           let doAnimate = () => {
+                               let elapsed = Date.now() - startTime;
+                               if (elapsed < duration) {
+                                   current = start + (change * (elapsed / duration));
+                                   requestAnimationFrame(doAnimate);
+                               } else {
+                                   current = target;
+                                   $store.metrics.bestDayRevenue = target;
+                               }
+                           };
+                           requestAnimationFrame(doAnimate);
                        "
-                       x-text="'£' + Math.round(displayed).toLocaleString()">
+                       x-text="'£' + Math.round(current).toLocaleString()">
                     </p>
                     <p class="text-sm text-pink-100 mt-1">{{ $this->bestDay['date'] }} • {{ $this->bestDay['orders'] }} orders</p>
                 </div>
