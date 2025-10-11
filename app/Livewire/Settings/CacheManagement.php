@@ -215,6 +215,9 @@ class CacheManagement extends Component
     {
         $this->isClearing = false;
         unset($this->cacheStatus); // Reset computed property
+
+        // Force Livewire to re-render to show cache is now cold
+        $this->dispatch('$refresh');
     }
 
     public function render()
