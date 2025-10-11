@@ -48,8 +48,8 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    @foreach(['7d', '30d', '90d'] as $period)
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    @foreach(array_keys($this->cacheStatus) as $period)
                         @php
                             // Use the period directly as the key - cacheStatus() returns keys with 'd' suffix
                             $status = $this->cacheStatus[$period] ?? ['exists' => false];

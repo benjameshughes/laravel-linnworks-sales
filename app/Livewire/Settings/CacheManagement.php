@@ -34,7 +34,9 @@ class CacheManagement extends Component
 
             // Try to determine which period is currently warming
             // Check which cache keys don't exist yet - those are still warming
-            $periods = ['7d', '30d', '90d'];
+            $periods = collect(config('dashboard.cacheable_periods', ['7', '30', '90']))
+                ->map(fn($p) => "{$p}d");
+
             foreach ($periods as $period) {
                 $key = "metrics_{$period}_all";
                 if (!Cache::has($key)) {
@@ -48,12 +50,14 @@ class CacheManagement extends Component
     #[Computed]
     public function cacheStatus(): array
     {
-        $keys = ['metrics_7d_all', 'metrics_30d_all', 'metrics_90d_all'];
+        $periods = config('dashboard.cacheable_periods', ['7', '30', '90']);
         $status = [];
 
-        foreach ($keys as $key) {
+        foreach ($periods as $period) {
+            $key = "metrics_{$period}d_all";
             $cached = Cache::get($key);
-            $status[str_replace('metrics_', '', str_replace('_all', '', $key))] = [
+
+            $status["{$period}d"] = [
                 'exists' => $cached !== null,
                 'warmed_at' => $cached['warmed_at'] ?? null,
                 'revenue' => $cached['revenue'] ?? 0,
@@ -153,10 +157,10 @@ class CacheManagement extends Component
     {
         $this->isClearing = true;
 
-        $keys = ['metrics_7d_all', 'metrics_30d_all', 'metrics_90d_all'];
+        $periods = config('dashboard.cacheable_periods', ['7', '30', '90']);
 
-        foreach ($keys as $key) {
-            Cache::forget($key);
+        foreach ($periods as $period) {
+            Cache::forget("metrics_{$period}d_all");
         }
 
         // Broadcast cache cleared event
