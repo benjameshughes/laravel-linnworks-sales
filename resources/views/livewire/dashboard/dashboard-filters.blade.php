@@ -96,11 +96,9 @@
             <div class="flex items-center gap-2 flex-wrap lg:flex-nowrap">
                 <div class="relative min-w-[120px] flex-1 lg:flex-initial lg:w-32">
                     <flux:select wire:model.live.debounce.300ms="status" size="sm">
-                        <flux:select.option value="paid">Processed</flux:select.option>
-                        <flux:select.option value="unpaid">Pending</flux:select.option>
-                        <flux:select.option value="cancelled">Cancelled</flux:select.option>
-                        <flux:select.option value="refunded">Refunded</flux:select.option>
                         <flux:select.option value="all">All Orders</flux:select.option>
+                        <flux:select.option value="open">Open</flux:select.option>
+                        <flux:select.option value="processed">Processed</flux:select.option>
                     </flux:select>
                 </div>
 

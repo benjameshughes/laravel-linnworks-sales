@@ -19,7 +19,7 @@ final class DashboardFilters extends Component
 {
     public string $period = '7';
     public string $channel = 'all';
-    public string $status = 'paid';
+    public string $status = 'all';
     public ?string $customFrom = null;
     public ?string $customTo = null;
 
@@ -203,22 +203,12 @@ final class DashboardFilters extends Component
                 $query->where('channel_name', $this->channel)
             )
             ->when($this->status !== 'all', function ($query) {
-                if ($this->status === 'paid') {
-                    // Show processed orders (completed/paid orders)
-                    $query->where('status', 'processed');
-                } elseif ($this->status === 'unpaid') {
-                    // Show pending orders (awaiting payment/processing)
-                    $query->where('status', 'pending');
-                } elseif ($this->status === 'parked') {
-                    // Parked orders are tracked separately (future feature)
-                    // For now, show nothing
-                    $query->whereRaw('1 = 0');
+                if ($this->status === 'open') {
+                    // Show open orders (still need processing/attention)
+                    $query->where('is_open', true);
                 } elseif ($this->status === 'processed') {
-                    $query->where('status', 'processed');
-                } elseif ($this->status === 'cancelled') {
-                    $query->where('status', 'cancelled');
-                } elseif ($this->status === 'refunded') {
-                    $query->where('status', 'refunded');
+                    // Show closed/processed orders (completed)
+                    $query->where('is_open', false);
                 }
             })
             ->count();

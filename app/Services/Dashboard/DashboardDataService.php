@@ -56,13 +56,13 @@ class DashboardDataService
      * Cache is only available for:
      * - Configured cacheable periods (from config/dashboard.php)
      * - "all" channel filter
-     * - "paid" status (default filter)
+     * - "all" status (shows everything for cache)
      * - No custom date range
      */
     public function canUseCachedMetrics(
         string $period,
         string $channel = 'all',
-        string $status = 'paid',
+        string $status = 'all',
         ?string $customFrom = null,
         ?string $customTo = null
     ): bool {
@@ -70,7 +70,7 @@ class DashboardDataService
 
         return in_array($period, $cacheablePeriods)
             && $channel === 'all'
-            && $status === 'paid'
+            && $status === 'all'
             && $customFrom === null
             && $customTo === null;
     }
@@ -82,7 +82,7 @@ class DashboardDataService
     public function getOrders(
         string $period,
         string $channel = 'all',
-        string $status = 'paid',
+        string $status = 'all',
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
@@ -165,22 +165,12 @@ class DashboardDataService
                 $query->where('channel_name', $channel)
             )
             ->when($status !== 'all', function ($query) use ($status) {
-                if ($status === 'paid') {
-                    // Show processed orders (completed/paid orders)
-                    $query->where('status', 'processed');
-                } elseif ($status === 'unpaid') {
-                    // Show pending orders (awaiting payment/processing)
-                    $query->where('status', 'pending');
-                } elseif ($status === 'parked') {
-                    // Parked orders are tracked separately (future feature)
-                    // For now, show nothing
-                    $query->whereRaw('1 = 0');
+                if ($status === 'open') {
+                    // Show open orders (still need processing/attention)
+                    $query->where('is_open', true);
                 } elseif ($status === 'processed') {
-                    $query->where('status', 'processed');
-                } elseif ($status === 'cancelled') {
-                    $query->where('status', 'cancelled');
-                } elseif ($status === 'refunded') {
-                    $query->where('status', 'refunded');
+                    // Show closed/processed orders (completed)
+                    $query->where('is_open', false);
                 }
             })
             ->orderByDesc('received_date')

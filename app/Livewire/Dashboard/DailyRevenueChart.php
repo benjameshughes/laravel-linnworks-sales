@@ -16,7 +16,7 @@ final class DailyRevenueChart extends Component
 {
     public string $period = '7';
     public string $channel = 'all';
-    public string $status = 'paid';
+    public string $status = 'all';
     public ?string $customFrom = null;
     public ?string $customTo = null;
     public string $viewMode = 'orders_revenue'; // 'orders_revenue' or 'items'
@@ -25,14 +25,14 @@ final class DailyRevenueChart extends Component
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
-        $this->status = request('status', 'paid');
+        $this->status = request('status', 'all');
     }
 
     #[On('filters-updated')]
     public function updateFilters(
         string $period,
         string $channel,
-        string $status = 'paid',
+        string $status = 'all',
         ?string $customFrom = null,
         ?string $customTo = null
     ): void {

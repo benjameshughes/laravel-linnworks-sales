@@ -16,7 +16,7 @@ final class MetricsSummary extends Component
 {
     public string $period = '7';
     public string $channel = 'all';
-    public string $status = 'paid';
+    public string $status = 'all';
     public ?string $customFrom = null;
     public ?string $customTo = null;
 
@@ -25,14 +25,14 @@ final class MetricsSummary extends Component
         // Initialize from query params if available
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
-        $this->status = request('status', 'paid');
+        $this->status = request('status', 'all');
     }
 
     #[On('filters-updated')]
     public function updateFilters(
         string $period,
         string $channel,
-        string $status = 'paid',
+        string $status = 'all',
         ?string $customFrom = null,
         ?string $customTo = null
     ): void {

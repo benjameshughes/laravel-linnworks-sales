@@ -15,7 +15,7 @@ use Livewire\Attributes\Computed;
  * Components using this trait should have these public properties:
  * - string $period
  * - string $channel
- * - string $status
+ * - string $status (default: 'all')
  * - ?string $customFrom
  * - ?string $customTo
  *
