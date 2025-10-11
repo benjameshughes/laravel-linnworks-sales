@@ -8,16 +8,9 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Schedule open orders sync every 15 minutes
-Schedule::command('sync:open-orders')
+// Schedule unified orders sync every 15 minutes
+Schedule::command('sync:orders')
     ->everyFifteenMinutes()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/linnworks-sync.log'));
-
-// Schedule a more thorough sync every hour
-Schedule::command('sync:open-orders --force')
-    ->hourly()
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/linnworks-sync.log'));

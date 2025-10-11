@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Jobs\SyncRecentOrdersJob;
+use App\Jobs\SyncOrdersJob;
 use App\Models\Order;
 use App\Models\SyncLog;
 use Carbon\Carbon;
@@ -98,22 +98,8 @@ final class DashboardFilters extends Component
         $this->syncMessage = 'Sync job queued...';
 
         try {
-            if ($this->period === 'custom') {
-                $windowDays = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
-            } elseif ($this->period === 'yesterday') {
-                $windowDays = 1;
-            } else {
-                $windowDays = (int) $this->period;
-            }
-
-            $processedWindow = max((int) config('linnworks.sync.default_date_range', 30), $windowDays);
-
-            SyncRecentOrdersJob::dispatch(
-                openWindowDays: $windowDays,
-                processedWindowDays: $processedWindow,
-                forceUpdate: false,
-                userId: auth()->id(),
-            );
+            // Dispatch unified sync job
+            SyncOrdersJob::dispatch(startedBy: 'user-' . auth()->id());
 
             $this->dispatch('notification', [
                 'message' => 'Sync started in background. Updates will appear automatically.',

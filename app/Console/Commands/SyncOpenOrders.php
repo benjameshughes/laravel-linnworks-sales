@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\GetOpenOrderIdsJob;
+use App\Jobs\SyncOrdersJob;
 use Illuminate\Console\Command;
 
 class SyncOpenOrders extends Command
@@ -12,8 +12,8 @@ class SyncOpenOrders extends Command
      *
      * @var string
      */
-    protected $signature = 'sync:open-orders 
-                            {--force : Force sync all open orders}
+    protected $signature = 'sync:orders
+                            {--force : Force sync all orders}
                             {--debug : Show detailed output}';
 
     /**
@@ -21,23 +21,23 @@ class SyncOpenOrders extends Command
      *
      * @var string
      */
-    protected $description = 'Sync all open orders from Linnworks';
+    protected $description = 'Sync all orders (open and processed) from Linnworks';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('Dispatching open orders sync jobs...');
+        $this->info('Dispatching unified orders sync job...');
 
         try {
-            // Dispatch the master job that will handle everything
-            GetOpenOrderIdsJob::dispatch('command');
-            
-            $this->info('Master job dispatched successfully!');
-            $this->info('Individual order detail jobs will be processed by the queue.');
-            $this->info('Use "php artisan queue:work" to process the jobs.');
-            
+            // Dispatch the unified sync job
+            SyncOrdersJob::dispatch(startedBy: 'command');
+
+            $this->info('Sync job dispatched successfully!');
+            $this->info('The job will sync all open and processed orders.');
+            $this->info('Use "php artisan queue:work" to process the job.');
+
             return 0;
         } catch (\Exception $e) {
             $this->error('Failed to dispatch sync job: ' . $e->getMessage());
