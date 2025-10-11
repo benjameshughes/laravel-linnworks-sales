@@ -165,8 +165,11 @@ class DashboardDataService
                 $query->where('channel_name', $channel)
             )
             ->when($status !== 'all', function ($query) use ($status) {
-                if ($status === 'open') {
-                    // Show open orders (still need processing/attention)
+                if ($status === 'open_paid') {
+                    // Show open orders that have been paid (revenue orders needing fulfillment)
+                    $query->where('is_open', true)->where('is_paid', true);
+                } elseif ($status === 'open') {
+                    // Show all open orders (regardless of payment status)
                     $query->where('is_open', true);
                 } elseif ($status === 'processed') {
                     // Show closed/processed orders (completed)

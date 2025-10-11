@@ -94,10 +94,11 @@
 
             {{-- Right: Filters & Controls --}}
             <div class="flex items-center gap-2 flex-wrap lg:flex-nowrap">
-                <div class="relative min-w-[120px] flex-1 lg:flex-initial lg:w-32">
+                <div class="relative min-w-[140px] flex-1 lg:flex-initial lg:w-40">
                     <flux:select wire:model.live.debounce.300ms="status" size="sm">
                         <flux:select.option value="all">All Orders</flux:select.option>
-                        <flux:select.option value="open">Open</flux:select.option>
+                        <flux:select.option value="open_paid">Open & Paid</flux:select.option>
+                        <flux:select.option value="open">Open (All)</flux:select.option>
                         <flux:select.option value="processed">Processed</flux:select.option>
                     </flux:select>
                 </div>

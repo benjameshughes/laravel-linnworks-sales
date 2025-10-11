@@ -203,8 +203,11 @@ final class DashboardFilters extends Component
                 $query->where('channel_name', $this->channel)
             )
             ->when($this->status !== 'all', function ($query) {
-                if ($this->status === 'open') {
-                    // Show open orders (still need processing/attention)
+                if ($this->status === 'open_paid') {
+                    // Show open orders that have been paid (revenue orders needing fulfillment)
+                    $query->where('is_open', true)->where('is_paid', true);
+                } elseif ($this->status === 'open') {
+                    // Show all open orders (regardless of payment status)
                     $query->where('is_open', true);
                 } elseif ($this->status === 'processed') {
                     // Show closed/processed orders (completed)

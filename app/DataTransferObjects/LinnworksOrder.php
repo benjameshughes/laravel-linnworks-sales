@@ -22,6 +22,8 @@ readonly class LinnworksOrder implements Arrayable
         public float $profitMargin,
         public int $orderStatus,
         public ?string $locationId,
+        public bool $isPaid,
+        public ?Carbon $paidDate,
         public Collection $items,
     ) {}
 
@@ -54,6 +56,8 @@ readonly class LinnworksOrder implements Arrayable
             profitMargin: (float) ($totalsInfo['ProfitMargin'] ?? $data['ProfitMargin'] ?? $data['profit_margin'] ?? 0),
             orderStatus: (int) ($generalInfo['Status'] ?? $data['nStatus'] ?? $data['order_status'] ?? 0),
             locationId: $data['FulfilmentLocationId'] ?? $data['fkOrderLocationID'] ?? $data['location_id'] ?? null,
+            isPaid: (bool) ($data['Paid'] ?? $data['bPaid'] ?? $data['is_paid'] ?? false),
+            paidDate: self::parseDate($data['PaidDate'] ?? $data['dPaidDate'] ?? $data['paid_date'] ?? null),
             items: $items,
         );
     }
@@ -74,6 +78,8 @@ readonly class LinnworksOrder implements Arrayable
             'profit_margin' => $this->profitMargin,
             'order_status' => $this->orderStatus,
             'location_id' => $this->locationId,
+            'is_paid' => $this->isPaid,
+            'paid_date' => $this->paidDate?->toISOString(),
             'items' => $this->items->toArray(),
         ];
     }
