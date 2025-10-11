@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Events\CachePeriodWarmed;
+use App\Events\CachePeriodWarmingStarted;
 use App\Services\Dashboard\DashboardDataService;
 use App\Services\Metrics\SalesMetrics;
 use Illuminate\Bus\Batchable;
@@ -61,6 +62,9 @@ final class WarmPeriodCacheJob implements ShouldQueue
         if ($this->batch()?->cancelled()) {
             return;
         }
+
+        // Broadcast that this period is starting to warm
+        CachePeriodWarmingStarted::dispatch("{$this->period}d");
 
         Log::debug('Warming cache for period', [
             'period' => $this->period,

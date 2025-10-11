@@ -18,7 +18,7 @@ class CacheManagement extends Component
 {
     public bool $isWarming = false;
     public bool $isClearing = false;
-    public array $warmingPeriods = [];
+    public ?string $currentlyWarmingPeriod = null;
 
     public function mount(): void
     {
@@ -55,9 +55,38 @@ class CacheManagement extends Component
     }
 
     #[Computed]
+    public function activeBatch(): ?array
+    {
+        // Get the most recent cache warming batch
+        $batch = DB::table('job_batches')
+            ->where('name', 'warm-metrics-cache')
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (!$batch) {
+            return null;
+        }
+
+        return [
+            'id' => $batch->id,
+            'name' => $batch->name,
+            'total_jobs' => $batch->total_jobs,
+            'pending_jobs' => $batch->pending_jobs,
+            'failed_jobs' => $batch->failed_jobs,
+            'processed_jobs' => $batch->total_jobs - $batch->pending_jobs,
+            'progress' => $batch->total_jobs > 0
+                ? round((($batch->total_jobs - $batch->pending_jobs) / $batch->total_jobs) * 100)
+                : 0,
+            'finished' => $batch->finished_at !== null,
+            'created_at' => $batch->created_at,
+            'finished_at' => $batch->finished_at,
+        ];
+    }
+
+    #[Computed]
     public function recentCacheWarming(): array
     {
-        // Get last 5 cache warming log entries from Laravel log
+        // Get last 5 cache warming log entries with memory stats
         $logFile = storage_path('logs/laravel.log');
 
         if (!file_exists($logFile)) {
@@ -70,13 +99,20 @@ class CacheManagement extends Component
         // Read file backwards to get most recent entries
         for ($i = count($lines) - 1; $i >= 0 && count($warmingLogs) < 5; $i--) {
             if (str_contains($lines[$i], 'Cache warmed successfully')) {
-                // Parse log entry
-                preg_match('/\[(.*?)\].*cache_key":"(.*?)".*orders_count":(\d+)/', $lines[$i], $matches);
-                if (count($matches) === 4) {
+                // Parse log entry with memory stats
+                preg_match(
+                    '/\[(.*?)\].*cache_key":"(.*?)".*orders_count":(\d+).*memory_used_mb":([\d.]+).*peak_memory_mb":([\d.]+)/',
+                    $lines[$i],
+                    $matches
+                );
+
+                if (count($matches) === 6) {
                     $warmingLogs[] = [
                         'timestamp' => $matches[1],
                         'cache_key' => $matches[2],
                         'orders_count' => (int) $matches[3],
+                        'memory_used_mb' => (float) $matches[4],
+                        'peak_memory_mb' => (float) $matches[5],
                     ];
                 }
             }
@@ -88,7 +124,7 @@ class CacheManagement extends Component
     public function warmCache(): void
     {
         $this->isWarming = true;
-        $this->warmingPeriods = [];
+        $this->currentlyWarmingPeriod = null;
 
         // Dispatch the OrdersSynced event to trigger cache warming
         OrdersSynced::dispatch(0, 'manual_warm');
@@ -116,22 +152,39 @@ class CacheManagement extends Component
     public function handleWarmingStarted(array $data): void
     {
         $this->isWarming = true;
-        $this->warmingPeriods = [];
+        $this->currentlyWarmingPeriod = null;
+        unset($this->activeBatch);
+    }
+
+    #[On('echo:cache-management,CachePeriodWarmingStarted')]
+    public function handlePeriodWarmingStarted(array $data): void
+    {
+        $this->currentlyWarmingPeriod = $data['period'];
+        unset($this->activeBatch);
     }
 
     #[On('echo:cache-management,CachePeriodWarmed')]
     public function handlePeriodWarmed(array $data): void
     {
-        $this->warmingPeriods[] = $data['period'];
-        unset($this->cacheStatus); // Reset computed property
+        // Period finished warming - clear the currently warming state
+        $this->currentlyWarmingPeriod = null;
+
+        // Refresh cache status to pick up the newly written cache
+        unset($this->cacheStatus);
+        unset($this->activeBatch);
+        unset($this->recentCacheWarming);
     }
 
     #[On('echo:cache-management,CacheWarmingCompleted')]
     public function handleWarmingCompleted(array $data): void
     {
         $this->isWarming = false;
-        $this->warmingPeriods = [];
-        unset($this->cacheStatus); // Reset computed property
+        $this->currentlyWarmingPeriod = null;
+
+        // Refresh all computed properties
+        unset($this->cacheStatus);
+        unset($this->activeBatch);
+        unset($this->recentCacheWarming);
     }
 
     #[On('echo:cache-management,CacheCleared')]
