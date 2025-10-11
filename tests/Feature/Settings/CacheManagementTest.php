@@ -48,6 +48,57 @@ test('admin user can mount component', function () {
         ->and($component->currentlyWarmingPeriod)->toBeNull();
 });
 
+test('mount detects active warming batch', function () {
+    $this->actingAs($this->admin);
+
+    // Create an unfinished batch
+    DB::table('job_batches')->insert([
+        'id' => 'test-batch-id',
+        'name' => 'warm-metrics-cache',
+        'total_jobs' => 3,
+        'pending_jobs' => 2,
+        'failed_jobs' => 0,
+        'failed_job_ids' => '[]',
+        'options' => '[]',
+        'created_at' => time(),
+        'cancelled_at' => null,
+        'finished_at' => null,
+    ]);
+
+    $component = new CacheManagement();
+    $component->mount();
+
+    // Should detect warming in progress
+    expect($component->isWarming)->toBeTrue();
+});
+
+test('mount detects currently warming period', function () {
+    $this->actingAs($this->admin);
+
+    // Create an unfinished batch
+    DB::table('job_batches')->insert([
+        'id' => 'test-batch-id',
+        'name' => 'warm-metrics-cache',
+        'total_jobs' => 3,
+        'pending_jobs' => 2,
+        'failed_jobs' => 0,
+        'failed_job_ids' => '[]',
+        'options' => '[]',
+        'created_at' => time(),
+        'cancelled_at' => null,
+        'finished_at' => null,
+    ]);
+
+    // 7d is already cached, so mount should detect 30d as currently warming
+    Cache::put('metrics_7d_all', ['data'], 3600);
+
+    $component = new CacheManagement();
+    $component->mount();
+
+    expect($component->isWarming)->toBeTrue()
+        ->and($component->currentlyWarmingPeriod)->toBe('30d');
+});
+
 test('non-admin user cannot mount component', function () {
     $this->actingAs($this->user);
 

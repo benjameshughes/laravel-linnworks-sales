@@ -54,12 +54,16 @@
                             $periodKey = str_replace('d', '', $period);
                             $status = $this->cacheStatus[$periodKey] ?? ['exists' => false];
 
-                            // Simple 3-state logic: Clearing → Cached → Warming → Cold
+                            // State logic: Clearing → Cached → Warming → Queued → Cold
                             // State is determined by:
-                            // 1. Is this period currently warming? Check $currentlyWarmingPeriod
+                            // 1. Is cache being cleared? Check $isClearing
                             // 2. Is cache populated? Check $status['exists'] (reads from actual cache)
+                            // 3. Is this period currently warming? Check $currentlyWarmingPeriod
+                            // 4. Is warming batch running? Check $isWarming
+                            // 5. Otherwise, cold
 
                             $isCurrentlyWarming = $currentlyWarmingPeriod === $period;
+                            $isQueuedForWarming = $isWarming && !$isCurrentlyWarming && !$status['exists'];
 
                             if ($isClearing && $status['exists']) {
                                 // Currently clearing cache
@@ -77,11 +81,18 @@
                                 $label = 'Cached';
                             } elseif ($isCurrentlyWarming) {
                                 // This period is actively warming right now
+                                $bgClass = 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800';
+                                $textClass = 'text-orange-900 dark:text-orange-100';
+                                $icon = 'fire';
+                                $iconClass = 'text-orange-600 dark:text-orange-400 animate-pulse';
+                                $label = 'Warming...';
+                            } elseif ($isQueuedForWarming) {
+                                // Warming batch is running but this period hasn't started yet
                                 $bgClass = 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800';
                                 $textClass = 'text-yellow-900 dark:text-yellow-100';
-                                $icon = 'fire';
-                                $iconClass = 'text-yellow-600 dark:text-yellow-400 animate-pulse';
-                                $label = 'Warming...';
+                                $icon = 'clock';
+                                $iconClass = 'text-yellow-600 dark:text-yellow-400';
+                                $label = 'Queued...';
                             } else {
                                 // Cold, not cached
                                 $bgClass = 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800';
@@ -92,7 +103,7 @@
                             }
                         @endphp
 
-                        <div wire:key="status-{{ $period }}-{{ $status['exists'] ? 'cached' : 'cold' }}-{{ $isCurrentlyWarming ? 'warming' : '' }}" class="p-4 rounded-lg border transition-all duration-500 {{ $bgClass }}">
+                        <div wire:key="status-{{ $period }}-{{ $status['exists'] ? 'cached' : 'cold' }}-{{ $isCurrentlyWarming ? 'warming' : '' }}-{{ $isQueuedForWarming ? 'queued' : '' }}" class="p-4 rounded-lg border transition-all duration-500 {{ $bgClass }}">
                             <div class="flex items-center justify-between gap-2 mb-3">
                                 <div class="flex items-center gap-2">
                                     <flux:icon.{{ $icon }} class="size-5 {{ $iconClass }}" />
@@ -385,7 +396,7 @@
                         </li>
                         <li class="flex items-start gap-2">
                             <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                            <span><strong>Smart:</strong> Uses Cache::flexible() - serves stale data while recalculating</span>
+                            <span><strong>Smart:</strong> Dashboard always reads from cache - never calculates live</span>
                         </li>
                         <li class="flex items-start gap-2">
                             <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />

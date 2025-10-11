@@ -26,6 +26,23 @@ class CacheManagement extends Component
         if (!auth()->user()->can('manage-cache')) {
             abort(403);
         }
+
+        // Check if cache warming is already in progress
+        $batch = $this->activeBatch();
+        if ($batch && !$batch['finished']) {
+            $this->isWarming = true;
+
+            // Try to determine which period is currently warming
+            // Check which cache keys don't exist yet - those are still warming
+            $periods = ['7d', '30d', '90d'];
+            foreach ($periods as $period) {
+                $key = "metrics_{$period}_all";
+                if (!Cache::has($key)) {
+                    $this->currentlyWarmingPeriod = $period;
+                    break; // First missing period is likely the current one
+                }
+            }
+        }
     }
 
     #[Computed]
