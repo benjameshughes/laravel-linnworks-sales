@@ -54,56 +54,55 @@
                             $periodKey = str_replace('d', '', $period);
                             $status = $this->cacheStatus[$periodKey] ?? ['exists' => false];
 
-                            // State logic: Clearing → Cached → Warming → Queued → Cold
-                            // State is determined by:
-                            // 1. Is cache being cleared? Check $isClearing
-                            // 2. Is cache populated? Check $status['exists'] (reads from actual cache)
-                            // 3. Is this period currently warming? Check $currentlyWarmingPeriod
-                            // 4. Is warming batch running? Check $isWarming
-                            // 5. Otherwise, cold
+                            // SIMPLE LOGIC: Badge state is ONLY determined by cache existence
+                            // Reactive warming/clearing states are shown separately via overlays
 
-                            $isCurrentlyWarming = $currentlyWarmingPeriod === $period;
-                            $isQueuedForWarming = $isWarming && !$isCurrentlyWarming && !$status['exists'];
-
-                            if ($isClearing && $status['exists']) {
-                                // Currently clearing cache
-                                $bgClass = 'bg-cyan-50 dark:bg-cyan-900/10 border-cyan-200 dark:border-cyan-800';
-                                $textClass = 'text-cyan-900 dark:text-cyan-100';
-                                $icon = 'trash';
-                                $iconClass = 'text-cyan-600 dark:text-cyan-400 animate-pulse';
-                                $label = 'Clearing...';
-                            } elseif ($status['exists']) {
-                                // Cache exists in Laravel cache - show green
+                            if ($status['exists']) {
+                                // Cache exists - show green "Cached"
                                 $bgClass = 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800';
                                 $textClass = 'text-green-900 dark:text-green-100';
                                 $icon = 'check-circle';
                                 $iconClass = 'text-green-600 dark:text-green-400';
                                 $label = 'Cached';
-                            } elseif ($isCurrentlyWarming) {
-                                // This period is actively warming right now
-                                $bgClass = 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800';
-                                $textClass = 'text-orange-900 dark:text-orange-100';
-                                $icon = 'fire';
-                                $iconClass = 'text-orange-600 dark:text-orange-400 animate-pulse';
-                                $label = 'Warming...';
-                            } elseif ($isQueuedForWarming) {
-                                // Warming batch is running but this period hasn't started yet
-                                $bgClass = 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800';
-                                $textClass = 'text-yellow-900 dark:text-yellow-100';
-                                $icon = 'clock';
-                                $iconClass = 'text-yellow-600 dark:text-yellow-400';
-                                $label = 'Queued...';
                             } else {
-                                // Cold, not cached
+                                // Cache doesn't exist - show blue "Cold"
                                 $bgClass = 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800';
                                 $textClass = 'text-blue-900 dark:text-blue-100';
                                 $icon = 'snowflake';
                                 $iconClass = 'text-blue-400 dark:text-blue-500';
                                 $label = 'Cold';
                             }
+
+                            // Check if this period has activity overlays to show
+                            $isCurrentlyWarming = $currentlyWarmingPeriod === $period;
+                            $isQueuedForWarming = $isWarming && !$isCurrentlyWarming && !$status['exists'];
                         @endphp
 
-                        <div wire:key="status-{{ $period }}-{{ $status['exists'] ? 'cached' : 'cold' }}-{{ $isCurrentlyWarming ? 'warming' : '' }}-{{ $isQueuedForWarming ? 'queued' : '' }}" class="p-4 rounded-lg border transition-all duration-500 {{ $bgClass }}">
+                        <div wire:key="status-{{ $period }}-{{ $status['exists'] ? 'cached' : 'cold' }}" class="relative p-4 rounded-lg border transition-all duration-500 {{ $bgClass }}">
+                            {{-- Activity Overlay Indicators --}}
+                            @if($isClearing && $status['exists'])
+                                <div class="absolute top-2 right-2">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300">
+                                        <flux:icon.trash class="size-3 animate-pulse" />
+                                        Clearing...
+                                    </span>
+                                </div>
+                            @elseif($isCurrentlyWarming)
+                                <div class="absolute top-2 right-2">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+                                        <flux:icon.fire class="size-3 animate-pulse" />
+                                        Warming...
+                                    </span>
+                                </div>
+                            @elseif($isQueuedForWarming)
+                                <div class="absolute top-2 right-2">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
+                                        <flux:icon.clock class="size-3" />
+                                        Queued
+                                    </span>
+                                </div>
+                            @endif
+
                             <div class="flex items-center justify-between gap-2 mb-3">
                                 <div class="flex items-center gap-2">
                                     <flux:icon.{{ $icon }} class="size-5 {{ $iconClass }}" />
