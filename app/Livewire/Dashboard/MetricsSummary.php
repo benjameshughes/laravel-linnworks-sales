@@ -66,6 +66,32 @@ final class MetricsSummary extends Component
     #[Computed]
     public function metrics(): Collection
     {
+        // Try to use pre-warmed cache first (instant response)
+        $service = app(DashboardDataService::class);
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            if ($cached) {
+                if ($this->period === 'custom') {
+                    $periodDays = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
+                } elseif ($this->period === 'yesterday') {
+                    $periodDays = 1;
+                } else {
+                    $periodDays = (int) $this->period;
+                }
+
+                // Build metrics from cache (without growth rate, since we need previous period for that)
+                return collect([
+                    'total_revenue' => $cached['revenue'],
+                    'total_orders' => $cached['orders'],
+                    'average_order_value' => $cached['avg_order_value'],
+                    'total_items' => $cached['items'],
+                    'orders_per_day' => $cached['orders'] / $periodDays,
+                    // Growth rate omitted - would need previous period cache too
+                ]);
+            }
+        }
+
+        // Fallback to live calculation with growth rate
         if ($this->period === 'custom') {
             $periodDays = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
         } elseif ($this->period === 'yesterday') {
@@ -87,6 +113,25 @@ final class MetricsSummary extends Component
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );
+    }
+
+    #[Computed]
+    public function bestDay(): Collection|array|null
+    {
+        // Try cache first
+        $service = app(DashboardDataService::class);
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            if ($cached && isset($cached['best_day'])) {
+                return $cached['best_day']; // This will be a Collection from cache
+            }
+        }
+
+        // Fallback to live calculation (returns Collection)
+        $startDate = $this->dateRange->get('start')?->format('Y-m-d');
+        $endDate = $this->dateRange->get('end')?->format('Y-m-d');
+
+        return $this->salesMetrics->bestPerformingDay($startDate, $endDate);
     }
 
     public function render()

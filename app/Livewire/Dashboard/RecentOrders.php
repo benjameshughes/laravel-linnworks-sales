@@ -63,6 +63,16 @@ final class RecentOrders extends Component
     #[Computed]
     public function recentOrders(): Collection
     {
+        // Try to use pre-warmed cache first (instant response)
+        $service = app(DashboardDataService::class);
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            if ($cached && isset($cached['recent_orders'])) {
+                return collect($cached['recent_orders']);
+            }
+        }
+
+        // Fallback to live calculation
         return $this->salesMetrics->recentOrders(15);
     }
 

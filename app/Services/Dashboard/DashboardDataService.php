@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Dashboard;
 
 use App\Models\Order;
+use App\Services\Metrics\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Request-scoped singleton for dashboard data
@@ -19,6 +21,59 @@ class DashboardDataService
     private ?Collection $orders = null;
     private ?Collection $previousPeriodOrders = null;
     private ?string $currentFilters = null;
+    private ?array $cachedMetrics = null;
+
+    /**
+     * Get pre-warmed metrics from cache
+     *
+     * IMPORTANT: This method ONLY reads from cache, never calculates.
+     * If cache is empty, it returns null. The frontend should show a
+     * "Cache is warming..." message and never call SalesMetrics directly.
+     *
+     * Cache is warmed by:
+     * - Background jobs (WarmPeriodCacheJob)
+     * - Scheduled commands
+     * - Manual cache warming button
+     */
+    public function getCachedMetrics(string $period, string $channel = 'all'): ?array
+    {
+        $cacheablePeriods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+
+        // Only support caching for configured periods without search/custom dates
+        if (!in_array($period, $cacheablePeriods) || $channel !== 'all') {
+            return null;
+        }
+
+        $cacheKey = "metrics_{$period}d_{$channel}";
+
+        // Simply return cached data or null - NEVER calculate
+        return $this->cachedMetrics ??= Cache::get($cacheKey);
+    }
+
+    /**
+     * Check if we can use pre-warmed cache for current filters
+     *
+     * Cache is only available for:
+     * - Configured cacheable periods (from config/dashboard.php)
+     * - "all" channel filter
+     * - No search term
+     * - No custom date range
+     */
+    public function canUseCachedMetrics(
+        string $period,
+        string $channel = 'all',
+        string $searchTerm = '',
+        ?string $customFrom = null,
+        ?string $customTo = null
+    ): bool {
+        $cacheablePeriods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+
+        return in_array($period, $cacheablePeriods)
+            && $channel === 'all'
+            && $searchTerm === ''
+            && $customFrom === null
+            && $customTo === null;
+    }
 
     /**
      * Get orders for current filter state
@@ -37,6 +92,7 @@ class DashboardDataService
         if ($this->currentFilters !== $filters) {
             $this->orders = null;
             $this->previousPeriodOrders = null;
+            $this->cachedMetrics = null;
             $this->currentFilters = $filters;
         }
 

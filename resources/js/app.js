@@ -7,6 +7,22 @@
 import './echo';
 
 /**
+ * Chart.js - Make globally available for Alpine components
+ */
+import Chart from 'chart.js/auto';
+window.Chart = Chart;
+
+/**
  * Alpine.js chart components
  */
 import './alpine-charts';
+
+/**
+ * Alpine.js store for metrics
+ */
+import './alpine-store';
+
+/**
+ * Alpine.js animated counter components
+ */
+import './alpine-counter';

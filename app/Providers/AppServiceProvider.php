@@ -66,6 +66,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-settings', function (User $user) {
             return $user->is_admin;
         });
+
+        // Cache management gate
+        Gate::define('manage-cache', function (User $user) {
+            return $user->is_admin;
+        });
     }
 
     /**

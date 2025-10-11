@@ -64,6 +64,21 @@ final class SalesTrendChart extends Component
     #[Computed]
     public function chartData(): array
     {
+        // Try to use pre-warmed cache first (instant response)
+        $service = app(DashboardDataService::class);
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            if ($cached) {
+                if ($this->viewMode === 'orders' && isset($cached['chart_orders'])) {
+                    return $cached['chart_orders'];
+                }
+                if ($this->viewMode === 'revenue' && isset($cached['chart_line'])) {
+                    return $cached['chart_line'];
+                }
+            }
+        }
+
+        // Fallback to live calculation
         if ($this->viewMode === 'orders') {
             return $this->salesMetrics->getOrderCountChartData($this->period, $this->customFrom, $this->customTo);
         }

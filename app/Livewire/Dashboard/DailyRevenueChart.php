@@ -64,6 +64,21 @@ final class DailyRevenueChart extends Component
     #[Computed]
     public function chartData(): array
     {
+        // Try to use pre-warmed cache first (instant response)
+        $service = app(DashboardDataService::class);
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            if ($cached) {
+                if ($this->viewMode === 'items' && isset($cached['chart_items'])) {
+                    return $cached['chart_items'];
+                }
+                if ($this->viewMode === 'orders_revenue' && isset($cached['chart_orders_revenue'])) {
+                    return $cached['chart_orders_revenue'];
+                }
+            }
+        }
+
+        // Fallback to live calculation
         if ($this->viewMode === 'items') {
             return $this->salesMetrics->getItemsSoldChartData($this->period, $this->customFrom, $this->customTo);
         }

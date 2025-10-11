@@ -64,6 +64,17 @@ final class ChannelDistributionChart extends Component
     #[Computed]
     public function chartData(): array
     {
+        // Try to use pre-warmed cache first (instant response)
+        $service = app(DashboardDataService::class);
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            // Note: Cache only has 'detailed' view (chart_doughnut), not 'grouped'
+            if ($cached && $this->viewMode === 'detailed' && isset($cached['chart_doughnut'])) {
+                return $cached['chart_doughnut'];
+            }
+        }
+
+        // Fallback to live calculation
         if ($this->viewMode === 'grouped') {
             return $this->salesMetrics->getDoughnutChartDataGrouped();
         }

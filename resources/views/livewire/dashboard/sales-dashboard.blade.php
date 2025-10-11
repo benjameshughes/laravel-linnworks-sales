@@ -15,9 +15,6 @@
         {{-- Daily Revenue Chart --}}
         <livewire:dashboard.daily-revenue-chart />
 
-        {{-- Cache Status --}}
-        <livewire:components.cache-status />
-
         {{-- Analytics Grid --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <livewire:dashboard.top-products />
