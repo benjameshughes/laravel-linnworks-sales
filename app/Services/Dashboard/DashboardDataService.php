@@ -24,14 +24,16 @@ class DashboardDataService
     private ?array $cachedMetrics = null;
 
     /**
-     * Get pre-warmed metrics from cache with flexible fallback
+     * Get pre-warmed metrics from cache
      *
-     * Uses Cache::flexible() with:
-     * - 55 minutes fresh period (data considered fresh)
-     * - 5 minutes stale period (serve stale while recalculating)
+     * IMPORTANT: This method ONLY reads from cache, never calculates.
+     * If cache is empty, it returns null. The frontend should show a
+     * "Cache is warming..." message and never call SalesMetrics directly.
      *
-     * This ensures instant responses (~0.3ms) when cache is warm.
-     * Falls back to live calculation only when cache is completely empty.
+     * Cache is warmed by:
+     * - Background jobs (WarmPeriodCacheJob)
+     * - Scheduled commands
+     * - Manual cache warming button
      */
     public function getCachedMetrics(string $period, string $channel = 'all'): ?array
     {
@@ -44,37 +46,8 @@ class DashboardDataService
 
         $cacheKey = "metrics_{$period}d_{$channel}";
 
-        return $this->cachedMetrics ??= Cache::flexible(
-            key: $cacheKey,
-            ttl: [3300, 300], // [fresh: 55min, stale: 5min]
-            callback: function () use ($period, $channel) {
-                // Fallback: calculate metrics if cache completely empty
-                $orders = $this->loadOrders($period, $channel, '', null, null);
-                $metrics = new SalesMetrics($orders);
-
-                $startDate = Carbon::now()->subDays((int) $period)->startOfDay()->format('Y-m-d');
-                $endDate = Carbon::now()->endOfDay()->format('Y-m-d');
-
-                return [
-                    'revenue' => $metrics->totalRevenue(),
-                    'orders' => $metrics->totalOrders(),
-                    'items' => $metrics->totalItemsSold(),
-                    'avg_order_value' => $metrics->averageOrderValue(),
-                    'processed_orders' => $metrics->totalProcessedOrders(),
-                    'open_orders' => $metrics->totalOpenOrders(),
-                    'top_channels' => $metrics->topChannels(6),
-                    'top_products' => $metrics->topProducts(5),
-                    'chart_line' => $metrics->getLineChartData($period),
-                    'chart_orders' => $metrics->getOrderCountChartData($period),
-                    'chart_doughnut' => $metrics->getDoughnutChartData(),
-                    'chart_items' => $metrics->getItemsSoldChartData($period, $startDate, $endDate),
-                    'chart_orders_revenue' => $metrics->getOrdersVsRevenueChartData($period, $startDate, $endDate),
-                    'recent_orders' => $metrics->recentOrders(15),
-                    'best_day' => $metrics->bestPerformingDay($startDate, $endDate),
-                    'warmed_at' => now()->toISOString(),
-                ];
-            }
-        );
+        // Simply return cached data or null - NEVER calculate
+        return $this->cachedMetrics ??= Cache::get($cacheKey);
     }
 
     /**
