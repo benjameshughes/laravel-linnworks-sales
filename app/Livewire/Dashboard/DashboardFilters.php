@@ -19,7 +19,7 @@ final class DashboardFilters extends Component
 {
     public string $period = '7';
     public string $channel = 'all';
-    public string $searchTerm = '';
+    public string $status = 'paid';
     public ?string $customFrom = null;
     public ?string $customTo = null;
 
@@ -58,11 +58,11 @@ final class DashboardFilters extends Component
             $this->customTo = null;
         }
 
-        if (in_array($property, ['period', 'channel', 'searchTerm', 'customFrom', 'customTo'])) {
+        if (in_array($property, ['period', 'channel', 'status', 'customFrom', 'customTo'])) {
             $this->dispatch('filters-updated',
                 period: $this->period,
                 channel: $this->channel,
-                searchTerm: $this->searchTerm,
+                status: $this->status,
                 customFrom: $this->period === 'custom' ? $this->customFrom : null,
                 customTo: $this->period === 'custom' ? $this->customTo : null
             );
@@ -202,6 +202,25 @@ final class DashboardFilters extends Component
             ->when($this->channel !== 'all', fn($query) =>
                 $query->where('channel_name', $this->channel)
             )
+            ->when($this->status !== 'all', function ($query) {
+                if ($this->status === 'paid') {
+                    // Show processed orders (completed/paid orders)
+                    $query->where('status', 'processed');
+                } elseif ($this->status === 'unpaid') {
+                    // Show pending orders (awaiting payment/processing)
+                    $query->where('status', 'pending');
+                } elseif ($this->status === 'parked') {
+                    // Parked orders are tracked separately (future feature)
+                    // For now, show nothing
+                    $query->whereRaw('1 = 0');
+                } elseif ($this->status === 'processed') {
+                    $query->where('status', 'processed');
+                } elseif ($this->status === 'cancelled') {
+                    $query->where('status', 'cancelled');
+                } elseif ($this->status === 'refunded') {
+                    $query->where('status', 'refunded');
+                }
+            })
             ->count();
     }
 
@@ -241,7 +260,7 @@ final class DashboardFilters extends Component
         $this->dispatch('filters-updated',
             period: $this->period,
             channel: $this->channel,
-            searchTerm: $this->searchTerm,
+            status: $this->status,
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );
@@ -274,7 +293,7 @@ final class DashboardFilters extends Component
         $this->dispatch('filters-updated',
             period: $this->period,
             channel: $this->channel,
-            searchTerm: $this->searchTerm,
+            status: $this->status,
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );

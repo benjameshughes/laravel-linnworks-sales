@@ -16,7 +16,7 @@ final class SalesTrendChart extends Component
 {
     public string $period = '7';
     public string $channel = 'all';
-    public string $searchTerm = '';
+    public string $status = 'paid';
     public ?string $customFrom = null;
     public ?string $customTo = null;
     public string $viewMode = 'revenue'; // 'revenue' or 'orders'
@@ -25,20 +25,20 @@ final class SalesTrendChart extends Component
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
-        $this->searchTerm = request('search', '');
+        $this->status = request('status', 'paid');
     }
 
     #[On('filters-updated')]
     public function updateFilters(
         string $period,
         string $channel,
-        string $searchTerm = '',
+        string $status = 'paid',
         ?string $customFrom = null,
         ?string $customTo = null
     ): void {
         $this->period = $period;
         $this->channel = $channel;
-        $this->searchTerm = $searchTerm;
+        $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
     }
@@ -49,7 +49,7 @@ final class SalesTrendChart extends Component
         return app(DashboardDataService::class)->getOrders(
             period: $this->period,
             channel: $this->channel,
-            searchTerm: $this->searchTerm,
+            status: $this->status,
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );
@@ -66,7 +66,7 @@ final class SalesTrendChart extends Component
     {
         // Try to use pre-warmed cache first (instant response)
         $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
             $cached = $service->getCachedMetrics($this->period, $this->channel);
             if ($cached) {
                 if ($this->viewMode === 'orders' && isset($cached['chart_orders'])) {
@@ -106,7 +106,7 @@ final class SalesTrendChart extends Component
     #[Computed]
     public function chartKey(): string
     {
-        return "sales-trend-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->searchTerm}-{$this->customFrom}-{$this->customTo}";
+        return "sales-trend-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->status}-{$this->customFrom}-{$this->customTo}";
     }
 
     public function setViewMode(string $mode): void

@@ -16,7 +16,7 @@ final class MetricsSummary extends Component
 {
     public string $period = '7';
     public string $channel = 'all';
-    public string $searchTerm = '';
+    public string $status = 'paid';
     public ?string $customFrom = null;
     public ?string $customTo = null;
 
@@ -25,20 +25,20 @@ final class MetricsSummary extends Component
         // Initialize from query params if available
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
-        $this->searchTerm = request('search', '');
+        $this->status = request('status', 'paid');
     }
 
     #[On('filters-updated')]
     public function updateFilters(
         string $period,
         string $channel,
-        string $searchTerm = '',
+        string $status = 'paid',
         ?string $customFrom = null,
         ?string $customTo = null
     ): void {
         $this->period = $period;
         $this->channel = $channel;
-        $this->searchTerm = $searchTerm;
+        $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
     }
@@ -51,7 +51,7 @@ final class MetricsSummary extends Component
         return app(DashboardDataService::class)->getOrders(
             period: $this->period,
             channel: $this->channel,
-            searchTerm: $this->searchTerm,
+            status: $this->status,
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );
@@ -68,7 +68,7 @@ final class MetricsSummary extends Component
     {
         // Try to use pre-warmed cache first (instant response)
         $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
             $cached = $service->getCachedMetrics($this->period, $this->channel);
             if ($cached) {
                 if ($this->period === 'custom') {
@@ -120,7 +120,7 @@ final class MetricsSummary extends Component
     {
         // Try cache first
         $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->searchTerm, $this->customFrom, $this->customTo)) {
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
             $cached = $service->getCachedMetrics($this->period, $this->channel);
             if ($cached && isset($cached['best_day'])) {
                 return $cached['best_day']; // This will be a Collection from cache

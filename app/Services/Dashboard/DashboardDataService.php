@@ -56,13 +56,13 @@ class DashboardDataService
      * Cache is only available for:
      * - Configured cacheable periods (from config/dashboard.php)
      * - "all" channel filter
-     * - No search term
+     * - "paid" status (default filter)
      * - No custom date range
      */
     public function canUseCachedMetrics(
         string $period,
         string $channel = 'all',
-        string $searchTerm = '',
+        string $status = 'paid',
         ?string $customFrom = null,
         ?string $customTo = null
     ): bool {
@@ -70,7 +70,7 @@ class DashboardDataService
 
         return in_array($period, $cacheablePeriods)
             && $channel === 'all'
-            && $searchTerm === ''
+            && $status === 'paid'
             && $customFrom === null
             && $customTo === null;
     }
@@ -82,11 +82,11 @@ class DashboardDataService
     public function getOrders(
         string $period,
         string $channel = 'all',
-        string $searchTerm = '',
+        string $status = 'paid',
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
-        $filters = $this->makeFilterKey($period, $channel, $searchTerm, $customFrom, $customTo);
+        $filters = $this->makeFilterKey($period, $channel, $status, $customFrom, $customTo);
 
         // If filters changed, clear cache and reload
         if ($this->currentFilters !== $filters) {
@@ -97,7 +97,7 @@ class DashboardDataService
         }
 
         // Return cached orders or load from DB
-        return $this->orders ??= $this->loadOrders($period, $channel, $searchTerm, $customFrom, $customTo);
+        return $this->orders ??= $this->loadOrders($period, $channel, $status, $customFrom, $customTo);
     }
 
     /**
@@ -147,7 +147,7 @@ class DashboardDataService
     private function loadOrders(
         string $period,
         string $channel,
-        string $searchTerm,
+        string $status,
         ?string $customFrom,
         ?string $customTo
     ): Collection {
@@ -164,12 +164,25 @@ class DashboardDataService
             ->when($channel !== 'all', fn($query) =>
                 $query->where('channel_name', $channel)
             )
-            ->when($searchTerm, fn($query) =>
-                $query->where(function ($q) use ($searchTerm) {
-                    $q->where('order_number', 'like', "%{$searchTerm}%")
-                      ->orWhere('channel_name', 'like', "%{$searchTerm}%");
-                })
-            )
+            ->when($status !== 'all', function ($query) use ($status) {
+                if ($status === 'paid') {
+                    // Show processed orders (completed/paid orders)
+                    $query->where('status', 'processed');
+                } elseif ($status === 'unpaid') {
+                    // Show pending orders (awaiting payment/processing)
+                    $query->where('status', 'pending');
+                } elseif ($status === 'parked') {
+                    // Parked orders are tracked separately (future feature)
+                    // For now, show nothing
+                    $query->whereRaw('1 = 0');
+                } elseif ($status === 'processed') {
+                    $query->where('status', 'processed');
+                } elseif ($status === 'cancelled') {
+                    $query->where('status', 'cancelled');
+                } elseif ($status === 'refunded') {
+                    $query->where('status', 'refunded');
+                }
+            })
             ->orderByDesc('received_date')
             ->get();
     }
@@ -204,10 +217,10 @@ class DashboardDataService
     private function makeFilterKey(
         string $period,
         string $channel,
-        string $searchTerm,
+        string $status,
         ?string $customFrom,
         ?string $customTo
     ): string {
-        return md5($period . $channel . $searchTerm . $customFrom . $customTo);
+        return md5($period . $channel . $status . $customFrom . $customTo);
     }
 }

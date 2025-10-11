@@ -15,7 +15,7 @@ use Livewire\Attributes\Computed;
  * Components using this trait should have these public properties:
  * - string $period
  * - string $channel
- * - string $searchTerm
+ * - string $status
  * - ?string $customFrom
  * - ?string $customTo
  *
@@ -33,7 +33,7 @@ trait UsesCachedMetrics
         return app(DashboardDataService::class)->getOrders(
             period: $this->period,
             channel: $this->channel,
-            searchTerm: $this->searchTerm,
+            status: $this->status,
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );
@@ -53,7 +53,7 @@ trait UsesCachedMetrics
         if (!$service->canUseCachedMetrics(
             $this->period,
             $this->channel,
-            $this->searchTerm,
+            $this->status,
             $this->customFrom,
             $this->customTo
         )) {
