@@ -229,7 +229,6 @@ final class DashboardFilters extends Component
     #[On('echo:sync-progress,SyncCompleted')]
     public function handleSyncCompleted(array $data): void
     {
-        $this->isSyncing = false;
         $this->syncStage = 'completed';
         $this->syncMessage = $data['success']
             ? "Sync completed: {$data['created']} created, {$data['updated']} updated"
@@ -251,6 +250,21 @@ final class DashboardFilters extends Component
             'message' => $this->syncMessage,
             'type' => $data['success'] ? 'success' : 'warning',
         ]);
+    }
+
+    #[On('echo:cache-management,CacheWarmingStarted')]
+    public function handleCacheWarmingStarted(array $data): void
+    {
+        $this->syncMessage = 'Crunching the numbers...';
+        $this->syncStage = 'warming-cache';
+    }
+
+    #[On('echo:cache-management,CacheWarmingCompleted')]
+    public function handleCacheWarmingCompleted(array $data): void
+    {
+        $this->isSyncing = false;
+        $this->syncStage = 'completed';
+        $this->syncMessage = 'Sync complete!';
     }
 
     public function render()

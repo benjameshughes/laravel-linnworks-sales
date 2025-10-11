@@ -18,14 +18,22 @@
                           lastSync: '{{ $this->lastSyncInfo->get('time_human') }}',
                           elapsed: 0,
                           interval: null,
+                          displayText: '{{ $this->lastSyncInfo->get('time_human') }}',
                           updateTime() {
                               this.elapsed++;
-                              // After 60 seconds, switch to minute intervals
-                              if (this.elapsed === 60) {
+
+                              // If less than 60 seconds, show seconds count
+                              if (this.elapsed < 60) {
+                                  this.displayText = this.elapsed + ' second' + (this.elapsed === 1 ? '' : 's') + ' ago';
+                              } else if (this.elapsed === 60) {
+                                  // At 60 seconds, switch to minute intervals and refresh from server
                                   clearInterval(this.interval);
-                                  this.interval = setInterval(() => $wire.$refresh(), 60000);
+                                  this.interval = setInterval(() => {
+                                      $wire.$refresh();
+                                      this.displayText = $wire.lastSyncInfo?.time_human || this.displayText;
+                                  }, 60000);
+                                  this.displayText = '1 minute ago';
                               }
-                              $wire.$refresh();
                           }
                       }"
                       x-init="interval = setInterval(() => updateTime(), 1000)">
@@ -55,7 +63,7 @@
                               x-transition:leave-start="opacity-100"
                               x-transition:leave-end="opacity-0">
                             <flux:icon name="arrow-path" class="size-3 text-zinc-500 transition-transform duration-500 hover:rotate-180" />
-                            {{ $this->lastSyncInfo->get('time_human') }}
+                            <span x-text="displayText">{{ $this->lastSyncInfo->get('time_human') }}</span>
                         </span>
                     @endif
                 </span>
