@@ -33,6 +33,9 @@ final class ImportOrders
 
     private function importOrders(iterable $orders, bool $forceUpdate): ImportOrdersResult
     {
+        $startTime = microtime(true);
+        $peakMemoryBefore = memory_get_peak_usage(true);
+
         $ordersCollection = $orders instanceof Collection ? $orders : collect($orders);
 
         $dtoCollection = $ordersCollection
@@ -69,6 +72,21 @@ final class ImportOrders
             );
         }
 
+        Log::info('ImportOrders: Starting import', [
+            'total_orders' => $dtoCollection->count(),
+            'force_update' => $forceUpdate,
+        ]);
+
+        // Performance optimization: Batch load all existing orders upfront to avoid N+1 queries
+        $batchLoadStart = microtime(true);
+        $existingOrdersMap = $this->loadExistingOrdersBatch($dtoCollection);
+        $batchLoadDuration = round(microtime(true) - $batchLoadStart, 2);
+
+        Log::info('ImportOrders: Batch loading completed', [
+            'duration_seconds' => $batchLoadDuration,
+            'orders_loaded' => $existingOrdersMap->get('by_order_id')->count() + $existingOrdersMap->get('by_order_number')->count(),
+        ]);
+
         $counts = [
             'processed' => 0,
             'created' => 0,
@@ -77,8 +95,8 @@ final class ImportOrders
             'failed' => 0,
         ];
 
-        $dtoCollection->chunk(25)->each(function (Collection $chunk) use (&$counts, $forceUpdate) {
-            DB::transaction(function () use ($chunk, &$counts, $forceUpdate) {
+        $dtoCollection->chunk(25)->each(function (Collection $chunk) use (&$counts, $forceUpdate, $existingOrdersMap) {
+            DB::transaction(function () use ($chunk, &$counts, $forceUpdate, $existingOrdersMap) {
                 foreach ($chunk as $linnworksOrder) {
                     assert($linnworksOrder instanceof LinnworksOrder);
                     $counts['processed']++;
@@ -86,7 +104,8 @@ final class ImportOrders
                     $orderId = $linnworksOrder->orderId;
                     $orderNumber = $linnworksOrder->orderNumber;
 
-                    $existingOrder = $this->findExistingOrder($orderId, $orderNumber);
+                    // Use pre-loaded map instead of querying DB for each order
+                    $existingOrder = $this->getExistingOrder($existingOrdersMap, $orderId, $orderNumber);
 
                     try {
                         $modelFromDto = Order::fromLinnworksOrder($linnworksOrder);
@@ -178,6 +197,23 @@ final class ImportOrders
             }, 5);
         });
 
+        $duration = round(microtime(true) - $startTime, 2);
+        $peakMemoryAfter = memory_get_peak_usage(true);
+        $memoryUsed = $peakMemoryAfter - $peakMemoryBefore;
+
+        Log::info('ImportOrders: Import completed', [
+            'total_orders' => $dtoCollection->count(),
+            'processed' => $counts['processed'],
+            'created' => $counts['created'],
+            'updated' => $counts['updated'],
+            'skipped' => $counts['skipped'],
+            'failed' => $counts['failed'],
+            'duration_seconds' => $duration,
+            'orders_per_second' => $counts['processed'] > 0 ? round($counts['processed'] / $duration, 2) : 0,
+            'memory_used_mb' => round($memoryUsed / 1024 / 1024, 2),
+            'peak_memory_mb' => round($peakMemoryAfter / 1024 / 1024, 2),
+        ]);
+
         return new ImportOrdersResult(
             processed: $counts['processed'],
             created: $counts['created'],
@@ -187,6 +223,94 @@ final class ImportOrders
         );
     }
 
+    /**
+     * Batch load all existing orders to avoid N+1 queries
+     *
+     * Loads orders by Linnworks IDs and order numbers in bulk, then creates
+     * a lookup map for O(1) access during import loop.
+     */
+    private function loadExistingOrdersBatch(Collection $dtoCollection): Collection
+    {
+        $orderIds = $dtoCollection
+            ->pluck('orderId')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $orderNumbers = $dtoCollection
+            ->pluck('orderNumber')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        Log::info('ImportOrders: Batch loading existing orders', [
+            'order_ids_count' => count($orderIds),
+            'order_numbers_count' => count($orderNumbers),
+        ]);
+
+        // Load all existing orders in one or two queries
+        $existingOrders = collect();
+
+        if (!empty($orderIds)) {
+            $byLinnworksId = Order::query()
+                ->where(function ($query) use ($orderIds) {
+                    $query->whereIn('linnworks_order_id', $orderIds)
+                        ->orWhereIn('order_id', $orderIds);
+                })
+                ->get();
+            $existingOrders = $existingOrders->merge($byLinnworksId);
+        }
+
+        if (!empty($orderNumbers)) {
+            $byOrderNumber = Order::whereIn('order_number', $orderNumbers)->get();
+            $existingOrders = $existingOrders->merge($byOrderNumber);
+        }
+
+        // Create lookup maps for fast O(1) access
+        $orderIdMap = $existingOrders
+            ->filter(fn ($order) => $order->linnworks_order_id || $order->order_id)
+            ->keyBy(fn ($order) => $order->linnworks_order_id ?? $order->order_id);
+
+        $orderNumberMap = $existingOrders
+            ->filter(fn ($order) => $order->order_number)
+            ->keyBy('order_number');
+
+        Log::info('ImportOrders: Existing orders loaded', [
+            'total_loaded' => $existingOrders->unique('id')->count(),
+            'by_order_id' => $orderIdMap->count(),
+            'by_order_number' => $orderNumberMap->count(),
+        ]);
+
+        return collect([
+            'by_order_id' => $orderIdMap,
+            'by_order_number' => $orderNumberMap,
+        ]);
+    }
+
+    /**
+     * Get existing order from pre-loaded map (O(1) lookup)
+     */
+    private function getExistingOrder(Collection $existingOrdersMap, ?string $orderId, ?int $orderNumber): ?Order
+    {
+        $orderIdMap = $existingOrdersMap->get('by_order_id');
+        $orderNumberMap = $existingOrdersMap->get('by_order_number');
+
+        if ($orderId && $orderIdMap->has($orderId)) {
+            return $orderIdMap->get($orderId);
+        }
+
+        if ($orderNumber && $orderNumberMap->has($orderNumber)) {
+            return $orderNumberMap->get($orderNumber);
+        }
+
+        return null;
+    }
+
+    /**
+     * @deprecated Use loadExistingOrdersBatch() and getExistingOrder() instead
+     */
     private function findExistingOrder(?string $orderId, ?int $orderNumber): ?Order
     {
         $existingOrder = null;
