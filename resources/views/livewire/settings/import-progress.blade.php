@@ -113,18 +113,18 @@
                     {{-- Stats Grid --}}
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
-                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Total Orders</div>
-                            <div class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{{ number_format($totalOrders) }}</div>
-                        </div>
-
-                        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
                             <div class="text-sm text-zinc-600 dark:text-zinc-400">Processed</div>
                             <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ number_format($totalProcessed) }}</div>
                         </div>
 
                         <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
-                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Imported</div>
-                            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ number_format($totalImported) }}</div>
+                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Created</div>
+                            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ number_format($created) }}</div>
+                        </div>
+
+                        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Updated</div>
+                            <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">{{ number_format($updated) }}</div>
                         </div>
 
                         <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
@@ -135,6 +135,37 @@
                         </div>
                     </div>
 
+                    {{-- Performance Metrics --}}
+                    @if ($isImporting && $ordersPerSecond > 0)
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                            <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">Speed</div>
+                                <div class="text-lg font-bold text-indigo-600 dark:text-indigo-400">{{ number_format($ordersPerSecond, 2) }}/s</div>
+                            </div>
+
+                            <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">Memory</div>
+                                <div class="text-lg font-bold text-purple-600 dark:text-purple-400">{{ number_format($memoryMb, 1) }} MB</div>
+                            </div>
+
+                            <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">Elapsed</div>
+                                <div class="text-lg font-bold text-zinc-900 dark:text-zinc-100">{{ number_format($timeElapsed, 1) }}s</div>
+                            </div>
+
+                            <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">Remaining</div>
+                                <div class="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                                    @if ($estimatedRemaining)
+                                        {{ number_format($estimatedRemaining, 1) }}s
+                                    @else
+                                        -
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Current Status Message --}}
                     @if ($message)
                         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -142,11 +173,11 @@
                                 <flux:icon.information-circle class="size-5 text-blue-500 mt-0.5 flex-shrink-0" />
                                 <div class="flex-1">
                                     <p class="text-sm text-blue-800 dark:text-blue-200">{{ $message }}</p>
-                                    @if ($currentPage > 0)
+                                    @if ($batchNumber > 0 && $totalBatches > 0)
                                         <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                            Page {{ number_format($currentPage) }}
-                                            @if ($totalOrders > 0)
-                                                of ~{{ number_format(ceil($totalOrders / $batchSize)) }}
+                                            Batch {{ number_format($batchNumber) }} of {{ number_format($totalBatches) }}
+                                            @if ($ordersInBatch > 0)
+                                                ({{ number_format($ordersInBatch) }} orders in this batch)
                                             @endif
                                         </p>
                                     @endif

@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Settings;
 
+use App\Events\ImportBatchProcessed;
 use App\Events\ImportCompleted;
+use App\Events\ImportPerformanceUpdate;
 use App\Events\ImportProgressUpdated;
 use App\Events\ImportStarted;
 use App\Jobs\RunHistoricalImportJob;
@@ -24,6 +26,19 @@ class ImportProgress extends Component
     public float $percentage = 0;
     public string $status = 'idle';
     public ?string $message = null;
+
+    // Performance metrics
+    public int $batchNumber = 0;
+    public int $totalBatches = 0;
+    public int $ordersInBatch = 0;
+    public int $created = 0;
+    public int $updated = 0;
+    public float $ordersPerSecond = 0;
+    public float $memoryMb = 0;
+    public float $timeElapsed = 0;
+    public ?float $estimatedRemaining = null;
+    public float $avgSpeed = 0;
+    public float $peakMemory = 0;
 
     public string $fromDate = '';
     public string $toDate = '';
@@ -95,6 +110,36 @@ class ImportProgress extends Component
         $this->message = $data['message'];
     }
 
+    #[On('echo:orders,import.batch.processed')]
+    public function handleBatchProcessed(array $data): void
+    {
+        $this->batchNumber = $data['batch_number'];
+        $this->totalBatches = $data['total_batches'];
+        $this->ordersInBatch = $data['orders_in_batch'];
+        $this->totalProcessed = $data['total_processed'];
+        $this->created = $data['created'];
+        $this->updated = $data['updated'];
+        $this->ordersPerSecond = $data['orders_per_second'];
+        $this->memoryMb = $data['memory_mb'];
+        $this->timeElapsed = $data['time_elapsed'];
+        $this->estimatedRemaining = $data['estimated_remaining'];
+        $this->percentage = $data['percentage'];
+        $this->message = "Processing batch {$this->batchNumber}/{$this->totalBatches}...";
+    }
+
+    #[On('echo:orders,import.performance.update')]
+    public function handlePerformanceUpdate(array $data): void
+    {
+        $this->totalProcessed = $data['total_processed'];
+        $this->created = $data['created'];
+        $this->updated = $data['updated'];
+        $this->totalErrors = $data['failed'];
+        $this->avgSpeed = $data['avg_speed'];
+        $this->peakMemory = $data['peak_memory'];
+        $this->timeElapsed = $data['duration'];
+        $this->message = $data['current_operation'];
+    }
+
     #[On('echo:import-progress,ImportCompleted')]
     public function handleImportCompleted(array $data): void
     {
@@ -128,6 +173,17 @@ class ImportProgress extends Component
             'status',
             'message',
             'startedAt',
+            'batchNumber',
+            'totalBatches',
+            'ordersInBatch',
+            'created',
+            'updated',
+            'ordersPerSecond',
+            'memoryMb',
+            'timeElapsed',
+            'estimatedRemaining',
+            'avgSpeed',
+            'peakMemory',
         ]);
     }
 

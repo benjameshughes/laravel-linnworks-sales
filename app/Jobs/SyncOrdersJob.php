@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Actions\Orders\StreamingOrderImporter;
+use App\Events\ImportBatchProcessed;
+use App\Events\ImportPerformanceUpdate;
 use App\Events\OrdersSynced;
 use App\Events\SyncCompleted;
 use App\Events\SyncProgressUpdated;
@@ -77,6 +79,7 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
         }
 
         try {
+            $startTime = microtime(true);
             $totalCreated = 0;
             $totalUpdated = 0;
             $totalProcessed = 0;
@@ -188,6 +191,46 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
                     'updated' => $result->updated,
                     'failed' => $result->failed,
                 ]);
+
+                // Broadcast detailed batch metrics (like cache warming UI)
+                $timeElapsed = microtime(true) - $startTime;
+                $ordersPerSecond = $totalProcessed > 0 ? $totalProcessed / max(0.001, $timeElapsed) : 0;
+                $estimatedRemaining = null;
+
+                if ($currentChunk < $totalChunks && $timeElapsed > 0) {
+                    $avgTimePerChunk = $timeElapsed / $currentChunk;
+                    $remainingChunks = $totalChunks - $currentChunk;
+                    $estimatedRemaining = $avgTimePerChunk * $remainingChunks;
+                }
+
+                event(new ImportBatchProcessed(
+                    batchNumber: $currentChunk,
+                    totalBatches: $totalChunks,
+                    ordersInBatch: $orders->count(),
+                    totalProcessed: $totalProcessed,
+                    created: $totalCreated,
+                    updated: $totalUpdated,
+                    ordersPerSecond: $ordersPerSecond,
+                    memoryMb: memory_get_usage(true) / 1024 / 1024,
+                    timeElapsed: $timeElapsed,
+                    estimatedRemaining: $estimatedRemaining,
+                ));
+
+                // Broadcast aggregate performance update every 5 batches
+                if ($currentChunk % 5 === 0 || $currentChunk === $totalChunks) {
+                    event(new ImportPerformanceUpdate(
+                        totalProcessed: $totalProcessed,
+                        created: $totalCreated,
+                        updated: $totalUpdated,
+                        failed: $totalFailed,
+                        avgSpeed: $ordersPerSecond,
+                        peakMemory: memory_get_peak_usage(true) / 1024 / 1024,
+                        duration: $timeElapsed,
+                        currentOperation: $currentChunk === $totalChunks
+                            ? 'Completed'
+                            : "Processing batch {$currentChunk}/{$totalChunks}",
+                    ));
+                }
             }
 
             // Step 6: Complete sync log
