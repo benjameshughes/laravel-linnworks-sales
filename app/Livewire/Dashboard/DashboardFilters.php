@@ -17,7 +17,7 @@ use Throwable;
 
 final class DashboardFilters extends Component
 {
-    public string $period = '7';
+    public string $period;
     public string $channel = 'all';
     public string $status = 'all';
     public ?string $customFrom = null;
@@ -31,6 +31,10 @@ final class DashboardFilters extends Component
 
     public function mount(): void
     {
+        // Initialize period from config
+        $defaultPeriod = config('dashboard.default_period', \App\Enums\Period::SEVEN_DAYS);
+        $this->period = $defaultPeriod instanceof \App\Enums\Period ? $defaultPeriod->value : $defaultPeriod;
+
         // Initialize custom dates to last 7 days
         $this->customTo = Carbon::now()->format('Y-m-d');
         $this->customFrom = Carbon::now()->subDays(7)->format('Y-m-d');

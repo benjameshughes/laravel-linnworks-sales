@@ -82,7 +82,8 @@ final class WarmPeriodCacheJob implements ShouldQueue
             $cacheData = $this->calculateMetrics();
 
             // Cache for 1 hour (will be refreshed when new orders sync)
-            $cacheKey = "metrics_{$this->period}d_{$this->channel}";
+            $periodEnum = \App\Enums\Period::tryFrom($this->period);
+            $cacheKey = $periodEnum?->cacheKey($this->channel) ?? "metrics_{$this->period}d_{$this->channel}";
             Cache::put($cacheKey, $cacheData, 3600);
 
             $duration = round(microtime(true) - $startTime, 2);

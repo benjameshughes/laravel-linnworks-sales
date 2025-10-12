@@ -16,9 +16,6 @@ beforeEach(function () {
     Event::fake();
     Bus::fake();
     Log::spy();
-
-    // Set default config
-    config(['dashboard.cacheable_periods' => ['7', '30', '90']]);
 });
 
 test('listener dispatches correct number of jobs', function () {
@@ -27,9 +24,10 @@ test('listener dispatches correct number of jobs', function () {
 
     $listener->handle($event);
 
-    // Should dispatch 3 jobs (7d, 30d, 90d) for 'all' channel
-    Bus::assertBatched(function ($batch) {
-        return count($batch->jobs) === 3;
+    // Should dispatch jobs for all cacheable periods (all except 'custom')
+    $expectedCount = count(\App\Enums\Period::cacheable());
+    Bus::assertBatched(function ($batch) use ($expectedCount) {
+        return count($batch->jobs) === $expectedCount;
     });
 });
 
@@ -62,21 +60,21 @@ test('listener broadcasts CacheWarmingStarted event', function () {
 
     $listener->handle($event);
 
-    Event::assertDispatched(CacheWarmingStarted::class, function ($event) {
-        return $event->periods === ['7d', '30d', '90d'];
+    $expectedPeriods = collect(\App\Enums\Period::cacheable())->map(fn($p) => "{$p->value}d")->toArray();
+    Event::assertDispatched(CacheWarmingStarted::class, function ($event) use ($expectedPeriods) {
+        return $event->periods === $expectedPeriods;
     });
 });
 
-test('listener creates jobs for all configured periods', function () {
-    config(['dashboard.cacheable_periods' => ['1', '7', '30', '90']]);
-
+test('listener creates jobs for all enum periods', function () {
     $listener = new WarmMetricsCache();
     $event = new OrdersSynced(100, 'test');
 
     $listener->handle($event);
 
-    Bus::assertBatched(function ($batch) {
-        return count($batch->jobs) === 4;
+    $expectedCount = count(\App\Enums\Period::cacheable());
+    Bus::assertBatched(function ($batch) use ($expectedCount) {
+        return count($batch->jobs) === $expectedCount;
     });
 });
 
@@ -102,8 +100,6 @@ test('listener is queued (implements ShouldQueue)', function () {
 });
 
 test('listener dispatches jobs with correct periods', function () {
-    config(['dashboard.cacheable_periods' => ['7', '30']]);
-
     $listener = new WarmMetricsCache();
     $event = new OrdersSynced(100, 'test');
 
@@ -111,7 +107,8 @@ test('listener dispatches jobs with correct periods', function () {
 
     Bus::assertBatched(function ($batch) {
         $periods = $batch->jobs->map(fn($job) => $job->period)->all();
-        return $periods === ['7', '30'];
+        $expectedPeriods = collect(\App\Enums\Period::cacheable())->map(fn($p) => $p->value)->all();
+        return $periods === $expectedPeriods;
     });
 });
 
@@ -138,9 +135,10 @@ test('listener creates batch successfully', function () {
     $listener->handle($event);
 
     // Verify a batch was created
-    Bus::assertBatched(function ($batch) {
+    $expectedCount = count(\App\Enums\Period::cacheable());
+    Bus::assertBatched(function ($batch) use ($expectedCount) {
         return $batch->name === 'warm-metrics-cache'
-            && count($batch->jobs) === 3;
+            && count($batch->jobs) === $expectedCount;
     });
 });
 
@@ -160,29 +158,31 @@ test('listener batch finally callback exists', function () {
     });
 });
 
-test('listener handles empty cacheable periods config', function () {
-    config(['dashboard.cacheable_periods' => []]);
-
+test('listener only dispatches cacheable periods', function () {
     $listener = new WarmMetricsCache();
     $event = new OrdersSynced(100, 'test');
 
     $listener->handle($event);
 
-    // Should dispatch a batch with 0 jobs if no periods configured
+    // Should only dispatch cacheable periods (not 'custom')
     Bus::assertBatched(function ($batch) {
-        return count($batch->jobs) === 0;
+        foreach ($batch->jobs as $job) {
+            if ($job->period === 'custom') {
+                return false;
+            }
+        }
+        return true;
     });
 });
 
-test('listener respects custom periods from config', function () {
-    config(['dashboard.cacheable_periods' => ['1', 'yesterday', '7', '30', '90']]);
-
+test('listener dispatches all periods from enum', function () {
     $listener = new WarmMetricsCache();
     $event = new OrdersSynced(100, 'test');
 
     $listener->handle($event);
 
-    Bus::assertBatched(function ($batch) {
-        return count($batch->jobs) === 5;
+    $cacheablePeriods = \App\Enums\Period::cacheable();
+    Bus::assertBatched(function ($batch) use ($cacheablePeriods) {
+        return count($batch->jobs) === count($cacheablePeriods);
     });
 });

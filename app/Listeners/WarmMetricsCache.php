@@ -58,17 +58,17 @@ final class WarmMetricsCache implements ShouldQueue
             'sync_type' => $event->syncType,
         ]);
 
-        $periods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+        $periods = \App\Enums\Period::cacheable();
         $channels = ['all']; // Can add specific channels later
 
         // Broadcast that warming has started
-        CacheWarmingStarted::dispatch(collect($periods)->map(fn($p) => "{$p}d")->toArray());
+        CacheWarmingStarted::dispatch(collect($periods)->map(fn($p) => "{$p->value}d")->toArray());
 
         // Dispatch individual jobs for each period/channel combination
         // Jobs are queued and processed sequentially, preventing memory buildup
-        $jobs = collect($periods)->flatMap(function (string $period) use ($channels) {
+        $jobs = collect($periods)->flatMap(function (\App\Enums\Period $period) use ($channels) {
             return collect($channels)->map(function (string $channel) use ($period) {
-                return new WarmPeriodCacheJob($period, $channel);
+                return new WarmPeriodCacheJob($period->value, $channel);
             });
         });
 

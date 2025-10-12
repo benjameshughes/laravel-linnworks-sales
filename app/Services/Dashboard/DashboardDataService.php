@@ -38,14 +38,14 @@ class DashboardDataService
      */
     public function getCachedMetrics(string $period, string $channel = 'all'): ?array
     {
-        $cacheablePeriods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+        $periodEnum = \App\Enums\Period::tryFrom($period);
 
-        // Only support caching for configured periods without search/custom dates
-        if (!in_array($period, $cacheablePeriods) || $channel !== 'all') {
+        // Only support caching for cacheable periods with 'all' channel
+        if ($periodEnum === null || !$periodEnum->isCacheable() || $channel !== 'all') {
             return null;
         }
 
-        $cacheKey = "metrics_{$period}d_{$channel}";
+        $cacheKey = $periodEnum->cacheKey($channel);
 
         // Simply return cached data or null - NEVER calculate
         return $this->cachedMetrics ??= Cache::get($cacheKey);
@@ -67,9 +67,9 @@ class DashboardDataService
         ?string $customFrom = null,
         ?string $customTo = null
     ): bool {
-        $cacheablePeriods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+        $periodEnum = \App\Enums\Period::tryFrom($period);
 
-        return in_array($period, $cacheablePeriods)
+        return $periodEnum?->isCacheable() === true
             && $channel === 'all'
             && $status === 'all'
             && $customFrom === null

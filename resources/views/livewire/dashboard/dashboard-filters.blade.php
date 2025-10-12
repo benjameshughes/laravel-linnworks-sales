@@ -105,12 +105,11 @@
 
                 <div class="relative min-w-[140px] flex-1 lg:flex-initial lg:w-36">
                     <flux:select wire:model.live.debounce.300ms="period" size="sm">
-                        <flux:select.option value="1">Last 24 hours</flux:select.option>
-                        <flux:select.option value="yesterday">Yesterday</flux:select.option>
-                        <flux:select.option value="7">Last 7 days</flux:select.option>
-                        <flux:select.option value="30">Last 30 days</flux:select.option>
-                        <flux:select.option value="90">Last 90 days</flux:select.option>
-                        <flux:select.option value="custom">Custom Range...</flux:select.option>
+                        @foreach(\App\Enums\Period::all() as $periodOption)
+                            <flux:select.option value="{{ $periodOption->value }}">
+                                {{ $periodOption->label() }}
+                            </flux:select.option>
+                        @endforeach
                     </flux:select>
                 </div>
 
