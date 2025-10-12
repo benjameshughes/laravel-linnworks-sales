@@ -35,7 +35,7 @@ class SalesMetrics extends MetricBase
      */
     public function totalRevenue(): float
     {
-        return (float) $this->data->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+        return (float) $this->data->sum(fn ($order) => $this->calculateOrderRevenue($order));
     }
 
     /**
@@ -105,7 +105,7 @@ class SalesMetrics extends MetricBase
     {
         return (float) $this->data
             ->where('is_processed', true)
-            ->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+            ->sum(fn ($order) => $this->calculateOrderRevenue($order));
     }
 
     /**
@@ -115,7 +115,7 @@ class SalesMetrics extends MetricBase
     {
         return (float) $this->data
             ->where('is_processed', false)
-            ->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+            ->sum(fn ($order) => $this->calculateOrderRevenue($order));
     }
 
     /**
@@ -153,10 +153,10 @@ class SalesMetrics extends MetricBase
         $totalRevenue = $this->totalRevenue();
 
         return $this->data
-            ->groupBy(fn (Order $order) => $order->channel_name . '|' . ($order->sub_source ?? ''))
+            ->groupBy(fn ($order) => $order->channel_name . '|' . ($order->sub_source ?? ''))
             ->map(function (Collection $channelOrders, string $groupKey) use ($totalRevenue) {
                 [$channel, $subsource] = explode('|', $groupKey, 2);
-                $channelRevenue = $channelOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+                $channelRevenue = $channelOrders->sum(fn ($order) => $this->calculateOrderRevenue($order));
                 $ordersCount = $channelOrders->count();
 
                 $displayName = $subsource
@@ -186,9 +186,9 @@ class SalesMetrics extends MetricBase
         $totalRevenue = $this->totalRevenue();
 
         return $this->data
-            ->groupBy(fn (Order $order) => $order->channel_name)
+            ->groupBy(fn ($order) => $order->channel_name)
             ->map(function (Collection $channelOrders, string $channel) use ($totalRevenue) {
-                $channelRevenue = $channelOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+                $channelRevenue = $channelOrders->sum(fn ($order) => $this->calculateOrderRevenue($order));
                 $ordersCount = $channelOrders->count();
 
                 return collect([
@@ -339,9 +339,9 @@ class SalesMetrics extends MetricBase
             $openOrders = $dayOrders->where('is_processed', false);
             $processedOrders = $dayOrders->where('is_processed', true);
 
-            $revenue = $dayOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-            $openRevenue = $openOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-            $processedRevenue = $processedOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+            $revenue = $dayOrders->sum(fn ($order) => $this->calculateOrderRevenue($order));
+            $openRevenue = $openOrders->sum(fn ($order) => $this->calculateOrderRevenue($order));
+            $processedRevenue = $processedOrders->sum(fn ($order) => $this->calculateOrderRevenue($order));
             $orderCount = $dayOrders->count();
 
             $itemsCount = $dayOrders->sum(function ($order) {
@@ -433,7 +433,10 @@ class SalesMetrics extends MetricBase
                 continue;
             }
 
-            $dateKey = $order->received_date->format('Y-m-d');
+            // Handle both Carbon instances (Eloquent) and strings (DB::table)
+            $dateKey = $order->received_date instanceof \Carbon\Carbon
+                ? $order->received_date->format('Y-m-d')
+                : Carbon::parse($order->received_date)->format('Y-m-d');
 
             if (!isset($dailyData[$dateKey])) {
                 continue;
@@ -465,15 +468,24 @@ class SalesMetrics extends MetricBase
 
     protected function buildDailyBreakdown(Carbon $date): Collection
     {
-        $dayOrders = $this->data->filter(
-            fn($order) => $order->received_date?->isSameDay($date)
-        );
+        $dayOrders = $this->data->filter(function ($order) use ($date) {
+            if (!$order->received_date) {
+                return false;
+            }
+
+            // Handle both Carbon instances (Eloquent) and strings (DB::table)
+            $receivedDate = $order->received_date instanceof \Carbon\Carbon
+                ? $order->received_date
+                : Carbon::parse($order->received_date);
+
+            return $receivedDate->isSameDay($date);
+        });
         $openOrders = $dayOrders->where('is_processed', false);
         $processedOrders = $dayOrders->where('is_processed', true);
 
-        $revenue = $dayOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-        $openRevenue = $openOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
-        $processedRevenue = $processedOrders->sum(fn (Order $order) => $this->calculateOrderRevenue($order));
+        $revenue = $dayOrders->sum(fn ($order) => $this->calculateOrderRevenue($order));
+        $openRevenue = $openOrders->sum(fn ($order) => $this->calculateOrderRevenue($order));
+        $processedRevenue = $processedOrders->sum(fn ($order) => $this->calculateOrderRevenue($order));
         $orderCount = $dayOrders->count();
 
         $itemsCount = $dayOrders->sum(function ($order) {
@@ -794,9 +806,10 @@ class SalesMetrics extends MetricBase
         ];
     }
 
-    private function calculateOrderRevenue(Order $order): float
+    private function calculateOrderRevenue(object $order): float
     {
-        $cacheKey = $order->getKey() ?? spl_object_id($order);
+        // Use ID for cache key if available, otherwise use object ID
+        $cacheKey = $order->id ?? spl_object_id($order);
 
         if (array_key_exists($cacheKey, $this->orderRevenueCache)) {
             return $this->orderRevenueCache[$cacheKey];
@@ -830,7 +843,8 @@ class SalesMetrics extends MetricBase
             }
         }
 
-        if ($order->relationLoaded('orderItems')) {
+        // Check if orderItems relationship is loaded (Eloquent only, not stdClass)
+        if (method_exists($order, 'relationLoaded') && $order->relationLoaded('orderItems')) {
             $itemsTotal = $order->orderItems->sum(function ($item) {
                 $lineTotal = (float) $item->line_total;
 

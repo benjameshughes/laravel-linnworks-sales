@@ -15,6 +15,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -73,6 +74,9 @@ final class WarmPeriodCacheJob implements ShouldQueue
 
         $startTime = microtime(true);
         $peakMemoryBefore = memory_get_peak_usage(true);
+
+        // Performance optimization: Disable query log to reduce memory overhead
+        DB::connection()->disableQueryLog();
 
         try {
             $cacheData = $this->calculateMetrics();
