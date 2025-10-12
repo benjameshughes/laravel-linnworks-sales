@@ -163,6 +163,8 @@ class DashboardDataService
         return DB::table('orders')
             ->select([
                 'id',
+                'order_number',
+                'linnworks_order_id',
                 'received_date',
                 'channel_name',
                 'sub_source',
@@ -223,6 +225,8 @@ class DashboardDataService
         return DB::table('orders')
             ->select([
                 'id',
+                'order_number',
+                'linnworks_order_id',
                 'received_date',
                 'channel_name',
                 'sub_source',
