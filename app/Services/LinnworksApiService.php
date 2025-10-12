@@ -377,6 +377,28 @@ class LinnworksApiService
     }
 
     /**
+     * Retrieve order identifiers (tags) for multiple orders by their IDs.
+     * Returns a collection keyed by order ID with arrays of identifiers.
+     */
+    public function getIdentifiersByOrderIds(array $orderIds, ?int $userId = null): Collection
+    {
+        if (empty($orderIds)) {
+            return collect();
+        }
+
+        try {
+            $userId = $this->resolveUserId($userId);
+            return $this->openOrders->getIdentifiersByOrderIds($userId, $orderIds);
+        } catch (\Throwable $exception) {
+            Log::error('Failed to fetch order identifiers.', [
+                'order_count' => count($orderIds),
+                'error' => $exception->getMessage(),
+            ]);
+            return collect();
+        }
+    }
+
+    /**
      * Retrieve details for one or more open orders.
      */
     public function getOpenOrderDetails(array $orderUuids, ?int $userId = null): Collection
@@ -419,11 +441,35 @@ class LinnworksApiService
                 return collect();
             }
 
-            return $response->getData()->map(fn ($order) => LinnworksOrder::fromArray(is_array($order) ? $order : (array) $order));
+            $rawData = $response->getData();
+
+            // DEBUG: Log a sample order to see what fields are present
+            if ($rawData->isNotEmpty()) {
+                $sampleOrder = $rawData->first();
+                $sampleArray = is_array($sampleOrder) ? $sampleOrder : (array) $sampleOrder;
+                Log::info('getOrdersByIds: Sample API response', [
+                    'order_count' => $rawData->count(),
+                    'sample_keys' => array_keys($sampleArray),
+                    'has_ShippingInfo' => isset($sampleArray['ShippingInfo']),
+                    'has_Notes' => isset($sampleArray['Notes']),
+                    'has_ExtendedProperties' => isset($sampleArray['ExtendedProperties']),
+                    'has_OrderIdentifiers' => isset($sampleArray['OrderIdentifiers']),
+                ]);
+            }
+
+            return $rawData->map(fn ($order) => LinnworksOrder::fromArray(is_array($order) ? $order : (array) $order));
         } catch (\Throwable $exception) {
-            Log::error('Unhandled error fetching order details by IDs.', [
+            $context = [
                 'error' => $exception->getMessage(),
-            ]);
+                'exception_class' => get_class($exception),
+            ];
+
+            // If it's a LinnworksApiException, get the full context including API response
+            if (method_exists($exception, 'context')) {
+                $context = array_merge($context, $exception->context());
+            }
+
+            Log::error('Unhandled error fetching order details by IDs.', $context);
             return collect();
         }
     }

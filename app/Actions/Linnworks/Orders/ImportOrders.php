@@ -94,23 +94,76 @@ final class ImportOrders
                         if ($existingOrder) {
                             $existingOrder->fill($modelFromDto->getAttributes());
                             $existingOrder->items = $modelFromDto->items;
-                            $existingOrder->setPendingItems($modelFromDto->getPendingItems());
+                            // Transfer all pending related data
+                            $existingOrder->pendingItems = $modelFromDto->pendingItems;
+                            $existingOrder->pendingShipping = $modelFromDto->pendingShipping;
+                            $existingOrder->pendingNotes = $modelFromDto->pendingNotes;
+                            $existingOrder->pendingProperties = $modelFromDto->pendingProperties;
+                            $existingOrder->pendingIdentifiers = $modelFromDto->pendingIdentifiers;
+
+                            // DEBUG: Log what pending data we have
+                            Log::info('ImportOrders: Pending data transferred', [
+                                'order_id' => $orderId,
+                                'order_number' => $orderNumber,
+                                'has_shipping' => $existingOrder->pendingShipping !== null,
+                                'notes_count' => $existingOrder->pendingNotes ? $existingOrder->pendingNotes->count() : 0,
+                                'properties_count' => $existingOrder->pendingProperties ? $existingOrder->pendingProperties->count() : 0,
+                                'identifiers_count' => $existingOrder->pendingIdentifiers ? $existingOrder->pendingIdentifiers->count() : 0,
+                            ]);
 
                             $shouldPersist = $forceUpdate || $existingOrder->isDirty();
 
                             if ($shouldPersist) {
                                 $existingOrder->save();
-                                $existingOrder->syncOrderItems();
                                 $counts['updated']++;
                             } else {
                                 $counts['skipped']++;
+                            }
+
+                            // ALWAYS sync related data (items, shipping, notes, etc.) even if order wasn't updated
+                            // This ensures we capture any new notes, properties, or identifier changes from Linnworks
+                            // Note: The order MUST have been saved at least once (has an ID) for relationships to work
+                            if ($existingOrder->exists) {
+                                try {
+                                    Log::info('ImportOrders: Calling syncAllRelatedData', [
+                                        'order_id' => $orderId,
+                                        'order_number' => $orderNumber,
+                                    ]);
+                                    $existingOrder->syncAllRelatedData();
+                                    Log::info('ImportOrders: syncAllRelatedData completed', [
+                                        'order_id' => $orderId,
+                                        'order_number' => $orderNumber,
+                                    ]);
+                                } catch (\Throwable $syncException) {
+                                    // Log but don't fail the entire import if related data sync fails
+                                    Log::warning('Failed to sync related data for order', [
+                                        'order_id' => $orderId,
+                                        'order_number' => $orderNumber,
+                                        'error' => $syncException->getMessage(),
+                                        'trace' => $syncException->getTraceAsString(),
+                                    ]);
+                                }
+                            } else {
+                                Log::warning('ImportOrders: Order does not exist, cannot sync related data', [
+                                    'order_id' => $orderId,
+                                    'order_number' => $orderNumber,
+                                ]);
                             }
 
                             continue;
                         }
 
                         $modelFromDto->save();
-                        $modelFromDto->syncOrderItems();
+                        try {
+                            $modelFromDto->syncAllRelatedData();
+                        } catch (\Throwable $syncException) {
+                            // Log but don't fail the entire import if related data sync fails
+                            Log::warning('Failed to sync related data for new order', [
+                                'order_id' => $orderId,
+                                'order_number' => $orderNumber,
+                                'error' => $syncException->getMessage(),
+                            ]);
+                        }
                         $counts['created']++;
                     } catch (\Throwable $exception) {
                         $counts['failed']++;

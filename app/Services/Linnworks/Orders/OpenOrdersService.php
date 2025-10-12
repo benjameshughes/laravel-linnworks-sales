@@ -659,7 +659,7 @@ class OpenOrdersService
     public function batchProcessOrders(int $userId, array $orderIds): array
     {
         $results = [];
-        
+
         Log::info('Batch processing open orders', [
             'user_id' => $userId,
             'order_count' => count($orderIds),
@@ -667,7 +667,7 @@ class OpenOrdersService
 
         foreach ($orderIds as $orderId) {
             $response = $this->processOrder($userId, $orderId);
-            
+
             $results[$orderId] = [
                 'success' => $response->isSuccess(),
                 'error' => $response->error,
@@ -694,5 +694,52 @@ class OpenOrdersService
                 'success_rate' => count($orderIds) > 0 ? ($successful / count($orderIds)) * 100 : 0,
             ],
         ];
+    }
+
+    /**
+     * Get order identifiers (tags) for multiple orders by their IDs.
+     * Returns a collection keyed by order ID with arrays of identifiers.
+     */
+    public function getIdentifiersByOrderIds(int $userId, array $orderIds): Collection
+    {
+        if (empty($orderIds)) {
+            return collect();
+        }
+
+        $sessionToken = $this->sessionManager->getValidSessionToken($userId);
+
+        if (!$sessionToken) {
+            Log::error('No valid session token for order identifiers', ['user_id' => $userId]);
+            return collect();
+        }
+
+        Log::info('Fetching order identifiers', [
+            'user_id' => $userId,
+            'order_count' => count($orderIds),
+        ]);
+
+        $request = ApiRequest::post('OpenOrders/GetIdentifiersByOrderIds', $orderIds)->asJson();
+        $response = $this->client->makeRequest($request, $sessionToken);
+
+        if ($response->isError()) {
+            Log::warning('Failed to fetch order identifiers', [
+                'user_id' => $userId,
+                'order_count' => count($orderIds),
+                'error' => $response->error,
+            ]);
+            return collect();
+        }
+
+        $data = $response->getData();
+
+        Log::info('Order identifiers fetched', [
+            'user_id' => $userId,
+            'response_keys' => $data->keys()->toArray(),
+            'data_count' => $data->count(),
+        ]);
+
+        // The API returns an object keyed by order ID, with each value being an array of identifier objects
+        // Convert to collection for easier handling
+        return collect($data->toArray());
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 
 class Order extends Model
@@ -16,9 +17,13 @@ class Order extends Model
     use HasFactory;
 
     /**
-     * Temporary storage for pending items during order creation
+     * Temporary storage for pending data during order creation
      */
-    private ?Collection $pendingItems = null;
+    public ?Collection $pendingItems = null;
+    public ?array $pendingShipping = null;
+    public ?Collection $pendingNotes = null;
+    public ?Collection $pendingProperties = null;
+    public ?Collection $pendingIdentifiers = null;
 
     protected $fillable = [
         'linnworks_order_id',
@@ -62,6 +67,12 @@ class Order extends Model
         'dispatched_at',
         'sync_status',
         'sync_metadata',
+        // Extended order fields
+        'marker',
+        'is_parked',
+        'despatch_by_date',
+        'num_items',
+        'payment_method',
     ];
 
 
@@ -90,6 +101,10 @@ class Order extends Model
             'is_processed' => 'boolean',
             'has_refund' => 'boolean',
             'sync_metadata' => 'array',
+            // Extended order field casts
+            'is_parked' => 'boolean',
+            'despatch_by_date' => 'datetime',
+            'paid_date' => 'datetime',
         ];
     }
 
@@ -99,6 +114,38 @@ class Order extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Get the shipping information for this order.
+     */
+    public function shipping(): HasOne
+    {
+        return $this->hasOne(OrderShipping::class);
+    }
+
+    /**
+     * Get the notes for this order.
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(OrderNote::class);
+    }
+
+    /**
+     * Get the extended properties for this order.
+     */
+    public function properties(): HasMany
+    {
+        return $this->hasMany(OrderProperty::class);
+    }
+
+    /**
+     * Get the identifiers/tags for this order.
+     */
+    public function identifiers(): HasMany
+    {
+        return $this->hasMany(OrderIdentifier::class);
     }
 
     /**
@@ -363,10 +410,20 @@ class Order extends Model
                 'item_title' => $item->itemTitle,
                 'category_name' => $item->categoryName,
             ])->toArray(),
+            // Extended order fields
+            'marker' => $linnworksOrder->marker,
+            'is_parked' => $linnworksOrder->isParked,
+            'despatch_by_date' => $linnworksOrder->despatchByDate,
+            'num_items' => $linnworksOrder->numItems,
+            'payment_method' => $linnworksOrder->paymentMethod,
         ]);
 
-        // Store the items data for later processing in a protected property
+        // Store all pending data for later processing
         $order->setPendingItems($linnworksOrder->items);
+        $order->setPendingShipping($linnworksOrder->shippingInfo);
+        $order->setPendingNotes($linnworksOrder->notes);
+        $order->setPendingProperties($linnworksOrder->extendedProperties);
+        $order->setPendingIdentifiers($linnworksOrder->identifiers);
 
         return $order;
     }
@@ -421,6 +478,115 @@ class Order extends Model
     }
 
     /**
+     * Sync shipping information
+     */
+    public function syncShipping(): void
+    {
+        if (!$this->pendingShipping) {
+            return;
+        }
+
+        // Delete existing shipping info
+        $this->shipping()->delete();
+
+        // Create new shipping record
+        $this->shipping()->create($this->pendingShipping);
+
+        // Clear pending shipping
+        $this->pendingShipping = null;
+    }
+
+    /**
+     * Sync order notes (strips customer PII)
+     */
+    public function syncNotes(): void
+    {
+        if (!$this->pendingNotes || $this->pendingNotes->isEmpty()) {
+            return;
+        }
+
+        // Delete existing notes
+        $this->notes()->delete();
+
+        // Create new notes (strip any customer PII)
+        foreach ($this->pendingNotes as $note) {
+            $this->notes()->create([
+                'linnworks_note_id' => $note['NoteId'] ?? $note['note_id'] ?? null,
+                'note_date' => $note['NoteDate'] ?? $note['note_date'] ?? null,
+                'is_internal' => (bool) ($note['IsInternal'] ?? $note['is_internal'] ?? false),
+                'note_text' => $note['Note'] ?? $note['note_text'] ?? '',
+                'created_by' => $note['CreatedBy'] ?? $note['created_by'] ?? null,
+            ]);
+        }
+
+        // Clear pending notes
+        $this->pendingNotes = null;
+    }
+
+    /**
+     * Sync extended properties
+     */
+    public function syncProperties(): void
+    {
+        if (!$this->pendingProperties || $this->pendingProperties->isEmpty()) {
+            return;
+        }
+
+        // Delete existing properties
+        $this->properties()->delete();
+
+        // Create new properties
+        foreach ($this->pendingProperties as $property) {
+            $this->properties()->create([
+                'property_type' => $property['PropertyType'] ?? $property['property_type'] ?? '',
+                'property_name' => $property['PropertyName'] ?? $property['property_name'] ?? '',
+                'property_value' => $property['PropertyValue'] ?? $property['property_value'] ?? '',
+            ]);
+        }
+
+        // Clear pending properties
+        $this->pendingProperties = null;
+    }
+
+    /**
+     * Sync order identifiers/tags
+     */
+    public function syncIdentifiers(): void
+    {
+        if (!$this->pendingIdentifiers || $this->pendingIdentifiers->isEmpty()) {
+            return;
+        }
+
+        // Delete existing identifiers
+        $this->identifiers()->delete();
+
+        // Create new identifiers
+        foreach ($this->pendingIdentifiers as $identifier) {
+            $this->identifiers()->create([
+                'identifier_id' => $identifier['OrderIdentifierId'] ?? $identifier['identifier_id'] ?? 0,
+                'tag' => $identifier['Tag'] ?? $identifier['tag'] ?? '',
+                'name' => $identifier['TagDisplayText'] ?? $identifier['name'] ?? null,
+                'is_custom' => (bool) ($identifier['IsCustom'] ?? $identifier['is_custom'] ?? false),
+            ]);
+        }
+
+        // Clear pending identifiers
+        $this->pendingIdentifiers = null;
+    }
+
+    /**
+     * Sync all related data (items, shipping, notes, properties, identifiers)
+     */
+    public function syncAllRelatedData(): void
+    {
+        $this->syncOrderItems();
+        $this->syncShipping();
+        $this->syncNotes();
+        $this->syncProperties();
+        $this->syncIdentifiers();
+    }
+
+    /**
      * Set pending items for processing
      */
     public function setPendingItems(?Collection $items): void
@@ -434,6 +600,38 @@ class Order extends Model
     public function getPendingItems(): ?Collection
     {
         return $this->pendingItems;
+    }
+
+    /**
+     * Set pending shipping info
+     */
+    public function setPendingShipping(?array $shippingInfo): void
+    {
+        $this->pendingShipping = $shippingInfo;
+    }
+
+    /**
+     * Set pending notes
+     */
+    public function setPendingNotes(?Collection $notes): void
+    {
+        $this->pendingNotes = $notes;
+    }
+
+    /**
+     * Set pending properties
+     */
+    public function setPendingProperties(?Collection $properties): void
+    {
+        $this->pendingProperties = $properties;
+    }
+
+    /**
+     * Set pending identifiers
+     */
+    public function setPendingIdentifiers(?Collection $identifiers): void
+    {
+        $this->pendingIdentifiers = $identifiers;
     }
 
     private static function mapOrderStatus(int $status): string

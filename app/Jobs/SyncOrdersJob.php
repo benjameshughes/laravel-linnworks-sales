@@ -96,9 +96,31 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             $recentCutoff = Carbon::now()->subDays(90)->startOfDay();
             $maxOpenOrders = (int) config('linnworks.sync.max_open_orders', 1000);
 
-            // Get full order details using GetOpenOrdersDetails API
-            $recentOpenOrderIds = $openOrderIds->take($maxOpenOrders)->toArray();
-            $openOrders = $api->getOpenOrderDetails($recentOpenOrderIds);
+            // Get full order details using GetOrdersByIds API for ALL the data (shipping, notes, etc.)
+            // NOTE: Linnworks API has a limit of 200 IDs per request, so we need to chunk
+            $recentOpenOrderIds = $openOrderIds->take($maxOpenOrders);
+            Log::info('SyncOrdersJob: About to call getOrdersByIds in chunks', [
+                'total_order_ids' => $recentOpenOrderIds->count(),
+                'chunk_size' => 200,
+                'first_few_ids' => $recentOpenOrderIds->take(3)->toArray(),
+            ]);
+
+            $openOrders = collect();
+            foreach ($recentOpenOrderIds->chunk(200) as $chunkIndex => $chunk) {
+                $chunkOrders = $api->getOrdersByIds($chunk->toArray());
+                $openOrders = $openOrders->merge($chunkOrders);
+
+                Log::info('SyncOrdersJob: getOrdersByIds chunk processed', [
+                    'chunk_index' => $chunkIndex + 1,
+                    'chunk_size' => $chunk->count(),
+                    'orders_returned' => $chunkOrders->count(),
+                    'total_so_far' => $openOrders->count(),
+                ]);
+            }
+
+            Log::info('SyncOrdersJob: All getOrdersByIds chunks completed', [
+                'total_orders_returned' => $openOrders->count(),
+            ]);
 
             // Filter to recent orders only (received within last 90 days)
             $openOrders = $openOrders->filter(function ($order) use ($recentCutoff) {
@@ -115,6 +137,52 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             ]);
 
             event(new SyncProgressUpdated('fetched-open', "Fetched {$openOrders->count()} open orders", $openOrders->count()));
+
+            // Step 4.5: Fetch order identifiers (tags) for open orders
+            event(new SyncProgressUpdated('fetching-identifiers', 'Fetching order identifiers...'));
+
+            $orderIdsForIdentifiers = $openOrders
+                ->filter(fn ($order) => $order instanceof \App\DataTransferObjects\LinnworksOrder)
+                ->pluck('orderId')
+                ->filter()
+                ->values()
+                ->toArray();
+
+            if (!empty($orderIdsForIdentifiers)) {
+                Log::info('SyncOrdersJob: Fetching identifiers for open orders', [
+                    'order_count' => count($orderIdsForIdentifiers),
+                ]);
+
+                $identifiersByOrderId = $api->getIdentifiersByOrderIds($orderIdsForIdentifiers);
+
+                // Merge identifiers into each order DTO
+                $openOrders = $openOrders->map(function ($order) use ($identifiersByOrderId) {
+                    if (!$order instanceof \App\DataTransferObjects\LinnworksOrder) {
+                        return $order;
+                    }
+
+                    $orderId = $order->orderId;
+                    if ($orderId && isset($identifiersByOrderId[$orderId])) {
+                        // Update the identifiers collection on the DTO
+                        $order->identifiers = collect($identifiersByOrderId[$orderId])
+                            ->map(fn ($identifier) => [
+                                'tag' => $identifier['Tag'] ?? $identifier['tag'] ?? null,
+                                'created_at' => isset($identifier['CreatedDateTime']) || isset($identifier['created_at'])
+                                    ? Carbon::parse($identifier['CreatedDateTime'] ?? $identifier['created_at'])
+                                    : null,
+                            ])
+                            ->filter(fn ($identifier) => !is_null($identifier['tag']));
+                    }
+
+                    return $order;
+                });
+
+                $totalIdentifiers = $identifiersByOrderId->flatten(1)->count();
+                Log::info('SyncOrdersJob: Order identifiers fetched and merged', [
+                    'orders_with_identifiers' => $identifiersByOrderId->count(),
+                    'total_identifiers' => $totalIdentifiers,
+                ]);
+            }
 
             // Step 5: Fetch processed orders with FULL details
             event(new SyncProgressUpdated('fetching-processed', 'Fetching processed orders...'));

@@ -27,6 +27,20 @@ readonly class LinnworksOrder implements Arrayable
         public bool $isCancelled,
         public ?string $channelReferenceNumber,
         public Collection $items,
+        // Extended order fields
+        public int $marker,
+        public bool $isParked,
+        public ?Carbon $despatchByDate,
+        public ?int $numItems,
+        public ?string $paymentMethod,
+        // Shipping information (1-to-1)
+        public ?array $shippingInfo,
+        // Notes array (1-to-many)
+        public Collection $notes,
+        // Extended properties array (1-to-many)
+        public Collection $extendedProperties,
+        // Identifiers/tags array (1-to-many)
+        public Collection $identifiers,
     ) {}
 
     public static function fromArray(array $data): self
@@ -37,6 +51,10 @@ readonly class LinnworksOrder implements Arrayable
         // Handle new nested structure from GetOrdersById
         $generalInfo = $data['GeneralInfo'] ?? [];
         $totalsInfo = $data['TotalsInfo'] ?? [];
+        $shippingInfo = $data['ShippingInfo'] ?? [];
+        $notes = collect($data['Notes'] ?? []);
+        $extendedProperties = collect($data['ExtendedProperties'] ?? []);
+        $identifiers = collect($data['OrderIdentifiers'] ?? []);
 
         return new self(
             orderId: $data['OrderId'] ?? $data['pkOrderID'] ?? $data['order_id'] ?? null,
@@ -63,6 +81,37 @@ readonly class LinnworksOrder implements Arrayable
             isCancelled: (bool) ($generalInfo['HoldOrCancel'] ?? $data['HoldOrCancel'] ?? $data['is_cancelled'] ?? false),
             channelReferenceNumber: $generalInfo['ReferenceNum'] ?? $generalInfo['ExternalReferenceNum'] ?? $data['channel_reference_number'] ?? null,
             items: $items,
+            // Extended order fields
+            marker: (int) ($generalInfo['Marker'] ?? $data['Marker'] ?? 0),
+            isParked: (bool) ($generalInfo['IsParked'] ?? $data['IsParked'] ?? false),
+            despatchByDate: self::parseDate($generalInfo['DespatchByDate'] ?? $data['DespatchByDate'] ?? null),
+            numItems: isset($items) ? $items->sum('quantity') : null,
+            paymentMethod: $generalInfo['PaymentMethod'] ?? $data['PaymentMethod'] ?? null,
+            // Shipping information
+            shippingInfo: !empty($shippingInfo) ? [
+                'tracking_number' => $shippingInfo['TrackingNumber'] ?? null,
+                'vendor' => $shippingInfo['Vendor'] ?? null,
+                'postal_service_id' => $shippingInfo['PostalServiceId'] ?? null,
+                'postal_service_name' => $shippingInfo['PostalServiceName'] ?? null,
+                'total_weight' => $shippingInfo['TotalWeight'] ?? null,
+                'item_weight' => $shippingInfo['ItemWeight'] ?? null,
+                'package_category' => $shippingInfo['PackageCategory'] ?? null,
+                'package_type' => $shippingInfo['PackageType'] ?? null,
+                'postage_cost' => $shippingInfo['PostageCost'] ?? null,
+                'postage_cost_ex_tax' => $shippingInfo['PostageCostExTax'] ?? null,
+                'label_printed' => (bool) ($shippingInfo['LabelPrinted'] ?? false),
+                'label_error' => $shippingInfo['LabelError'] ?? null,
+                'invoice_printed' => (bool) ($shippingInfo['InvoicePrinted'] ?? false),
+                'pick_list_printed' => (bool) ($shippingInfo['PickListPrinted'] ?? false),
+                'partial_shipped' => (bool) ($shippingInfo['PartialShipped'] ?? false),
+                'manual_adjust' => (bool) ($shippingInfo['ManualAdjust'] ?? false),
+            ] : null,
+            // Notes (strip any customer PII)
+            notes: $notes,
+            // Extended properties
+            extendedProperties: $extendedProperties,
+            // Identifiers/tags
+            identifiers: $identifiers,
         );
     }
 
