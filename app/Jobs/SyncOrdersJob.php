@@ -104,13 +104,29 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             $processedFrom = Carbon::now()->subDays(30)->startOfDay();
             $processedTo = Carbon::now()->endOfDay();
 
-            // Use existing logic to get processed order data
+            // Use existing logic to get processed order data with progress callback
             $processedOrders = $api->getAllProcessedOrders(
                 from: $processedFrom,
                 to: $processedTo,
                 filters: [],
                 maxOrders: (int) config('linnworks.sync.max_processed_orders', 5000),
                 userId: null,
+                progressCallback: function ($page, $totalPages, $fetchedCount, $totalResults) use ($syncLog) {
+                    // Broadcast progress every page
+                    $message = "Fetching processed orders: page {$page}/" . ($totalPages ?: '?') . " ({$fetchedCount} fetched)";
+                    event(new SyncProgressUpdated('fetching-processed-ids', $message, $fetchedCount));
+
+                    // Update sync log every 10 pages to avoid too many database writes
+                    if ($page % 10 === 0 || $page === $totalPages) {
+                        $syncLog->updateProgress('fetching_processed_ids', $page, max($totalPages, $page), [
+                            'message' => $message,
+                            'current_page' => $page,
+                            'total_pages' => $totalPages,
+                            'fetched_count' => $fetchedCount,
+                            'total_results' => $totalResults,
+                        ]);
+                    }
+                }
             );
 
             $processedOrderIds = $processedOrders->pluck('orderId')->filter();

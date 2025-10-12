@@ -58,7 +58,8 @@ class ProcessedOrdersService
         Carbon $from,
         Carbon $to,
         array $filters = [],
-        int $maxOrders = 10000
+        int $maxOrders = 10000,
+        ?\Closure $progressCallback = null
     ): Collection {
         $allOrders = collect();
         $page = 1;
@@ -74,7 +75,7 @@ class ProcessedOrdersService
 
         do {
             $response = $this->searchProcessedOrders($userId, $from, $to, $filters, $page, $entriesPerPage);
-            
+
             if ($response->isError()) {
                 Log::error('Error fetching processed orders page', [
                     'user_id' => $userId,
@@ -87,14 +88,23 @@ class ProcessedOrdersService
             $data = $response->getData();
             $orders = collect($data->get('Results', []));
             $allOrders = $allOrders->merge($orders);
-            
+
+            $totalResults = $data->get('ResultsCount', 0);
+            $totalPages = $totalResults > 0 ? ceil($totalResults / $entriesPerPage) : 0;
+
             Log::info('Fetched processed orders page', [
                 'user_id' => $userId,
                 'page' => $page,
                 'orders_in_page' => $orders->count(),
                 'total_orders' => $allOrders->count(),
-                'total_results' => $data->get('ResultsCount', 0),
+                'total_results' => $totalResults,
+                'total_pages' => $totalPages,
             ]);
+
+            // Call progress callback if provided
+            if ($progressCallback) {
+                $progressCallback($page, $totalPages, $allOrders->count(), $totalResults);
+            }
 
             $page++;
             

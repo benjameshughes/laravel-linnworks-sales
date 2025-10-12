@@ -224,7 +224,8 @@ class LinnworksApiService
         ?Carbon $to = null,
         array $filters = [],
         int $maxOrders = 10_000,
-        ?int $userId = null
+        ?int $userId = null,
+        ?\Closure $progressCallback = null
     ): Collection {
         try {
             $userId = $this->resolveUserId($userId);
@@ -237,6 +238,7 @@ class LinnworksApiService
                 $to,
                 $filters,
                 $maxOrders,
+                $progressCallback
             );
             $mapped = $orders
                 ->map(fn ($order) => $order instanceof LinnworksOrder ? $order : LinnworksOrder::fromArray(is_array($order) ? $order : (array) $order))
