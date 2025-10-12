@@ -135,6 +135,27 @@
                         </div>
                     </div>
 
+                    {{-- Current Phase Info --}}
+                    @if ($isImporting)
+                        <div class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
+                            <div class="flex items-start gap-3">
+                                <flux:icon.clock class="size-5 text-indigo-500 mt-0.5 flex-shrink-0" />
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-indigo-900 dark:text-indigo-100 mb-1">Current Phase</h4>
+                                    <p class="text-sm text-indigo-800 dark:text-indigo-200">
+                                        {{ $message ?? 'Processing...' }}
+                                    </p>
+                                    <p class="text-xs text-indigo-600 dark:text-indigo-400 mt-2">
+                                        Progress: {{ number_format($percentage, 1) }}%
+                                        @if ($batchNumber > 0 && $totalBatches > 0)
+                                            • Batch {{ number_format($batchNumber) }}/{{ number_format($totalBatches) }}
+                                        @endif
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Performance Metrics --}}
                     @if ($isImporting && $ordersPerSecond > 0)
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
