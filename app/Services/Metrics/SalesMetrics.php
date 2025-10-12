@@ -327,7 +327,21 @@ class SalesMetrics extends MetricBase
                 return collect($order->items ?? [])->sum('quantity');
             });
 
+            // Pad with empty data points to center the single day in the chart
             return collect([
+                collect([
+                    'date' => $date->copy()->subDay()->format('M j'),
+                    'iso_date' => $date->copy()->subDay()->format('Y-m-d'),
+                    'day' => $date->copy()->subDay()->format('D'),
+                    'revenue' => 0,
+                    'orders' => 0,
+                    'items' => 0,
+                    'avg_order_value' => 0,
+                    'open_orders' => 0,
+                    'processed_orders' => 0,
+                    'open_revenue' => 0,
+                    'processed_revenue' => 0,
+                ]),
                 collect([
                     'date' => $date->format('M j'),
                     'iso_date' => $date->format('Y-m-d'),
@@ -340,7 +354,20 @@ class SalesMetrics extends MetricBase
                     'processed_orders' => $processedOrders->count(),
                     'open_revenue' => $openRevenue,
                     'processed_revenue' => $processedRevenue,
-                ])
+                ]),
+                collect([
+                    'date' => $date->copy()->addDay()->format('M j'),
+                    'iso_date' => $date->copy()->addDay()->format('Y-m-d'),
+                    'day' => $date->copy()->addDay()->format('D'),
+                    'revenue' => 0,
+                    'orders' => 0,
+                    'items' => 0,
+                    'avg_order_value' => 0,
+                    'open_orders' => 0,
+                    'processed_orders' => 0,
+                    'open_revenue' => 0,
+                    'processed_revenue' => 0,
+                ]),
             ]);
         }
 
