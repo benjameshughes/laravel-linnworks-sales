@@ -437,40 +437,128 @@ class Order extends Model
         $this->orderItems()->delete();
 
         $items = $this->pendingItems ?? collect($this->items ?? []);
+        $unlinkedItems = [];
 
         if ($items instanceof \Illuminate\Support\Collection) {
             foreach ($items as $item) {
                 // Handle both DTO objects and arrays
                 $isObject = is_object($item);
 
+                $sku = $isObject ? $item->sku : ($item['sku'] ?? null);
+                $itemId = $isObject ? $item->itemId : ($item['item_id'] ?? null);
+                $quantity = $isObject ? $item->quantity : ($item['quantity'] ?? 0);
+                $pricePerUnit = $isObject ? $item->pricePerUnit : ($item['price_per_unit'] ?? 0);
+                $itemTitle = $isObject ? $item->itemTitle : ($item['item_title'] ?? null);
+
+                // Skip items with empty SKU - store in metadata for later action
+                if (empty($sku)) {
+                    $unlinkedItems[] = [
+                        'item_id' => $itemId,
+                        'item_title' => $itemTitle,
+                        'quantity' => $quantity,
+                        'price_per_unit' => $pricePerUnit,
+                        'line_total' => $isObject ? $item->lineTotal : ($item['line_total'] ?? 0),
+                        'reason' => 'No SKU from marketplace (unlinked item)',
+                        'detected_at' => now()->toISOString(),
+                    ];
+
+                    \Log::warning('Unlinked order item detected (no SKU)', [
+                        'order_id' => $this->linnworks_order_id,
+                        'order_number' => $this->order_number,
+                        'channel' => $this->channel_name,
+                        'item_id' => $itemId,
+                        'price' => $pricePerUnit,
+                    ]);
+                    continue;
+                }
+
+                // Ensure product exists - create placeholder if needed
+                Product::firstOrCreate(
+                    ['sku' => $sku],
+                    [
+                        'linnworks_id' => $isObject ? ($item->stockItemId ?? 'UNKNOWN') : ($item['stock_item_id'] ?? 'UNKNOWN'),
+                        'title' => $itemTitle ?? 'Unknown Product',
+                        'category_name' => $isObject ? $item->categoryName : ($item['category_name'] ?? null),
+                        'stock_level' => 0,
+                        'is_active' => true,
+                    ]
+                );
+
                 $this->orderItems()->create([
-                    'item_id' => $isObject ? $item->itemId : ($item['item_id'] ?? null),
-                    'sku' => $isObject ? $item->sku : ($item['sku'] ?? null),
-                    'quantity' => $isObject ? $item->quantity : ($item['quantity'] ?? 0),
+                    'item_id' => $itemId,
+                    'sku' => $sku,
+                    'quantity' => $quantity,
                     'unit_cost' => $isObject ? $item->unitCost : ($item['unit_cost'] ?? 0),
-                    'price_per_unit' => $isObject ? $item->pricePerUnit : ($item['price_per_unit'] ?? 0),
+                    'price_per_unit' => $pricePerUnit,
                     'line_total' => $isObject ? $item->lineTotal : ($item['line_total'] ?? 0),
                     'metadata' => array_filter([
-                        'item_title' => $isObject ? $item->itemTitle : ($item['item_title'] ?? null),
+                        'item_title' => $itemTitle,
                         'category_name' => $isObject ? $item->categoryName : ($item['category_name'] ?? null),
                     ]),
                 ]);
             }
         } elseif (is_array($items)) {
             foreach ($items as $item) {
+                $sku = $item['sku'] ?? null;
+                $itemId = $item['item_id'] ?? null;
+                $quantity = $item['quantity'] ?? 0;
+                $pricePerUnit = $item['price_per_unit'] ?? 0;
+                $itemTitle = $item['item_title'] ?? null;
+
+                // Skip items with empty SKU - store in metadata for later action
+                if (empty($sku)) {
+                    $unlinkedItems[] = [
+                        'item_id' => $itemId,
+                        'item_title' => $itemTitle,
+                        'quantity' => $quantity,
+                        'price_per_unit' => $pricePerUnit,
+                        'line_total' => $item['line_total'] ?? 0,
+                        'reason' => 'No SKU from marketplace (unlinked item)',
+                        'detected_at' => now()->toISOString(),
+                    ];
+
+                    \Log::warning('Unlinked order item detected (no SKU)', [
+                        'order_id' => $this->linnworks_order_id,
+                        'order_number' => $this->order_number,
+                        'channel' => $this->channel_name,
+                        'item_id' => $itemId,
+                        'price' => $pricePerUnit,
+                    ]);
+                    continue;
+                }
+
+                // Ensure product exists - create placeholder if needed
+                Product::firstOrCreate(
+                    ['sku' => $sku],
+                    [
+                        'linnworks_id' => $item['stock_item_id'] ?? 'UNKNOWN',
+                        'title' => $itemTitle ?? 'Unknown Product',
+                        'category_name' => $item['category_name'] ?? null,
+                        'stock_level' => 0,
+                        'is_active' => true,
+                    ]
+                );
+
                 $this->orderItems()->create([
-                    'item_id' => $item['item_id'] ?? null,
-                    'sku' => $item['sku'] ?? null,
-                    'quantity' => $item['quantity'] ?? 0,
+                    'item_id' => $itemId,
+                    'sku' => $sku,
+                    'quantity' => $quantity,
                     'unit_cost' => $item['unit_cost'] ?? 0,
-                    'price_per_unit' => $item['price_per_unit'] ?? 0,
+                    'price_per_unit' => $pricePerUnit,
                     'line_total' => $item['line_total'] ?? 0,
                     'metadata' => array_filter([
-                        'item_title' => $item['item_title'] ?? null,
+                        'item_title' => $itemTitle,
                         'category_name' => $item['category_name'] ?? null,
                     ]),
                 ]);
             }
+        }
+
+        // Store unlinked items in order metadata if any were found
+        if (!empty($unlinkedItems)) {
+            $currentMetadata = $this->sync_metadata ?? [];
+            $currentMetadata['unlinked_items'] = $unlinkedItems;
+            $this->update(['sync_metadata' => $currentMetadata]);
         }
 
         // Clear pending items
