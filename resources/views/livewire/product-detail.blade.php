@@ -50,10 +50,13 @@
                 {{-- Controls --}}
                 <div class="flex flex-wrap gap-2">
                     <flux:select wire:model.live="period" size="sm" class="min-w-32">
-                        <flux:select.option value="7">7 days</flux:select.option>
-                        <flux:select.option value="30">30 days</flux:select.option>
-                        <flux:select.option value="90">90 days</flux:select.option>
-                        <flux:select.option value="365">1 year</flux:select.option>
+                        @foreach(\App\Enums\Period::all() as $periodOption)
+                            @if($periodOption->value !== 'custom')
+                                <flux:select.option value="{{ $periodOption->value }}">
+                                    {{ $periodOption->label() }}
+                                </flux:select.option>
+                            @endif
+                        @endforeach
                     </flux:select>
                     
                     <flux:button variant="ghost" size="sm" wire:click="$refresh" icon="arrow-path">

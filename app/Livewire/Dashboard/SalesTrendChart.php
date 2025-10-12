@@ -93,14 +93,8 @@ final class SalesTrendChart extends Component
             return 'Custom: ' . Carbon::parse($this->customFrom)->format('M j') . ' - ' . Carbon::parse($this->customTo)->format('M j, Y');
         }
 
-        return match ($this->period) {
-            '1' => 'Last 24 hours',
-            'yesterday' => 'Yesterday',
-            '7' => 'Last 7 days',
-            '30' => 'Last 30 days',
-            '90' => 'Last 90 days',
-            default => "Last {$this->period} days",
-        };
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+        return $periodEnum?->label() ?? "Last {$this->period} days";
     }
 
     #[Computed]
