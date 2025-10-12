@@ -89,15 +89,6 @@ class ImportProgress extends Component
         }
     }
 
-    /**
-     * Poll for updates from database (when no live broadcasts)
-     */
-    #[On('poll-sync-progress')]
-    public function pollProgress(): void
-    {
-        $this->loadPersistedState();
-    }
-
     public function startImport(): void
     {
         $this->validate([
@@ -130,6 +121,16 @@ class ImportProgress extends Component
         );
 
         $this->message = 'Import queued. Waiting for background workers...';
+    }
+
+    #[On('echo:sync-progress,SyncProgressUpdated')]
+    public function handleSyncProgress(array $data): void
+    {
+        $this->isImporting = true;
+        $this->message = $data['message'] ?? 'Syncing...';
+
+        // Reload persisted state to get latest metrics
+        $this->loadPersistedState();
     }
 
     #[On('echo:import-progress,ImportStarted')]
