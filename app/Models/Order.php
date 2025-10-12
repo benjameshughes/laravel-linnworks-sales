@@ -322,6 +322,7 @@ class Order extends Model
             'channel_name' => $linnworksOrder->orderSource
                 ? \Illuminate\Support\Str::lower(str_replace(' ', '_', $linnworksOrder->orderSource))
                 : null,
+            'channel_reference_number' => $linnworksOrder->channelReferenceNumber,
             'source' => $linnworksOrder->orderSource,
             'sub_source' => $linnworksOrder->subsource
                 ? \Illuminate\Support\Str::lower(str_replace(' ', '_', $linnworksOrder->subsource))
@@ -342,6 +343,7 @@ class Order extends Model
             'is_open' => !$isProcessed,
             'is_paid' => $linnworksOrder->isPaid,
             'paid_date' => $linnworksOrder->paidDate,
+            'is_cancelled' => $linnworksOrder->isCancelled,
             'is_processed' => $isProcessed,
             'last_synced_at' => now(),
             'sync_status' => 'synced',
