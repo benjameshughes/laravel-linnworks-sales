@@ -67,7 +67,7 @@
 
             {{-- Progress Display --}}
             @if ($isImporting || $isCompleted)
-                <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6" wire:poll.5s="pollProgress">
                     {{-- Status Header --}}
                     <div class="flex items-center justify-between">
                         <flux:heading size="lg">

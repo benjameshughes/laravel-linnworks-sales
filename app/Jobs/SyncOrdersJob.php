@@ -86,14 +86,20 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             $totalFailed = 0;
 
             // Step 1: Get ALL open order IDs (fast check)
+            $syncLog->updateProgress('fetching_open_ids', 0, 4, ['message' => 'Checking open orders...']);
             event(new SyncProgressUpdated('fetching-open-ids', 'Checking open orders...'));
             Log::info('Fetching open order UUIDs from Linnworks...');
 
             $openOrderIds = $api->getAllOpenOrderIds();
             Log::info("Found {$openOrderIds->count()} open order UUIDs");
+            $syncLog->updateProgress('fetching_open_ids', 1, 4, [
+                'message' => "Found {$openOrderIds->count()} open orders",
+                'open_count' => $openOrderIds->count(),
+            ]);
 
             // Step 2: Get processed order IDs from last 30 days
-            event(new SyncProgressUpdated('fetching-processed-ids', 'Checking processed orders...'));
+            $syncLog->updateProgress('fetching_processed_ids', 1, 4, ['message' => 'Fetching processed orders (this may take several minutes)...']);
+            event(new SyncProgressUpdated('fetching-processed-ids', 'Fetching processed orders (this may take several minutes)...'));
 
             $processedFrom = Carbon::now()->subDays(30)->startOfDay();
             $processedTo = Carbon::now()->endOfDay();
@@ -113,6 +119,10 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
                 'count' => $processedOrderIds->count(),
                 'from' => $processedFrom->toISOString(),
                 'to' => $processedTo->toISOString(),
+            ]);
+            $syncLog->updateProgress('fetching_processed_ids', 2, 4, [
+                'message' => "Found {$processedOrderIds->count()} processed orders",
+                'processed_count' => $processedOrderIds->count(),
             ]);
 
             // Step 3: Combine all order IDs (unified!)
@@ -151,6 +161,13 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             $chunks = $allOrderIds->chunk(200);
             $totalChunks = $chunks->count();
             $currentChunk = 0;
+
+            // Update progress with total steps (2 phases + number of import batches)
+            $syncLog->updateProgress('importing', 2, 2 + $totalChunks, [
+                'message' => "Starting import of {$allOrderIds->count()} orders in {$totalChunks} batches",
+                'total_orders' => $allOrderIds->count(),
+                'total_batches' => $totalChunks,
+            ]);
 
             foreach ($chunks as $chunk) {
                 $currentChunk++;
@@ -230,6 +247,21 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
                             ? 'Completed'
                             : "Processing batch {$currentChunk}/{$totalChunks}",
                     ));
+
+                    // Persist progress to database every 5 batches
+                    $syncLog->updateProgress('importing', 2 + $currentChunk, 2 + $totalChunks, [
+                        'message' => "Imported batch {$currentChunk}/{$totalChunks}",
+                        'current_batch' => $currentChunk,
+                        'total_batches' => $totalChunks,
+                        'total_processed' => $totalProcessed,
+                        'created' => $totalCreated,
+                        'updated' => $totalUpdated,
+                        'failed' => $totalFailed,
+                        'orders_per_second' => round($ordersPerSecond, 2),
+                        'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+                        'time_elapsed' => round($timeElapsed, 2),
+                        'estimated_remaining' => $estimatedRemaining ? round($estimatedRemaining, 2) : null,
+                    ]);
                 }
             }
 

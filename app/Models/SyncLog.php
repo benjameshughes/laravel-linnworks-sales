@@ -21,12 +21,17 @@ class SyncLog extends Model
         'total_failed',
         'metadata',
         'error_message',
+        'current_phase',
+        'current_step',
+        'total_steps',
+        'progress_data',
     ];
 
     protected $casts = [
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'metadata' => 'array',
+        'progress_data' => 'array',
     ];
 
     // Sync types
@@ -128,5 +133,41 @@ class SyncLog extends Model
 
         $successful = $this->total_created + $this->total_updated;
         return round(($successful / $total) * 100, 2);
+    }
+
+    /**
+     * Update progress tracking
+     */
+    public function updateProgress(string $phase, int $currentStep, int $totalSteps, array $data = []): void
+    {
+        $this->update([
+            'current_phase' => $phase,
+            'current_step' => $currentStep,
+            'total_steps' => $totalSteps,
+            'progress_data' => $data,
+        ]);
+    }
+
+    /**
+     * Get current progress percentage
+     */
+    public function getProgressPercentageAttribute(): float
+    {
+        if ($this->total_steps === 0) {
+            return 0;
+        }
+
+        return round(($this->current_step / $this->total_steps) * 100, 2);
+    }
+
+    /**
+     * Get the latest active sync log (started but not completed)
+     */
+    public static function getActiveSync(string $type): ?self
+    {
+        return self::where('sync_type', $type)
+            ->where('status', self::STATUS_STARTED)
+            ->orderByDesc('started_at')
+            ->first();
     }
 }

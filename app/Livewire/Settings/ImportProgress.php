@@ -8,6 +8,8 @@ use App\Events\ImportPerformanceUpdate;
 use App\Events\ImportProgressUpdated;
 use App\Events\ImportStarted;
 use App\Jobs\RunHistoricalImportJob;
+use App\Jobs\SyncOrdersJob;
+use App\Models\SyncLog;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -49,6 +51,51 @@ class ImportProgress extends Component
         // Set default date range (maximum 730 days)
         $this->toDate = now()->format('Y-m-d');
         $this->fromDate = now()->subDays(730)->format('Y-m-d');
+
+        // Load persisted state if there's an active sync
+        $this->loadPersistedState();
+    }
+
+    /**
+     * Load persisted sync state from database
+     */
+    public function loadPersistedState(): void
+    {
+        $activeSync = SyncLog::getActiveSync(SyncLog::TYPE_OPEN_ORDERS);
+
+        if (!$activeSync) {
+            return;
+        }
+
+        $this->isImporting = true;
+        $this->isCompleted = false;
+        $this->startedAt = $activeSync->started_at->toISOString();
+        $this->message = $activeSync->progress_data['message'] ?? 'Syncing orders...';
+        $this->percentage = $activeSync->progress_percentage;
+
+        // Load progress data if available
+        if ($activeSync->progress_data) {
+            $data = $activeSync->progress_data;
+            $this->totalProcessed = $data['total_processed'] ?? 0;
+            $this->created = $data['created'] ?? 0;
+            $this->updated = $data['updated'] ?? 0;
+            $this->totalErrors = $data['failed'] ?? 0;
+            $this->batchNumber = $data['current_batch'] ?? 0;
+            $this->totalBatches = $data['total_batches'] ?? 0;
+            $this->ordersPerSecond = $data['orders_per_second'] ?? 0;
+            $this->memoryMb = $data['memory_mb'] ?? 0;
+            $this->timeElapsed = $data['time_elapsed'] ?? 0;
+            $this->estimatedRemaining = $data['estimated_remaining'] ?? null;
+        }
+    }
+
+    /**
+     * Poll for updates from database (when no live broadcasts)
+     */
+    #[On('poll-sync-progress')]
+    public function pollProgress(): void
+    {
+        $this->loadPersistedState();
     }
 
     public function startImport(): void
