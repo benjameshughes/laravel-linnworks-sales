@@ -156,7 +156,21 @@ class DashboardDataService
 
         $dateRange = $this->getDateRange($period, $customFrom, $customTo);
 
-        return Order::whereBetween('received_date', [
+        // Memory optimization: Select only columns needed for metrics calculation
+        // Reduces memory per model significantly (no timestamps, no extra fields)
+        return Order::select([
+                'id',
+                'received_date',
+                'channel_name',
+                'sub_source',
+                'total_charge',
+                'total_paid',
+                'is_paid',
+                'is_open',
+                'is_processed',
+                'items', // JSON column
+            ])
+            ->whereBetween('received_date', [
                 $dateRange->get('start'),
                 $dateRange->get('end')
             ])
@@ -166,13 +180,10 @@ class DashboardDataService
             )
             ->when($status !== 'all', function ($query) use ($status) {
                 if ($status === 'open_paid') {
-                    // Show ALL paid orders (both open and processed)
                     $query->where('is_paid', true);
                 } elseif ($status === 'open') {
-                    // Show open paid orders (paid orders needing fulfillment)
                     $query->where('is_open', true)->where('is_paid', true);
                 } elseif ($status === 'processed') {
-                    // Show processed paid orders (paid orders already fulfilled)
                     $query->where('is_processed', true)->where('is_paid', true);
                 }
             })
@@ -204,7 +215,8 @@ class DashboardDataService
             ->when($channel !== 'all', fn($query) =>
                 $query->where('channel_name', $channel)
             )
-            ->get();
+            ->lazy(1000)
+            ->collect();
     }
 
     private function makeFilterKey(

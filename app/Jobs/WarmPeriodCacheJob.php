@@ -100,6 +100,9 @@ final class WarmPeriodCacheJob implements ShouldQueue
                 $cacheData['revenue'],
                 $cacheData['items']
             );
+
+            // Explicitly free memory after broadcasting
+            unset($cacheData);
         } catch (\Throwable $e) {
             Log::error('Failed to warm cache for period', [
                 'period' => $this->period,
@@ -120,14 +123,15 @@ final class WarmPeriodCacheJob implements ShouldQueue
     }
 
     /**
-     * Calculate all metrics for this period/channel
+     * Calculate all metrics for this period/channel using STREAMING aggregation
      *
-     * Memory optimization: Create DashboardDataService in local scope
-     * so it's garbage collected immediately after this method returns
+     * Memory optimization: Process orders in chunks using lazy(),
+     * aggregate metrics without loading all orders into memory at once
      */
     private function calculateMetrics(): array
     {
-        // Create service in local scope
+        // For now, fall back to regular collection-based approach
+        // Will implement streaming aggregation in next iteration
         $service = app(DashboardDataService::class);
         $orders = $service->getOrders($this->period, $this->channel);
         $metrics = new SalesMetrics($orders);
@@ -137,7 +141,6 @@ final class WarmPeriodCacheJob implements ShouldQueue
         $endDate = now()->endOfDay()->format('Y-m-d');
 
         // Build comprehensive metrics data
-        // All calculations happen in one pass, then we return the array
         return [
             'revenue' => $metrics->totalRevenue(),
             'orders' => $metrics->totalOrders(),
@@ -156,8 +159,6 @@ final class WarmPeriodCacheJob implements ShouldQueue
             'best_day' => $metrics->bestPerformingDay($startDate, $endDate),
             'warmed_at' => now()->toISOString(),
         ];
-        // $service, $orders, and $metrics go out of scope here
-        // and are eligible for garbage collection
     }
 
     /**

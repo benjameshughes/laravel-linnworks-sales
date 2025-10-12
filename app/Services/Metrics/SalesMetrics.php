@@ -205,55 +205,78 @@ class SalesMetrics extends MetricBase
     }
 
     /**
-     * Get top performing products by revenue
+     * Get top performing products by revenue (memory optimized)
+     *
+     * Instead of flatMapping all items into a huge intermediate collection,
+     * we aggregate directly by SKU in a single pass using an array.
      */
     public function topProducts(int $limit = 5): Collection
     {
-        $items = $this->data->flatMap(function (Order $order) {
-            return collect($order->items ?? [])->map(function (array $item) use ($order) {
+        // Aggregate by SKU using an array (more memory efficient than collection)
+        $grouped = [];
+
+        foreach ($this->data as $order) {
+            $items = $order->items ?? [];
+
+            foreach ($items as $item) {
+                $sku = $item['sku'] ?? 'unknown-sku';
                 $quantity = (int) ($item['quantity'] ?? 0);
                 $lineTotal = isset($item['line_total']) ? (float) $item['line_total'] : 0.0;
                 $pricePerUnit = isset($item['price_per_unit']) ? (float) $item['price_per_unit'] : 0.0;
                 $revenue = $lineTotal > 0 ? $lineTotal : $pricePerUnit * $quantity;
 
-                return collect([
-                    'order_id' => $order->id,
-                    'sku' => $item['sku'] ?? 'unknown-sku',
-                    'title' => $item['item_title'] ?? null,
-                    'quantity' => $quantity,
-                    'revenue' => $revenue,
-                    'price_per_unit' => $pricePerUnit,
-                ]);
-            });
-        });
+                if (!isset($grouped[$sku])) {
+                    $grouped[$sku] = [
+                        'sku' => $sku,
+                        'title' => $item['item_title'] ?? null,
+                        'quantity' => 0,
+                        'revenue' => 0.0,
+                        'order_ids' => [],
+                    ];
+                }
 
-        if ($items->isEmpty()) {
+                $grouped[$sku]['quantity'] += $quantity;
+                $grouped[$sku]['revenue'] += $revenue;
+
+                if ($order->id) {
+                    $grouped[$sku]['order_ids'][$order->id] = true;
+                }
+
+                // Prefer non-null titles
+                if (!$grouped[$sku]['title'] && isset($item['item_title'])) {
+                    $grouped[$sku]['title'] = $item['item_title'];
+                }
+            }
+        }
+
+        if (empty($grouped)) {
             return collect();
         }
 
-        $grouped = $items->groupBy('sku')->map(function (Collection $productItems, string $sku) {
-            $revenue = $productItems->sum('revenue');
-            $quantity = $productItems->sum('quantity');
-            $orderCount = $productItems->pluck('order_id')->filter()->unique()->count();
-            $avgPrice = $quantity > 0 ? $revenue / $quantity : 0;
-            $title = $productItems->first()->get('title');
+        // Convert to collection for sorting/manipulation
+        $result = collect($grouped)->map(function (array $product) {
+            $quantity = $product['quantity'];
+            $revenue = $product['revenue'];
 
             return collect([
-                'sku' => $sku,
-                'title' => $title,
+                'sku' => $product['sku'],
+                'title' => $product['title'],
                 'quantity' => $quantity,
                 'revenue' => $revenue,
-                'orders' => $orderCount,
-                'avg_price' => $avgPrice,
+                'orders' => count($product['order_ids']),
+                'avg_price' => $quantity > 0 ? $revenue / $quantity : 0,
             ]);
         });
 
-        $skus = $grouped->keys()->all();
+        // Fetch product titles from database
+        $skus = array_keys($grouped);
         if (!empty($skus)) {
             $products = \App\Models\Product::whereIn('sku', $skus)
                 ->pluck('title', 'sku');
 
-            $grouped = $grouped->map(function (Collection $product, string $sku) use ($products) {
+            $result = $result->map(function (Collection $product) use ($products) {
+                $sku = $product->get('sku');
+
                 if (!$product->get('title') && isset($products[$sku])) {
                     $product->put('title', $products[$sku]);
                 }
@@ -266,7 +289,7 @@ class SalesMetrics extends MetricBase
             });
         }
 
-        return $grouped
+        return $result
             ->sortByDesc('revenue')
             ->take($limit)
             ->values();
@@ -306,10 +329,8 @@ class SalesMetrics extends MetricBase
                 [$start, $end] = [$end, $start];
             }
 
-            return collect(CarbonPeriod::create($start, '1 day', $end))
-                ->map(function (Carbon $date) {
-                    return $this->buildDailyBreakdown($date);
-                });
+            $dates = collect(CarbonPeriod::create($start, '1 day', $end));
+            return $this->buildDailyBreakdownBatch($dates);
         }
 
         if ($period === 'yesterday') {
@@ -373,11 +394,73 @@ class SalesMetrics extends MetricBase
 
         $days = (int) max(1, $period);
 
-        return collect(range($days - 1, 0))
-            ->map(function (int $daysAgo) {
-                $date = Carbon::now()->subDays($daysAgo);
-                return $this->buildDailyBreakdown($date);
-            });
+        $dates = collect(range($days - 1, 0))
+            ->map(fn (int $daysAgo) => Carbon::now()->subDays($daysAgo));
+
+        return $this->buildDailyBreakdownBatch($dates);
+    }
+
+    /**
+     * Build daily breakdown for multiple dates in a single pass (memory optimized)
+     *
+     * Instead of filtering the entire collection 90 times (once per day),
+     * we iterate through orders ONCE and bucket them by date.
+     */
+    private function buildDailyBreakdownBatch(Collection $dates): Collection
+    {
+        // Initialize empty data structure for each date using ARRAY (not Collection)
+        // Arrays are more memory efficient and allow direct modification
+        $dailyData = [];
+
+        foreach ($dates as $date) {
+            $dailyData[$date->format('Y-m-d')] = [
+                'date' => $date->format('M j'),
+                'iso_date' => $date->format('Y-m-d'),
+                'day' => $date->format('D'),
+                'revenue' => 0.0,
+                'orders' => 0,
+                'items' => 0,
+                'open_orders' => 0,
+                'processed_orders' => 0,
+                'open_revenue' => 0.0,
+                'processed_revenue' => 0.0,
+            ];
+        }
+
+        // Single pass through orders - bucket by date
+        foreach ($this->data as $order) {
+            if (!$order->received_date) {
+                continue;
+            }
+
+            $dateKey = $order->received_date->format('Y-m-d');
+
+            if (!isset($dailyData[$dateKey])) {
+                continue;
+            }
+
+            $revenue = $this->calculateOrderRevenue($order);
+            $itemsCount = collect($order->items ?? [])->sum('quantity');
+            $isProcessed = $order->is_processed;
+
+            $dailyData[$dateKey]['revenue'] += $revenue;
+            $dailyData[$dateKey]['orders']++;
+            $dailyData[$dateKey]['items'] += $itemsCount;
+
+            if ($isProcessed) {
+                $dailyData[$dateKey]['processed_orders']++;
+                $dailyData[$dateKey]['processed_revenue'] += $revenue;
+            } else {
+                $dailyData[$dateKey]['open_orders']++;
+                $dailyData[$dateKey]['open_revenue'] += $revenue;
+            }
+        }
+
+        // Calculate avg_order_value for each day and convert to Collection
+        return collect($dailyData)->map(function (array $day) {
+            $day['avg_order_value'] = $day['orders'] > 0 ? $day['revenue'] / $day['orders'] : 0;
+            return collect($day);
+        })->values();
     }
 
     protected function buildDailyBreakdown(Carbon $date): Collection
