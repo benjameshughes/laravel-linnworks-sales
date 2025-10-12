@@ -199,6 +199,12 @@ class DashboardDataService
                 if (is_string($order->items)) {
                     $order->items = json_decode($order->items, true) ?? [];
                 }
+
+                // Convert date strings to Carbon instances for blade compatibility
+                if (is_string($order->received_date)) {
+                    $order->received_date = Carbon::parse($order->received_date);
+                }
+
                 return $order;
             });
     }
@@ -248,6 +254,12 @@ class DashboardDataService
                 if (is_string($order->items)) {
                     $order->items = json_decode($order->items, true) ?? [];
                 }
+
+                // Convert date strings to Carbon instances for blade compatibility
+                if (is_string($order->received_date)) {
+                    $order->received_date = Carbon::parse($order->received_date);
+                }
+
                 return $order;
             });
     }
