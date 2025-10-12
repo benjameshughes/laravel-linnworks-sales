@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Queue;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    config(['dashboard.cacheable_periods' => ['7', '30', '90']]);
     Cache::flush();
     Event::fake([
         CacheWarmingStarted::class,
@@ -245,9 +244,7 @@ test('failed jobs can be retried', function () {
     expect(Cache::has('metrics_7d_all'))->toBeTrue();
 });
 
-test('cache warming respects configured periods', function () {
-    config(['dashboard.cacheable_periods' => ['1', '7', '30']]);
-
+test('cache warming uses all enum cacheable periods', function () {
     Order::factory()->count(10)->create([
         'received_date' => now()->subDays(2),
     ]);
@@ -256,21 +253,26 @@ test('cache warming respects configured periods', function () {
     $listener = new WarmMetricsCache();
     $listener->handle($event);
 
-    // Process the configured periods
-    $jobs = [
-        new WarmPeriodCacheJob('1', 'all'),
-        new WarmPeriodCacheJob('7', 'all'),
-        new WarmPeriodCacheJob('30', 'all'),
-    ];
+    // Get all cacheable periods from enum
+    $cacheablePeriods = \App\Enums\Period::cacheable();
+
+    // Process all cacheable periods
+    $jobs = collect($cacheablePeriods)->map(function ($period) {
+        return new WarmPeriodCacheJob($period->value, 'all');
+    })->all();
 
     foreach ($jobs as $job) {
         $job->handle();
     }
 
-    expect(Cache::has('metrics_1d_all'))->toBeTrue()
-        ->and(Cache::has('metrics_7d_all'))->toBeTrue()
-        ->and(Cache::has('metrics_30d_all'))->toBeTrue()
-        ->and(Cache::has('metrics_90d_all'))->toBeFalse();
+    // Verify all cacheable periods have cache
+    foreach ($cacheablePeriods as $period) {
+        expect(Cache::has($period->cacheKey('all')))->toBeTrue();
+    }
+
+    // Verify 'custom' period is NOT cached
+    $customPeriod = \App\Enums\Period::CUSTOM;
+    expect(Cache::has($customPeriod->cacheKey('all')))->toBeFalse();
 });
 
 test('cache warming handles empty dataset gracefully', function () {

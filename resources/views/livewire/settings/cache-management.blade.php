@@ -317,7 +317,7 @@
                                     Warm Cache
                                 </h4>
                                 <p class="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                                    Pre-calculate metrics for all periods (7d, 30d, 90d)
+                                    Pre-calculate metrics for all cacheable periods
                                 </p>
                             </div>
                         </div>
@@ -391,7 +391,7 @@
                         </li>
                         <li class="flex items-start gap-2">
                             <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                            <span><strong>Sequential:</strong> All periods (7/30/90 days) processed one at a time via job batching for optimal memory usage</span>
+                            <span><strong>Sequential:</strong> All cacheable periods processed one at a time via job batching for optimal memory usage</span>
                         </li>
                         <li class="flex items-start gap-2">
                             <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />

@@ -34,8 +34,8 @@ class CacheManagement extends Component
 
             // Try to determine which period is currently warming
             // Check which cache keys don't exist yet - those are still warming
-            $periods = collect(config('dashboard.cacheable_periods', ['7', '30', '90']))
-                ->map(fn($p) => "{$p}d");
+            $periods = collect(\App\Enums\Period::cacheable())
+                ->map(fn($p) => "{$p->value}d");
 
             foreach ($periods as $period) {
                 $key = "metrics_{$period}_all";
@@ -50,14 +50,14 @@ class CacheManagement extends Component
     #[Computed]
     public function cacheStatus(): array
     {
-        $periods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+        $periods = \App\Enums\Period::cacheable();
         $status = [];
 
         foreach ($periods as $period) {
-            $key = "metrics_{$period}d_all";
+            $key = $period->cacheKey('all');
             $cached = Cache::get($key);
 
-            $status["{$period}d"] = [
+            $status["{$period->value}d"] = [
                 'exists' => $cached !== null,
                 'warmed_at' => $cached['warmed_at'] ?? null,
                 'revenue' => $cached['revenue'] ?? 0,
@@ -91,11 +91,11 @@ class CacheManagement extends Component
         // Determine which period is currently being processed
         $currentPeriod = null;
         if (!$batch->finished_at) {
-            $periods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+            $periods = \App\Enums\Period::cacheable();
             $cacheStatus = $this->cacheStatus;
 
             foreach ($periods as $period) {
-                $periodKey = "{$period}d";
+                $periodKey = "{$period->value}d";
                 if (!($cacheStatus[$periodKey]['exists'] ?? false)) {
                     $currentPeriod = $periodKey;
                     break; // First period without cache is currently warming
@@ -173,10 +173,10 @@ class CacheManagement extends Component
     {
         $this->isClearing = true;
 
-        $periods = config('dashboard.cacheable_periods', ['7', '30', '90']);
+        $periods = \App\Enums\Period::cacheable();
 
         foreach ($periods as $period) {
-            Cache::forget("metrics_{$period}d_all");
+            Cache::forget($period->cacheKey('all'));
         }
 
         // Broadcast cache cleared event
