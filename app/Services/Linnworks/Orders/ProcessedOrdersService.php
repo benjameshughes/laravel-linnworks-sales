@@ -2,19 +2,21 @@
 
 namespace App\Services\Linnworks\Orders;
 
-use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
+use App\Services\Linnworks\Parsers\ProcessedOrdersResponseParser;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 class ProcessedOrdersService
 {
     public function __construct(
         private readonly LinnworksClient $client,
         private readonly SessionManager $sessionManager,
+        private readonly ProcessedOrdersResponseParser $parser,
     ) {}
 
     /**
@@ -30,7 +32,7 @@ class ProcessedOrdersService
     ): ApiResponse {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -60,10 +62,10 @@ class ProcessedOrdersService
             'Authorization' => $sessionToken->token,
             'accept' => 'application/json',
             'content-type' => 'application/json',
-        ])->post($sessionToken->getBaseUrl() . 'ProcessedOrders/SearchProcessedOrders', $body);
+        ])->post($sessionToken->getBaseUrl().'ProcessedOrders/SearchProcessedOrders', $body);
 
         if ($response->failed()) {
-            return ApiResponse::error('API request failed: ' . $response->body());
+            return ApiResponse::error('API request failed: '.$response->body());
         }
 
         return ApiResponse::fromHttpResponse($response);
@@ -104,13 +106,12 @@ class ProcessedOrdersService
                 break;
             }
 
-            $data = $response->getData();
-            $processedOrders = $data->get('ProcessedOrders', []);
-            $orders = collect($processedOrders['Data'] ?? []);
+            // Use parser to extract data
+            $orders = $this->parser->parseOrders($response);
             $allOrders = $allOrders->merge($orders);
 
-            $totalResults = $processedOrders['TotalEntries'] ?? 0;
-            $totalPages = $processedOrders['TotalPages'] ?? 0;
+            $totalResults = $this->parser->getTotalEntries($response);
+            $totalPages = $this->parser->getTotalPages($response);
 
             Log::info('Fetched processed orders page', [
                 'user_id' => $userId,
@@ -127,7 +128,7 @@ class ProcessedOrdersService
             }
 
             $page++;
-            
+
             // Safety checks
             if ($allOrders->count() >= $maxOrders) {
                 Log::warning('Maximum processed orders limit reached', [
@@ -137,7 +138,7 @@ class ProcessedOrdersService
                 ]);
                 break;
             }
-            
+
             if ($orders->count() < $entriesPerPage) {
                 Log::info('All processed orders fetched', [
                     'user_id' => $userId,
@@ -146,7 +147,7 @@ class ProcessedOrdersService
                 ]);
                 break;
             }
-            
+
         } while ($orders->count() === $entriesPerPage);
 
         return $allOrders;
@@ -159,7 +160,7 @@ class ProcessedOrdersService
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -186,8 +187,9 @@ class ProcessedOrdersService
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             Log::error('No valid session token available for getting processed order details');
+
             return collect();
         }
 
@@ -207,6 +209,7 @@ class ProcessedOrdersService
                         'order_id' => $orderId,
                         'error' => $response->error,
                     ]);
+
                     continue;
                 }
 
@@ -266,7 +269,7 @@ class ProcessedOrdersService
         array $filters = []
     ): array {
         $response = $this->searchProcessedOrders($userId, $from, $to, $filters, 1, 1000);
-        
+
         if ($response->isError()) {
             return [
                 'total_orders' => 0,
@@ -279,9 +282,8 @@ class ProcessedOrdersService
             ];
         }
 
-        $data = $response->getData();
-        $processedOrders = $data->get('ProcessedOrders', []);
-        $orders = collect($processedOrders['Data'] ?? []);
+        // Use parser to extract orders
+        $orders = $this->parser->parseOrders($response);
 
         $totalValue = $orders->sum('TotalValue');
         $totalProfit = $orders->sum('Profit');
@@ -310,7 +312,7 @@ class ProcessedOrdersService
                 'to' => $to->toISOString(),
             ],
             'filters_applied' => $filters,
-            'results_count' => $processedOrders['TotalEntries'] ?? 0,
+            'results_count' => $this->parser->getTotalEntries($response),
         ];
     }
 

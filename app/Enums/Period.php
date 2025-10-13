@@ -51,7 +51,7 @@ enum Period: string
     {
         return array_filter(
             self::cases(),
-            fn(Period $period) => $period->isCacheable()
+            fn (Period $period) => $period->isCacheable()
         );
     }
 

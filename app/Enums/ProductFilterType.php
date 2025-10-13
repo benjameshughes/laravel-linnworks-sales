@@ -2,8 +2,6 @@
 
 namespace App\Enums;
 
-use App\Enums\ProductBadgeType;
-
 enum ProductFilterType: string
 {
     case PROFIT_MARGIN = 'profit-margin';
@@ -70,8 +68,8 @@ enum ProductFilterType: string
                 'mature' => ['label' => 'Mature (365+ days)', 'min' => 365, 'max' => null],
             ],
             self::BADGE_TYPE => collect(ProductBadgeType::cases())
-                ->mapWithKeys(fn(ProductBadgeType $badge) => [
-                    $badge->value => ['label' => $badge->label(), 'badge' => $badge]
+                ->mapWithKeys(fn (ProductBadgeType $badge) => [
+                    $badge->value => ['label' => $badge->label(), 'badge' => $badge],
                 ])
                 ->toArray(),
             self::PERFORMANCE_SCORE => [

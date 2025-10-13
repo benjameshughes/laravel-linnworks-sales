@@ -17,6 +17,7 @@ This refactor aims to improve the historical data fetching system by applying:
 4. **Action Pattern** - Single responsibility, invokable classes, type-safe contracts
 5. **Separation of Concerns** - Domain logic, presentation, data access layers
 6. **Senior-Level Code Quality** - Type safety, testability, documentation, observability
+7. **Domain-Driven Organization** - Organize by business domain/system, not technical function
 
 ---
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Actions\Orders\StreamingOrderImporter;
+use App\DataTransferObjects\ProcessedOrderFilters;
 use App\Events\ImportBatchProcessed;
 use App\Events\ImportPerformanceUpdate;
 use App\Events\OrdersSynced;
@@ -37,12 +38,14 @@ use Illuminate\Support\Facades\Log;
  *
  * Performance: ~300 orders/sec vs ~16 orders/sec (18× faster)
  */
-final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
+final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $uniqueFor = 3600; // 1 hour
+
     public int $tries = 1;
+
     public int $timeout = 600; // 10 minutes
 
     public function __construct(
@@ -80,7 +83,7 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             ] : null,
         ]);
 
-        if (!$api->isConfigured()) {
+        if (! $api->isConfigured()) {
             Log::error('Linnworks API is not configured');
             $syncLog->fail('Linnworks API not configured');
             throw new \Exception('Linnworks API is not configured. Please check your credentials.');
@@ -96,7 +99,7 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             // Step 1: Get open order IDs (skip for historical imports)
             $openOrderIds = collect();
 
-            if (!$this->historicalImport) {
+            if (! $this->historicalImport) {
                 $syncLog->updateProgress('fetching_open_ids', 0, 4, ['message' => 'Checking open orders...']);
                 event(new SyncProgressUpdated('fetching-open-ids', 'Checking open orders...'));
                 Log::info('Fetching open order UUIDs from Linnworks...');
@@ -125,7 +128,9 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
 
             // Use existing logic to get processed order data with progress callback
             // For historical imports, search by processed date; for regular syncs, use received date
-            $filters = $this->historicalImport ? ['dateField' => 'processed'] : [];
+            $filters = $this->historicalImport
+                ? ProcessedOrderFilters::forHistoricalImport()->toArray()
+                : ProcessedOrderFilters::forRecentSync()->toArray();
 
             $processedOrders = $api->getAllProcessedOrders(
                 from: $processedFrom,
@@ -135,7 +140,7 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
                 userId: null,
                 progressCallback: function ($page, $totalPages, $fetchedCount, $totalResults) use ($syncLog) {
                     // Broadcast progress every page
-                    $message = "Fetching processed orders: page {$page}/" . ($totalPages ?: '?') . " ({$fetchedCount} fetched)";
+                    $message = "Fetching processed orders: page {$page}/".($totalPages ?: '?')." ({$fetchedCount} fetched)";
                     event(new SyncProgressUpdated('fetching-processed-ids', $message, $fetchedCount));
 
                     // Update sync log every 10 pages to avoid too many database writes
@@ -176,18 +181,18 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             event(new SyncStarted($allOrderIds->count(), 30));
 
             // Step 4: Mark existing orders as open/closed (skip for historical imports)
-            if (!$this->historicalImport && $openOrderIds->isNotEmpty()) {
+            if (! $this->historicalImport && $openOrderIds->isNotEmpty()) {
                 $existingOrderIds = Order::whereIn('linnworks_order_id', $openOrderIds->toArray())
                     ->pluck('linnworks_order_id')
                     ->toArray();
 
-                if (!empty($existingOrderIds)) {
+                if (! empty($existingOrderIds)) {
                     Order::whereIn('linnworks_order_id', $existingOrderIds)
                         ->update([
                             'is_open' => true,
                             'last_synced_at' => now(),
                         ]);
-                    Log::info('Marked ' . count($existingOrderIds) . ' existing orders as open');
+                    Log::info('Marked '.count($existingOrderIds).' existing orders as open');
                 }
 
                 // Mark orders not in the current sync as closed
@@ -324,7 +329,7 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             ));
 
             // Step 8: Warm cache (if not dry run)
-            if (!$this->dryRun) {
+            if (! $this->dryRun) {
                 event(new OrdersSynced(
                     ordersProcessed: $totalProcessed,
                     syncType: 'unified_streaming_sync'
@@ -370,7 +375,7 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             ->where('last_synced_at', '<', now()->subMinutes(30))
             ->update([
                 'is_open' => false,
-                'sync_metadata' => \DB::raw("JSON_SET(COALESCE(sync_metadata, '{}'), '$.marked_closed_at', '" . now()->toDateTimeString() . "')"),
+                'sync_metadata' => \DB::raw("JSON_SET(COALESCE(sync_metadata, '{}'), '$.marked_closed_at', '".now()->toDateTimeString()."')"),
             ]);
 
         if ($closedCount > 0) {
