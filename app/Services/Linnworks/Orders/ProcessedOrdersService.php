@@ -73,6 +73,8 @@ class ProcessedOrdersService
 
     /**
      * Get all processed orders in date range
+     *
+     * @deprecated Use streamProcessedOrderIds() for memory-efficient historical imports
      */
     public function getAllProcessedOrders(
         int $userId,
@@ -151,6 +153,104 @@ class ProcessedOrdersService
         } while ($orders->count() === $entriesPerPage);
 
         return $allOrders;
+    }
+
+    /**
+     * Stream processed order IDs page by page (memory-efficient)
+     *
+     * Yields collections of order IDs without loading all orders into memory.
+     * Inspired by Christoph Rumpel's "Refactoring to Collections" approach.
+     *
+     * @return \Generator<int, Collection> Yields Collection of order IDs per page
+     */
+    public function streamProcessedOrderIds(
+        int $userId,
+        Carbon $from,
+        Carbon $to,
+        array $filters = [],
+        int $maxOrders = 10000,
+        ?\Closure $progressCallback = null
+    ): \Generator {
+        $page = 1;
+        $entriesPerPage = 200;
+        $totalFetched = 0;
+
+        Log::info('Starting to stream processed order IDs', [
+            'user_id' => $userId,
+            'from' => $from->toISOString(),
+            'to' => $to->toISOString(),
+            'filters' => $filters,
+            'max_orders' => $maxOrders,
+        ]);
+
+        do {
+            $response = $this->searchProcessedOrders($userId, $from, $to, $filters, $page, $entriesPerPage);
+
+            if ($response->isError()) {
+                Log::error('Error fetching processed orders page', [
+                    'user_id' => $userId,
+                    'page' => $page,
+                    'error' => $response->error,
+                ]);
+                break;
+            }
+
+            // Use parser to extract data
+            $orders = $this->parser->parseOrders($response);
+            $totalResults = $this->parser->getTotalEntries($response);
+            $totalPages = $this->parser->getTotalPages($response);
+
+            // Extract just the order IDs (memory-efficient)
+            $orderIds = $orders->pluck('pkOrderID')
+                ->filter()
+                ->values();
+
+            $totalFetched += $orderIds->count();
+
+            Log::info('Streamed processed order IDs page', [
+                'user_id' => $userId,
+                'page' => $page,
+                'ids_in_page' => $orderIds->count(),
+                'total_fetched' => $totalFetched,
+                'total_results' => $totalResults,
+                'total_pages' => $totalPages,
+            ]);
+
+            // Call progress callback if provided
+            if ($progressCallback) {
+                $progressCallback($page, $totalPages, $totalFetched, $totalResults);
+            }
+
+            // Yield this page's order IDs
+            if ($orderIds->isNotEmpty()) {
+                yield $orderIds;
+            }
+
+            $page++;
+
+            // Safety checks
+            if ($totalFetched >= $maxOrders) {
+                Log::warning('Maximum processed orders limit reached', [
+                    'user_id' => $userId,
+                    'total_fetched' => $totalFetched,
+                    'max_orders' => $maxOrders,
+                ]);
+                break;
+            }
+
+            if ($orders->count() < $entriesPerPage) {
+                Log::info('All processed order IDs streamed', [
+                    'user_id' => $userId,
+                    'total_fetched' => $totalFetched,
+                    'total_pages' => $page - 1,
+                ]);
+                break;
+            }
+
+            // Free memory after yielding
+            unset($orders, $orderIds, $response);
+
+        } while (true);
     }
 
     /**

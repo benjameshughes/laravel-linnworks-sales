@@ -105,7 +105,6 @@ readonly class OrderImportDTO
         // Order items (flat array for DB::insert)
         $itemsData = $linnworks->items->map(fn ($item) => [
             'order_id' => null, // Will be set after order is inserted
-            'linnworks_order_id' => $linnworks->orderId,
             'item_id' => $item->itemId,
             'sku' => $item->sku,
             'quantity' => $item->quantity,
@@ -123,7 +122,6 @@ readonly class OrderImportDTO
         // Shipping info (single record for DB::insert)
         $shippingData = $linnworks->shippingInfo ? [
             'order_id' => null, // Will be set after order is inserted
-            'linnworks_order_id' => $linnworks->orderId,
             'tracking_number' => $linnworks->shippingInfo['tracking_number'] ?? null,
             'vendor' => $linnworks->shippingInfo['vendor'] ?? null,
             'postal_service_id' => $linnworks->shippingInfo['postal_service_id'] ?? null,
@@ -147,7 +145,6 @@ readonly class OrderImportDTO
         // Notes (flat array for DB::insert)
         $notesData = $linnworks->notes->map(fn ($note) => [
             'order_id' => null, // Will be set after order is inserted
-            'linnworks_order_id' => $linnworks->orderId,
             'linnworks_note_id' => $note['NoteId'] ?? $note['note_id'] ?? null,
             'note_date' => isset($note['NoteDate']) || isset($note['note_date'])
                 ? \Carbon\Carbon::parse($note['NoteDate'] ?? $note['note_date'])->toDateTimeString()
@@ -162,7 +159,6 @@ readonly class OrderImportDTO
         // Properties (flat array for DB::insert)
         $propertiesData = $linnworks->extendedProperties->map(fn ($property) => [
             'order_id' => null, // Will be set after order is inserted
-            'linnworks_order_id' => $linnworks->orderId,
             'property_type' => $property['PropertyType'] ?? $property['property_type'] ?? '',
             'property_name' => $property['PropertyName'] ?? $property['property_name'] ?? '',
             'property_value' => $property['PropertyValue'] ?? $property['property_value'] ?? '',
@@ -173,7 +169,6 @@ readonly class OrderImportDTO
         // Identifiers (flat array for DB::insert)
         $identifiersData = $linnworks->identifiers->map(fn ($identifier) => [
             'order_id' => null, // Will be set after order is inserted
-            'linnworks_order_id' => $linnworks->orderId,
             'identifier_id' => $identifier['OrderIdentifierId'] ?? $identifier['identifier_id'] ?? 0,
             'tag' => $identifier['Tag'] ?? $identifier['tag'] ?? '',
             'name' => $identifier['TagDisplayText'] ?? $identifier['name'] ?? null,

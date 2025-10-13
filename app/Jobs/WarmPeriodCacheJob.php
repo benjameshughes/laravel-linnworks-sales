@@ -38,8 +38,9 @@ final class WarmPeriodCacheJob implements ShouldQueue
 
     /**
      * The number of seconds the job can run before timing out.
+     * Set to 0 for no timeout - let it run as long as needed
      */
-    public int $timeout = 120;
+    public int $timeout = 0;
 
     /**
      * The maximum number of unhandled exceptions to allow before failing.

@@ -117,9 +117,10 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                 Log::info('Skipping open orders (historical import mode)');
             }
 
-            // Step 2: Get processed order IDs (use custom date range for historical imports)
-            $syncLog->updateProgress('fetching_processed_ids', 1, 4, ['message' => 'Fetching processed orders (this may take several minutes)...']);
-            event(new SyncProgressUpdated('fetching-processed-ids', 'Fetching processed orders (this may take several minutes)...'));
+            // Step 2: Stream processed order IDs (MEMORY-EFFICIENT!)
+            // Instead of loading ALL order IDs into memory, we stream and process page by page
+            $syncLog->updateProgress('fetching_processed_ids', 1, 4, ['message' => 'Streaming processed orders (memory-efficient)...']);
+            event(new SyncProgressUpdated('fetching-processed-ids', 'Streaming processed orders (memory-efficient)...'));
 
             // Use custom date range if historical import, otherwise last 30 days
             $processedFrom = $this->historicalImport && $this->fromDate
@@ -135,7 +136,8 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                 ? ProcessedOrderFilters::forHistoricalImport()->toArray()
                 : ProcessedOrderFilters::forRecentSync()->toArray();
 
-            $processedOrders = $api->getAllProcessedOrders(
+            // Streaming approach: Get a generator that yields order IDs page by page
+            $processedOrderIdsStream = $api->streamProcessedOrderIds(
                 from: $processedFrom,
                 to: $processedTo,
                 filters: $filters,
@@ -143,7 +145,7 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                 userId: null,
                 progressCallback: function ($page, $totalPages, $fetchedCount, $totalResults) use ($syncLog) {
                     // Broadcast progress every page
-                    $message = "Fetching processed orders: page {$page}/".($totalPages ?: '?')." ({$fetchedCount} fetched)";
+                    $message = "Streaming processed orders: page {$page}/".($totalPages ?: '?')." ({$fetchedCount} fetched)";
                     event(new SyncProgressUpdated('fetching-processed-ids', $message, $fetchedCount));
 
                     // Update sync log every 10 pages to avoid too many database writes
@@ -159,31 +161,10 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                 }
             );
 
-            $processedOrderIds = $processedOrders->pluck('orderId')->filter();
+            // Broadcast sync started (we don't know total count yet with streaming)
+            event(new SyncStarted(0, 30));
 
-            Log::info('Processed orders found', [
-                'count' => $processedOrderIds->count(),
-                'from' => $processedFrom->toISOString(),
-                'to' => $processedTo->toISOString(),
-            ]);
-            $syncLog->updateProgress('fetching_processed_ids', 2, 4, [
-                'message' => "Found {$processedOrderIds->count()} processed orders",
-                'processed_count' => $processedOrderIds->count(),
-            ]);
-
-            // Step 3: Combine all order IDs (unified!)
-            $allOrderIds = $openOrderIds->concat($processedOrderIds)->unique()->values();
-
-            Log::info('Total unique orders to sync', [
-                'open' => $openOrderIds->count(),
-                'processed' => $processedOrderIds->count(),
-                'unique_total' => $allOrderIds->count(),
-            ]);
-
-            // Broadcast sync started
-            event(new SyncStarted($allOrderIds->count(), 30));
-
-            // Step 4: Mark existing orders as open/closed (skip for historical imports)
+            // Step 3: Mark existing open orders (skip for historical imports)
             if (! $this->historicalImport && $openOrderIds->isNotEmpty()) {
                 $existingOrderIds = Order::whereIn('linnworks_order_id', $openOrderIds->toArray())
                     ->pluck('linnworks_order_id')
@@ -204,127 +185,116 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                 Log::info('Skipping open/closed status updates (historical import mode)');
             }
 
-            // Step 5: Stream fetch + import (THE MAGIC!)
-            // Process in chunks of 200, import while fetching next chunk
-            $chunks = $allOrderIds->chunk(200);
-            $totalChunks = $chunks->count();
-            $currentChunk = 0;
-
-            // Update progress with total steps (2 phases + number of import batches)
-            $syncLog->updateProgress('importing', 2, 2 + $totalChunks, [
-                'message' => "Starting import of {$allOrderIds->count()} orders in {$totalChunks} batches",
-                'total_orders' => $allOrderIds->count(),
-                'total_batches' => $totalChunks,
+            // Step 4: STREAMING MICRO-BATCH PROCESSING (Memory-efficient!)
+            // Process each page of order IDs as it comes in, never loading all IDs into memory
+            $syncLog->updateProgress('importing', 2, 3, [
+                'message' => 'Starting streaming import...',
             ]);
 
-            foreach ($chunks as $chunk) {
-                $currentChunk++;
+            $currentBatch = 0;
+            $totalOrdersFetched = 0;
 
-                event(new SyncProgressUpdated(
-                    'fetching-batch',
-                    "Fetching batch {$currentChunk}/{$totalChunks}...",
-                    $currentChunk * 200
-                ));
+            // First, process open orders if any
+            if ($openOrderIds->isNotEmpty()) {
+                $openChunks = $openOrderIds->chunk(200);
+                foreach ($openChunks as $chunk) {
+                    $currentBatch++;
+                    $this->processBatch($api, $importer, $progressTracker, $chunk, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
+                    $totalOrdersFetched += $chunk->count();
 
-                // Fetch this chunk (full order details)
-                $orders = $api->getOrdersByIds($chunk->toArray());
-
-                Log::info('Fetched order batch', [
-                    'chunk' => $currentChunk,
-                    'total_chunks' => $totalChunks,
-                    'orders_in_batch' => $orders->count(),
-                ]);
-
-                event(new SyncProgressUpdated(
-                    'importing-batch',
-                    "Importing batch {$currentChunk}/{$totalChunks}...",
-                    $currentChunk * 200
-                ));
-
-                // Import this chunk (while next chunk could be fetching)
-                $result = $importer->import($orders);
-
-                $totalCreated += $result->created;
-                $totalUpdated += $result->updated;
-                $totalProcessed += $result->processed;
-                $totalFailed += $result->failed;
-
-                Log::info('Imported order batch', [
-                    'chunk' => $currentChunk,
-                    'processed' => $result->processed,
-                    'created' => $result->created,
-                    'updated' => $result->updated,
-                    'failed' => $result->failed,
-                ]);
-
-                // Broadcast detailed batch metrics (using TrackSyncProgress action)
-                $progressTracker->broadcastBatchProgress(
-                    currentBatch: $currentChunk,
-                    totalBatches: $totalChunks,
-                    ordersInBatch: $orders->count(),
-                    totalProcessed: $totalProcessed,
-                    created: $totalCreated,
-                    updated: $totalUpdated
-                );
-
-                // Broadcast aggregate performance update every 5 batches
-                if ($currentChunk % 5 === 0 || $currentChunk === $totalChunks) {
-                    $progressTracker->broadcastPerformanceUpdate(
-                        totalProcessed: $totalProcessed,
-                        created: $totalCreated,
-                        updated: $totalUpdated,
-                        failed: $totalFailed,
-                        currentBatch: $currentChunk,
-                        totalBatches: $totalChunks
-                    );
-
-                    // Persist progress to database every 5 batches
-                    $progressTracker->persistProgress(
-                        phase: 'importing',
-                        current: 2 + $currentChunk,
-                        total: 2 + $totalChunks,
-                        totalProcessed: $totalProcessed,
-                        created: $totalCreated,
-                        updated: $totalUpdated,
-                        failed: $totalFailed,
-                        currentBatch: $currentChunk,
-                        totalBatches: $totalChunks
-                    );
+                    // Free memory
+                    unset($chunk);
                 }
             }
 
-            // Step 6: Complete sync log
+            // Then, stream and process processed orders page by page
+            foreach ($processedOrderIdsStream as $pageOrderIds) {
+                // Each iteration yields ~200 order IDs
+                // We fetch full details and import immediately, then free memory
+                $currentBatch++;
+                $this->processBatch($api, $importer, $progressTracker, $pageOrderIds, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
+                $totalOrdersFetched += $pageOrderIds->count();
+
+                // Free memory immediately after processing
+                unset($pageOrderIds);
+
+                // Explicit garbage collection hint every 10 batches
+                if ($currentBatch % 10 === 0 && function_exists('gc_collect_cycles')) {
+                    gc_collect_cycles();
+                }
+            }
+
+            Log::info('Streaming import completed', [
+                'total_batches' => $currentBatch,
+                'total_orders_fetched' => $totalOrdersFetched,
+                'total_processed' => $totalProcessed,
+                'created' => $totalCreated,
+                'updated' => $totalUpdated,
+                'failed' => $totalFailed,
+            ]);
+
+            // Step 5: Complete sync log
             $syncLog->complete(
-                fetched: $allOrderIds->count(),
+                fetched: $totalOrdersFetched,
                 created: $totalCreated,
                 updated: $totalUpdated,
                 skipped: $totalProcessed - $totalCreated - $totalUpdated,
                 failed: $totalFailed
             );
 
-            // Step 7: Broadcast completion events
+            // Step 6: Broadcast completion events
+            $success = $totalFailed === 0 && $totalProcessed > 0;
             event(new SyncCompleted(
                 processed: $totalProcessed,
                 created: $totalCreated,
                 updated: $totalUpdated,
                 failed: $totalFailed,
-                success: $totalFailed === 0,
+                success: $success,
             ));
 
-            // Step 8: Warm cache (if not dry run)
-            if (! $this->dryRun) {
+            // Step 7: Warm cache ONLY if successful
+            // Conditions for cache warming:
+            // 1. NOT a dry run
+            // 2. Sync was successful (no failures)
+            // 3. Actually processed at least 1 order
+            // 4. For historical imports, only warm if within dashboard periods (730 days)
+            $shouldWarmCache = ! $this->dryRun
+                && $success
+                && $totalProcessed > 0
+                && (! $this->historicalImport || $this->affectsDashboardPeriods());
+
+            if ($shouldWarmCache) {
+                Log::info('Triggering cache warming after successful sync', [
+                    'orders_processed' => $totalProcessed,
+                    'historical_import' => $this->historicalImport,
+                ]);
+
                 event(new OrdersSynced(
                     ordersProcessed: $totalProcessed,
                     syncType: 'unified_streaming_sync'
                 ));
+            } else {
+                $reason = $this->dryRun ? 'dry run mode' :
+                    (! $success ? 'sync had failures' :
+                    ($totalProcessed === 0 ? 'no orders processed' :
+                    'historical import outside dashboard periods'));
+
+                Log::info('Skipping cache warming', [
+                    'reason' => $reason,
+                    'dry_run' => $this->dryRun,
+                    'success' => $success,
+                    'total_processed' => $totalProcessed,
+                    'historical_import' => $this->historicalImport,
+                ]);
             }
 
-            Log::info('Unified streaming sync completed successfully', [
-                'total_orders' => $allOrderIds->count(),
+            Log::info('Unified streaming sync completed', [
+                'total_orders_fetched' => $totalOrdersFetched,
                 'processed' => $totalProcessed,
                 'created' => $totalCreated,
                 'updated' => $totalUpdated,
                 'failed' => $totalFailed,
+                'success' => $success,
                 'dry_run' => $this->dryRun,
             ]);
 
@@ -346,6 +316,94 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
 
             throw $e;
         }
+    }
+
+    /**
+     * Check if this historical import affects current dashboard periods
+     *
+     * Dashboard shows: 1d, 7d, 30d, 90d, 180d, 365d, 730d
+     * Only warm cache if importing data within the last 730 days
+     */
+    protected function affectsDashboardPeriods(): bool
+    {
+        if (! $this->historicalImport || ! $this->toDate) {
+            return false;
+        }
+
+        $maxDashboardPeriod = 730; // days
+        $oldestDashboardDate = now()->subDays($maxDashboardPeriod)->startOfDay();
+
+        // If the import's end date is within the last 730 days, it affects the dashboard
+        return $this->toDate->greaterThanOrEqualTo($oldestDashboardDate);
+    }
+
+    /**
+     * Process a single batch of order IDs (fetch full details + import)
+     *
+     * This method is called repeatedly for each micro-batch.
+     * Memory is freed after each call.
+     */
+    protected function processBatch(
+        LinnworksApiService $api,
+        ImportInBulk $importer,
+        TrackSyncProgress $progressTracker,
+        \Illuminate\Support\Collection $orderIds,
+        int $currentBatch,
+        int &$totalCreated,
+        int &$totalUpdated,
+        int &$totalProcessed,
+        int &$totalFailed
+    ): void {
+        event(new SyncProgressUpdated(
+            'fetching-batch',
+            "Fetching batch {$currentBatch}...",
+            $totalProcessed
+        ));
+
+        // Fetch full order details for this batch
+        $orders = $api->getOrdersByIds($orderIds->toArray());
+
+        Log::info('Fetched order batch', [
+            'batch' => $currentBatch,
+            'orders_in_batch' => $orders->count(),
+        ]);
+
+        event(new SyncProgressUpdated(
+            'importing-batch',
+            "Importing batch {$currentBatch}...",
+            $totalProcessed
+        ));
+
+        // Import this batch
+        $result = $importer->import($orders);
+
+        $totalCreated += $result->created;
+        $totalUpdated += $result->updated;
+        $totalProcessed += $result->processed;
+        $totalFailed += $result->failed;
+
+        Log::info('Imported order batch', [
+            'batch' => $currentBatch,
+            'processed' => $result->processed,
+            'created' => $result->created,
+            'updated' => $result->updated,
+            'failed' => $result->failed,
+        ]);
+
+        // Broadcast progress every 5 batches
+        if ($currentBatch % 5 === 0) {
+            $progressTracker->broadcastPerformanceUpdate(
+                totalProcessed: $totalProcessed,
+                created: $totalCreated,
+                updated: $totalUpdated,
+                failed: $totalFailed,
+                currentBatch: $currentBatch,
+                totalBatches: 0 // Unknown with streaming
+            );
+        }
+
+        // Free memory
+        unset($orders, $result);
     }
 
     /**

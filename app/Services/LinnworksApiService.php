@@ -223,6 +223,8 @@ class LinnworksApiService
 
     /**
      * Retrieve all processed orders within a window.
+     *
+     * @deprecated Use streamProcessedOrderIds() for memory-efficient historical imports
      */
     public function getAllProcessedOrders(
         ?Carbon $from = null,
@@ -265,6 +267,42 @@ class LinnworksApiService
             ]);
 
             return collect();
+        }
+    }
+
+    /**
+     * Stream processed order IDs page by page (memory-efficient)
+     *
+     * Returns a Generator that yields Collections of order IDs.
+     * Use this for historical imports to avoid loading thousands of orders into memory.
+     *
+     * @return \Generator<int, Collection> Yields Collection of order IDs per page
+     */
+    public function streamProcessedOrderIds(
+        ?Carbon $from = null,
+        ?Carbon $to = null,
+        array $filters = [],
+        int $maxOrders = 10_000,
+        ?int $userId = null,
+        ?\Closure $progressCallback = null
+    ): \Generator {
+        try {
+            $userId = $this->resolveUserId($userId);
+            $from ??= Carbon::now()->subDays(config('linnworks.sync.default_date_range', 30));
+            $to ??= Carbon::now();
+
+            yield from $this->processedOrders->streamProcessedOrderIds(
+                $userId,
+                $from,
+                $to,
+                $filters,
+                $maxOrders,
+                $progressCallback
+            );
+        } catch (\Throwable $exception) {
+            Log::error('Unhandled error streaming processed order IDs.', [
+                'error' => $exception->getMessage(),
+            ]);
         }
     }
 

@@ -15,6 +15,7 @@
         "laravel/tinker": "^2.10.1",
         "livewire/flux": "^2.1.1",
         "livewire/volt": "^1.7.0",
+        "predis/predis": "^3.2",
         "pusher/pusher-php-server": "^7.2"
     },
     "require-dev": {
@@ -57,7 +58,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#34d399,#fbbf24,#fb7185,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:work --queue=high --tries=3 --timeout=300\" \"php artisan queue:work --queue=medium --tries=3 --timeout=600\" \"php artisan queue:work --queue=low --tries=2 --timeout=3600\" \"php artisan schedule:work\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,high,medium,low,schedule,logs,vite --kill-others"
+            "npx concurrently -c \"#93c5fd,#34d399,#fbbf24,#fb7185,#c4b5fd,#fdba74,#a78bfa,#f472b6,#fb923c\" \"php artisan serve\" \"php artisan queue:work --queue=high --tries=3 --timeout=300\" \"php artisan queue:work --queue=high --tries=3 --timeout=300\" \"php artisan queue:work --queue=medium --tries=3 --timeout=600\" \"php artisan queue:work --queue=medium --tries=3 --timeout=600\" \"php artisan queue:work --queue=low --tries=2 --timeout=3600\" \"php artisan queue:work --queue=low --tries=2 --timeout=3600\" \"php artisan schedule:work\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,high1,high2,medium1,medium2,low1,low2,schedule,logs,vite --kill-others"
         ],
         "test": [
             "@php artisan config:clear --ansi",

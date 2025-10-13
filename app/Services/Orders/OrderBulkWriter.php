@@ -82,6 +82,9 @@ final class OrderBulkWriter
      *
      * Pattern: Collect all order IDs → DELETE all → INSERT all
      * Result: N delete + N insert → 1 delete + 1 insert
+     *
+     * IMPORTANT: Skips items without SKUs (unlinked marketplace items)
+     * and ensures products exist before creating order items.
      */
     public function syncItems(Collection $dtos): void
     {
@@ -109,8 +112,46 @@ final class OrderBulkWriter
             ->pluck('id', 'linnworks_order_id')
             ->toArray();
 
+        // Collect all SKUs for product existence check
+        $allSkus = $dtos->flatMap(fn (OrderImportDTO $dto) => collect($dto->items)->pluck('sku')->filter())
+            ->unique()
+            ->values()
+            ->toArray();
+
+        // Batch check which products exist
+        $existingSkus = DB::table('products')
+            ->whereIn('sku', $allSkus)
+            ->pluck('sku')
+            ->toArray();
+
+        $missingSkus = array_diff($allSkus, $existingSkus);
+
+        // Create missing products in bulk
+        if (! empty($missingSkus)) {
+            $productsToCreate = [];
+            foreach ($missingSkus as $sku) {
+                $productsToCreate[] = [
+                    'sku' => $sku,
+                    'linnworks_id' => 'UNKNOWN_'.strtoupper($sku), // Make linnworks_id unique
+                    'title' => 'Unknown Product',
+                    'stock_level' => 0,
+                    'is_active' => true,
+                    'created_at' => now()->toDateTimeString(),
+                    'updated_at' => now()->toDateTimeString(),
+                ];
+            }
+
+            DB::table('products')->insert($productsToCreate);
+
+            Log::info('OrderBulkWriter: Created missing products', [
+                'count' => count($productsToCreate),
+            ]);
+        }
+
         // Collect ALL items from ALL orders and set order_id foreign key
-        $allItems = $dtos->flatMap(function (OrderImportDTO $dto) use ($dbOrderMap) {
+        // Skip items without SKUs (unlinked marketplace items)
+        $skippedCount = 0;
+        $allItems = $dtos->flatMap(function (OrderImportDTO $dto) use ($dbOrderMap, &$skippedCount) {
             $orderId = $dbOrderMap[$dto->linnworksOrderId] ?? null;
 
             if (! $orderId) {
@@ -121,7 +162,16 @@ final class OrderBulkWriter
                 return [];
             }
 
-            return collect($dto->items)->map(function (array $item) use ($orderId) {
+            return collect($dto->items)->filter(function (array $item) use (&$skippedCount) {
+                // Skip items without SKUs - these are unlinked marketplace items
+                if (empty($item['sku'])) {
+                    $skippedCount++;
+
+                    return false;
+                }
+
+                return true;
+            })->map(function (array $item) use ($orderId) {
                 $item['order_id'] = $orderId;
 
                 return $item;
@@ -129,7 +179,9 @@ final class OrderBulkWriter
         })->toArray();
 
         if (empty($allItems)) {
-            Log::info('OrderBulkWriter: No items to sync');
+            Log::info('OrderBulkWriter: No items to sync', [
+                'skipped_no_sku' => $skippedCount,
+            ]);
 
             return;
         }
@@ -141,6 +193,8 @@ final class OrderBulkWriter
             'orders_count' => count($linnworksOrderIds),
             'deleted' => $deleted,
             'inserted' => count($allItems),
+            'skipped_no_sku' => $skippedCount,
+            'products_created' => count($missingSkus),
         ]);
     }
 
@@ -215,16 +269,22 @@ final class OrderBulkWriter
             return;
         }
 
-        $orderIds = $dtosWithNotes->pluck('linnworksOrderId')->unique()->toArray();
+        $linnworksOrderIds = $dtosWithNotes->pluck('linnworksOrderId')->unique()->toArray();
 
-        // Single DELETE for all
+        // Get DB order IDs
+        $dbOrderIds = DB::table('orders')
+            ->whereIn('linnworks_order_id', $linnworksOrderIds)
+            ->pluck('id')
+            ->toArray();
+
+        // Single DELETE for all (using order_id foreign key)
         $deleted = DB::table('order_notes')
-            ->whereIn('linnworks_order_id', $orderIds)
+            ->whereIn('order_id', $dbOrderIds)
             ->delete();
 
-        // Get actual database order IDs
+        // Get actual database order IDs for setting foreign keys
         $dbOrderMap = DB::table('orders')
-            ->whereIn('linnworks_order_id', $orderIds)
+            ->whereIn('linnworks_order_id', $linnworksOrderIds)
             ->pluck('id', 'linnworks_order_id')
             ->toArray();
 
@@ -251,7 +311,7 @@ final class OrderBulkWriter
         DB::table('order_notes')->insert($allNotes);
 
         Log::info('OrderBulkWriter: Bulk synced notes', [
-            'orders_count' => count($orderIds),
+            'orders_count' => count($linnworksOrderIds),
             'deleted' => $deleted,
             'inserted' => count($allNotes),
         ]);
@@ -268,14 +328,22 @@ final class OrderBulkWriter
             return;
         }
 
-        $orderIds = $dtosWithProperties->pluck('linnworksOrderId')->unique()->toArray();
+        $linnworksOrderIds = $dtosWithProperties->pluck('linnworksOrderId')->unique()->toArray();
 
+        // Get DB order IDs
+        $dbOrderIds = DB::table('orders')
+            ->whereIn('linnworks_order_id', $linnworksOrderIds)
+            ->pluck('id')
+            ->toArray();
+
+        // Single DELETE for all (using order_id foreign key)
         $deleted = DB::table('order_properties')
-            ->whereIn('linnworks_order_id', $orderIds)
+            ->whereIn('order_id', $dbOrderIds)
             ->delete();
 
+        // Get actual database order IDs for setting foreign keys
         $dbOrderMap = DB::table('orders')
-            ->whereIn('linnworks_order_id', $orderIds)
+            ->whereIn('linnworks_order_id', $linnworksOrderIds)
             ->pluck('id', 'linnworks_order_id')
             ->toArray();
 
@@ -300,7 +368,7 @@ final class OrderBulkWriter
         DB::table('order_properties')->insert($allProperties);
 
         Log::info('OrderBulkWriter: Bulk synced properties', [
-            'orders_count' => count($orderIds),
+            'orders_count' => count($linnworksOrderIds),
             'deleted' => $deleted,
             'inserted' => count($allProperties),
         ]);
@@ -317,14 +385,22 @@ final class OrderBulkWriter
             return;
         }
 
-        $orderIds = $dtosWithIdentifiers->pluck('linnworksOrderId')->unique()->toArray();
+        $linnworksOrderIds = $dtosWithIdentifiers->pluck('linnworksOrderId')->unique()->toArray();
 
+        // Get DB order IDs
+        $dbOrderIds = DB::table('orders')
+            ->whereIn('linnworks_order_id', $linnworksOrderIds)
+            ->pluck('id')
+            ->toArray();
+
+        // Single DELETE for all (using order_id foreign key)
         $deleted = DB::table('order_identifiers')
-            ->whereIn('linnworks_order_id', $orderIds)
+            ->whereIn('order_id', $dbOrderIds)
             ->delete();
 
+        // Get actual database order IDs for setting foreign keys
         $dbOrderMap = DB::table('orders')
-            ->whereIn('linnworks_order_id', $orderIds)
+            ->whereIn('linnworks_order_id', $linnworksOrderIds)
             ->pluck('id', 'linnworks_order_id')
             ->toArray();
 
@@ -349,7 +425,7 @@ final class OrderBulkWriter
         DB::table('order_identifiers')->insert($allIdentifiers);
 
         Log::info('OrderBulkWriter: Bulk synced identifiers', [
-            'orders_count' => count($orderIds),
+            'orders_count' => count($linnworksOrderIds),
             'deleted' => $deleted,
             'inserted' => count($allIdentifiers),
         ]);
