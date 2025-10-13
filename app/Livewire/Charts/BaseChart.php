@@ -11,38 +11,40 @@ abstract class BaseChart extends Component
 {
     #[Reactive]
     public array $data = [];
-    
+
     #[Reactive]
     public ?array $options = [];
-    
+
     public string $chartId;
+
     public string $height = '300px';
+
     public string $width = '100%';
-    
+
     protected array $mergedOptions = [];
-    
+
     abstract public function getChartType(): string;
-    
+
     public function mount(
         array $data = [],
         ?array $options = null,
         ?string $height = null,
         ?string $width = null
     ): void {
-        $this->chartId = 'chart-' . uniqid();
+        $this->chartId = 'chart-'.uniqid();
         $this->data = $data;
         $this->options = $options ?? [];
         $this->mergedOptions = array_merge($this->getDefaultOptions(), $this->options ?? []);
-        
+
         if ($height) {
             $this->height = $height;
         }
-        
+
         if ($width) {
             $this->width = $width;
         }
     }
-    
+
     protected function getDefaultOptions(): array
     {
         return [
@@ -61,7 +63,7 @@ abstract class BaseChart extends Component
             ],
         ];
     }
-    
+
     public function updatedData(): void
     {
         $this->updateMergedOptions();
@@ -76,9 +78,9 @@ abstract class BaseChart extends Component
 
     protected function dispatchChartUpdate(): void
     {
-        $this->dispatch('chart-update-' . $this->chartId, $this->getChartData());
+        $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
     }
-    
+
     protected function updateMergedOptions(): void
     {
         $this->mergedOptions = array_merge($this->getDefaultOptions(), $this->options ?? []);
@@ -92,7 +94,7 @@ abstract class BaseChart extends Component
             'options' => $this->mergedOptions,
         ];
     }
-    
+
     public function render()
     {
         return view('livewire.charts.base-chart');

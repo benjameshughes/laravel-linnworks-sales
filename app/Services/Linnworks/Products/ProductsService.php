@@ -28,8 +28,9 @@ final class ProductsService
     ): Collection {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             Log::error('No valid session token for stock items', ['user_id' => $userId]);
+
             return collect();
         }
 
@@ -108,7 +109,7 @@ final class ProductsService
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             return collect();
         }
 
@@ -125,6 +126,7 @@ final class ProductsService
                 'ids_count' => count($stockItemIds),
                 'error' => $response->error,
             ]);
+
             return collect();
         }
 

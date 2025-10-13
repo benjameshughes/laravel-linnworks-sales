@@ -51,7 +51,7 @@ class ProductIdentifierService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -68,7 +68,7 @@ class ProductIdentifierService
                 'error' => $response->error,
             ]);
 
-            throw new \RuntimeException('Failed to fetch product identifiers: ' . $response->error);
+            throw new \RuntimeException('Failed to fetch product identifiers: '.$response->error);
         }
 
         $executionTime = (microtime(true) - $startTime) * 1000;
@@ -105,16 +105,16 @@ class ProductIdentifierService
 
         // Validate identifiers
         $validationErrors = $identifiers->validationErrors();
-        if (!empty($validationErrors)) {
+        if (! empty($validationErrors)) {
             Log::warning('Product identifier validation failed', [
                 'errors' => $validationErrors,
             ]);
 
-            throw new \InvalidArgumentException('Invalid product identifiers: ' . json_encode($validationErrors));
+            throw new \InvalidArgumentException('Invalid product identifiers: '.json_encode($validationErrors));
         }
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -132,7 +132,7 @@ class ProductIdentifierService
                 'error' => $response->error,
             ]);
 
-            throw new \RuntimeException('Failed to add product identifiers: ' . $response->error);
+            throw new \RuntimeException('Failed to add product identifiers: '.$response->error);
         }
 
         $executionTime = (microtime(true) - $startTime) * 1000;
@@ -169,16 +169,16 @@ class ProductIdentifierService
 
         // Validate identifiers
         $validationErrors = $identifiers->validationErrors();
-        if (!empty($validationErrors)) {
+        if (! empty($validationErrors)) {
             Log::warning('Product identifier validation failed', [
                 'errors' => $validationErrors,
             ]);
 
-            throw new \InvalidArgumentException('Invalid product identifiers: ' . json_encode($validationErrors));
+            throw new \InvalidArgumentException('Invalid product identifiers: '.json_encode($validationErrors));
         }
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -196,7 +196,7 @@ class ProductIdentifierService
                 'error' => $response->error,
             ]);
 
-            throw new \RuntimeException('Failed to update product identifiers: ' . $response->error);
+            throw new \RuntimeException('Failed to update product identifiers: '.$response->error);
         }
 
         $executionTime = (microtime(true) - $startTime) * 1000;
@@ -230,7 +230,7 @@ class ProductIdentifierService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -248,7 +248,7 @@ class ProductIdentifierService
                 'error' => $response->error,
             ]);
 
-            throw new \RuntimeException('Failed to delete product identifiers: ' . $response->error);
+            throw new \RuntimeException('Failed to delete product identifiers: '.$response->error);
         }
 
         $executionTime = (microtime(true) - $startTime) * 1000;
@@ -273,7 +273,7 @@ class ProductIdentifierService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -287,7 +287,7 @@ class ProductIdentifierService
                 'error' => $response->error,
             ]);
 
-            throw new \RuntimeException('Failed to fetch product identifier types: ' . $response->error);
+            throw new \RuntimeException('Failed to fetch product identifier types: '.$response->error);
         }
 
         return $response->getData()->toArray();
@@ -303,7 +303,7 @@ class ProductIdentifierService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -317,7 +317,7 @@ class ProductIdentifierService
                 'error' => $response->error,
             ]);
 
-            throw new \RuntimeException('Failed to fetch extended product identifier types: ' . $response->error);
+            throw new \RuntimeException('Failed to fetch extended product identifier types: '.$response->error);
         }
 
         return $response->getData()->toArray();

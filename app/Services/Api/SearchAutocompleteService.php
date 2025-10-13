@@ -2,10 +2,10 @@
 
 namespace App\Services\Api;
 
-use App\Services\ProductSearchService;
-use App\ValueObjects\Api\AutocompleteRequest;
-use App\ValueObjects\Api\ApiResponse;
 use App\Http\Resources\SearchSuggestionResource;
+use App\Services\ProductSearchService;
+use App\ValueObjects\Api\ApiResponse;
+use App\ValueObjects\Api\AutocompleteRequest;
 use Illuminate\Support\Collection;
 
 readonly class SearchAutocompleteService
@@ -21,7 +21,7 @@ readonly class SearchAutocompleteService
         }
 
         $suggestions = $this->searchService->autocomplete($request->query, $request->type);
-        
+
         return ApiResponse::success(
             data: $this->transformSuggestions($suggestions, $request->query),
             meta: $this->buildMeta($request, $suggestions->count())
@@ -42,8 +42,7 @@ readonly class SearchAutocompleteService
 
     private function transformSuggestions(Collection $suggestions, string $query): Collection
     {
-        return $suggestions->map(fn($suggestion) => 
-            SearchSuggestionResource::withHighlight($suggestion, $query)->toArray(request())
+        return $suggestions->map(fn ($suggestion) => SearchSuggestionResource::withHighlight($suggestion, $query)->toArray(request())
         );
     }
 

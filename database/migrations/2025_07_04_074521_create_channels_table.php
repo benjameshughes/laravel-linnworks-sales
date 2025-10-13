@@ -20,7 +20,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->json('settings')->nullable(); // Store channel-specific settings
             $table->timestamps();
-            
+
             $table->index('name');
             $table->index('is_active');
         });

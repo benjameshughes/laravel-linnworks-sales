@@ -27,7 +27,7 @@ class SearchSuggestionResource extends JsonResource
             'value' => $this->suggestion['value'],
             'label' => $this->suggestion['label'],
             'context' => $this->suggestion['context'] ?? null,
-            'highlight' => $this->highlightQuery 
+            'highlight' => $this->highlightQuery
                 ? $this->highlightMatch($this->suggestion['label'], $this->highlightQuery)
                 : $this->suggestion['label'],
         ];
@@ -39,7 +39,8 @@ class SearchSuggestionResource extends JsonResource
             return $text;
         }
 
-        $pattern = '/(' . preg_quote($query, '/') . ')/i';
+        $pattern = '/('.preg_quote($query, '/').')/i';
+
         return preg_replace($pattern, '<mark>$1</mark>', $text);
     }
 }

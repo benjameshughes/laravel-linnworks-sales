@@ -2,16 +2,16 @@
 
 namespace App\Jobs;
 
-use App\Models\User;
 use App\Models\Product;
+use App\Models\User;
 use App\Services\Linnworks\Products\ProductsApiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SyncInventoryPaginatedJob implements ShouldQueue
 {
@@ -29,12 +29,13 @@ class SyncInventoryPaginatedJob implements ShouldQueue
     public function handle(ProductsApiService $productsApiService): void
     {
         $user = User::find($this->userId);
-        
-        if (!$user) {
+
+        if (! $user) {
             Log::error('User not found for inventory sync job', [
                 'user_id' => $this->userId,
                 'page_number' => $this->pageNumber,
             ]);
+
             return;
         }
 
@@ -64,8 +65,8 @@ class SyncInventoryPaginatedJob implements ShouldQueue
             DB::transaction(function () use ($items, &$processedCount, &$updatedCount, &$createdCount) {
                 foreach ($items as $item) {
                     $stockItemId = $item['StockItemId'] ?? null;
-                    
-                    if (!$stockItemId) {
+
+                    if (! $stockItemId) {
                         continue;
                     }
 
@@ -85,7 +86,7 @@ class SyncInventoryPaginatedJob implements ShouldQueue
                         'meta_title' => $item['MetaTitle'] ?? null,
                         'meta_description' => $item['MetaDescription'] ?? null,
                         'meta_keywords' => $item['MetaKeywords'] ?? null,
-                        'last_updated_date' => isset($item['LastUpdateDate']) 
+                        'last_updated_date' => isset($item['LastUpdateDate'])
                             ? \Carbon\Carbon::parse($item['LastUpdateDate'])
                             : now(),
                         'created_date' => isset($item['CreatedDate'])

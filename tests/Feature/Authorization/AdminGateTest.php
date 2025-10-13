@@ -63,11 +63,11 @@ test('admin can access security settings component', function () {
     // The full component functionality is tested in SecuritySettingsTest
     $admin = User::factory()->create(['is_admin' => true]);
 
-    $component = new \App\Livewire\Settings\SecuritySettings();
+    $component = new \App\Livewire\Settings\SecuritySettings;
 
     $this->actingAs($admin);
 
     // Should be able to mount without exception
-    expect(fn() => $component->mount(app(\App\Services\SettingsService::class)))
+    expect(fn () => $component->mount(app(\App\Services\SettingsService::class)))
         ->not->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
 });

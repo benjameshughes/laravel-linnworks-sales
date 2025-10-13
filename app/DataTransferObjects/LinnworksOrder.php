@@ -88,7 +88,7 @@ readonly class LinnworksOrder implements Arrayable
             numItems: isset($items) ? $items->sum('quantity') : null,
             paymentMethod: $generalInfo['PaymentMethod'] ?? $data['PaymentMethod'] ?? null,
             // Shipping information
-            shippingInfo: !empty($shippingInfo) ? [
+            shippingInfo: ! empty($shippingInfo) ? [
                 'tracking_number' => $shippingInfo['TrackingNumber'] ?? null,
                 'vendor' => $shippingInfo['Vendor'] ?? null,
                 'postal_service_id' => $shippingInfo['PostalServiceId'] ?? null,
@@ -141,7 +141,7 @@ readonly class LinnworksOrder implements Arrayable
 
     private static function parseDate(?string $date): ?Carbon
     {
-        if (!$date) {
+        if (! $date) {
             return null;
         }
 
@@ -177,7 +177,7 @@ readonly class LinnworksOrder implements Arrayable
                       $generalInfo['bProcessed'] ??
                       false;
 
-        if (!$isProcessed) {
+        if (! $isProcessed) {
             return null;
         }
 

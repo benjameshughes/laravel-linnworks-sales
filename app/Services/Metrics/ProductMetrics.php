@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Metrics;
 
-use App\Models\OrderItem;
 use App\Models\Product;
 use App\Services\ProductBadgeService;
 use App\Traits\PreparesChartData;
@@ -17,7 +16,7 @@ class ProductMetrics extends MetricBase
 
     public function __construct(
         Collection $data,
-        private readonly ProductBadgeService $badgeService = new ProductBadgeService(),
+        private readonly ProductBadgeService $badgeService = new ProductBadgeService,
     ) {
         parent::__construct($data);
     }
@@ -127,6 +126,7 @@ class ProductMetrics extends MetricBase
             ->map(function ($item) {
                 $product = Product::where('sku', $item['sku'])->first();
                 $item['category_name'] = $product?->category_name ?? 'Unknown Category';
+
                 return $item;
             })
             ->groupBy('category_name')
@@ -153,7 +153,7 @@ class ProductMetrics extends MetricBase
             ->map(function (Collection $items, string $sku) {
                 $product = Product::where('sku', $sku)->first();
 
-                if (!$product || $product->stock_available > $product->stock_minimum) {
+                if (! $product || $product->stock_available > $product->stock_minimum) {
                     return null;
                 }
 
@@ -245,7 +245,7 @@ class ProductMetrics extends MetricBase
                 'data' => $categories->pluck('revenue')->toArray(),
                 'backgroundColor' => [
                     '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
-                    '#8B5CF6', '#F97316', '#06B6D4', '#84CC16'
+                    '#8B5CF6', '#F97316', '#06B6D4', '#84CC16',
                 ],
                 'borderWidth' => 2,
             ]],

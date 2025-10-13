@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\SyncLog;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Carbon\Carbon;
 
 class SyncLogFactory extends Factory
 {

@@ -3,12 +3,10 @@
 namespace App\Services\Metrics;
 
 use App\Models\Product;
-use App\Services\Metrics\MetricBase;
 use Illuminate\Support\Collection;
 
 class ProductsMetrics extends MetricBase
 {
-
     public function __construct(Collection $data)
     {
         parent::__construct($data);
@@ -18,7 +16,7 @@ class ProductsMetrics extends MetricBase
     {
         // Analyze orders data to extract product performance metrics
         return $this->data
-            ->flatMap(fn($order) => collect($order->items ?? []))
+            ->flatMap(fn ($order) => collect($order->items ?? []))
             ->groupBy('sku')
             ->map(function (Collection $items, string $sku) {
                 $product = \App\Models\Product::where('sku', $sku)->first();
@@ -63,7 +61,7 @@ class ProductsMetrics extends MetricBase
     public function getTotalProductsCount(): int
     {
         return $this->data
-            ->flatMap(fn($order) => collect($order->items ?? []))
+            ->flatMap(fn ($order) => collect($order->items ?? []))
             ->pluck('sku')
             ->unique()
             ->count();
@@ -72,7 +70,7 @@ class ProductsMetrics extends MetricBase
     public function getTotalUnitsScheduled(): int
     {
         return $this->data
-            ->flatMap(fn($order) => collect($order->items ?? []))
+            ->flatMap(fn ($order) => collect($order->items ?? []))
             ->sum('quantity');
     }
 

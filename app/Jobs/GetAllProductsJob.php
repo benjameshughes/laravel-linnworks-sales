@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Jobs\ProcessProductJob;
 use App\Models\Product;
 use App\Models\SyncLog;
 use App\Services\LinnworksApiService;
@@ -14,13 +13,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class GetAllProductsJob implements ShouldQueue, ShouldBeUnique
+class GetAllProductsJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $uniqueFor = 3600; // 1 hour
 
     protected ?string $startedBy;
+
     protected SyncLog $syncLog;
 
     public function __construct(?string $startedBy = null)
@@ -45,10 +45,10 @@ class GetAllProductsJob implements ShouldQueue, ShouldBeUnique
         ]);
 
         Log::info('Starting master job to get all products', [
-            'started_by' => $this->startedBy
+            'started_by' => $this->startedBy,
         ]);
 
-        if (!$linnworksService->isConfigured()) {
+        if (! $linnworksService->isConfigured()) {
             Log::error('Linnworks API is not configured');
             $this->syncLog->fail('Linnworks API not configured');
             throw new \Exception('Linnworks API is not configured. Please check your credentials.');
@@ -57,12 +57,13 @@ class GetAllProductsJob implements ShouldQueue, ShouldBeUnique
         try {
             Log::info('Fetching all inventory items from Linnworks...');
             $inventoryItems = $linnworksService->getAllInventoryItems();
-            
+
             Log::info("Found {$inventoryItems->count()} inventory items");
-            
+
             if ($inventoryItems->isEmpty()) {
                 Log::warning('No inventory items found.');
                 $this->syncLog->complete(0);
+
                 return;
             }
 
@@ -72,14 +73,14 @@ class GetAllProductsJob implements ShouldQueue, ShouldBeUnique
                     'total_products_found' => $inventoryItems->count(),
                     'sample_skus' => $inventoryItems->take(3)->pluck('ItemNumber')->toArray(),
                     'sync_type' => 'basic',
-                ])
+                ]),
             ]);
 
             $existingProducts = Product::whereIn('sku', $inventoryItems->pluck('ItemNumber')->toArray())
                 ->pluck('sku')
                 ->toArray();
 
-            if (!empty($existingProducts)) {
+            if (! empty($existingProducts)) {
                 $existingCount = count($existingProducts);
                 Log::info("Found {$existingCount} existing products to update");
             }
@@ -87,13 +88,13 @@ class GetAllProductsJob implements ShouldQueue, ShouldBeUnique
             // Process products in batches to avoid overwhelming the queue
             $jobsDispatched = 0;
             $batchSize = 50; // Process 50 products per job batch
-            
+
             foreach ($inventoryItems->chunk($batchSize) as $chunkIndex => $chunk) {
                 foreach ($chunk as $inventoryItem) {
                     ProcessProductJob::dispatch($inventoryItem, $this->syncLog->id);
                     $jobsDispatched++;
                 }
-                
+
                 // Small delay between batches
                 if ($chunkIndex > 0) {
                     usleep(100000); // 0.1 seconds
@@ -110,7 +111,7 @@ class GetAllProductsJob implements ShouldQueue, ShouldBeUnique
                     'jobs_dispatched' => $jobsDispatched,
                     'existing_products_count' => count($existingProducts),
                     'master_job_completed_at' => now()->toDateTimeString(),
-                ])
+                ]),
             ]);
 
             Log::info('Master product sync job completed successfully', [

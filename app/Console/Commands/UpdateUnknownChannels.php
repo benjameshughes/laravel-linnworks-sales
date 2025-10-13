@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Models\Order;
 use App\Services\LinnworksApiService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class UpdateUnknownChannels extends Command
@@ -17,8 +16,11 @@ class UpdateUnknownChannels extends Command
     protected $description = 'Update orders with "Unknown" channel by fetching from Linnworks API';
 
     private int $totalProcessed = 0;
+
     private int $totalUpdated = 0;
+
     private int $totalSkipped = 0;
+
     private int $totalErrors = 0;
 
     public function __construct(
@@ -29,8 +31,9 @@ class UpdateUnknownChannels extends Command
 
     public function handle(): int
     {
-        if (!$this->apiService->isConfigured()) {
+        if (! $this->apiService->isConfigured()) {
             $this->error('❌ Linnworks API is not configured.');
+
             return self::FAILURE;
         }
 
@@ -52,13 +55,15 @@ class UpdateUnknownChannels extends Command
 
         if ($totalOrders === 0) {
             $this->info('✨ No orders with Unknown channel found!');
+
             return self::SUCCESS;
         }
 
         $this->info("📊 Found {$totalOrders} orders with Unknown channel");
 
-        if (!$isDryRun && !$this->confirm('Do you want to continue?')) {
+        if (! $isDryRun && ! $this->confirm('Do you want to continue?')) {
             $this->info('Update cancelled.');
+
             return self::SUCCESS;
         }
 
@@ -71,6 +76,7 @@ class UpdateUnknownChannels extends Command
 
             if (empty($orderIds)) {
                 $progressBar->advance($chunk->count());
+
                 continue;
             }
 
@@ -87,27 +93,30 @@ class UpdateUnknownChannels extends Command
                             $orderId = is_array($order)
                                 ? ($order['GeneralInfo']['pkOrderID'] ?? null)
                                 : null;
+
                             return $orderId === $localOrder->linnworks_order_id;
                         });
 
-                        if (!$detailedOrder || !isset($detailedOrder['GeneralInfo'])) {
+                        if (! $detailedOrder || ! isset($detailedOrder['GeneralInfo'])) {
                             $this->totalSkipped++;
                             $progressBar->advance();
+
                             continue;
                         }
 
                         $source = $detailedOrder['GeneralInfo']['Source'] ?? null;
                         $subSource = $detailedOrder['GeneralInfo']['SubSource'] ?? null;
 
-                        if (!$source) {
+                        if (! $source) {
                             $this->totalSkipped++;
                             $progressBar->advance();
+
                             continue;
                         }
 
                         if ($isDryRun) {
                             $this->newLine();
-                            $this->line("[DRY RUN] Would update order {$localOrder->order_number}: {$source}" . ($subSource ? " / {$subSource}" : ""));
+                            $this->line("[DRY RUN] Would update order {$localOrder->order_number}: {$source}".($subSource ? " / {$subSource}" : ''));
                             $this->totalUpdated++;
                         } else {
                             $updateData = ['channel_name' => \Illuminate\Support\Str::lower(str_replace(' ', '_', $source))];
@@ -181,7 +190,7 @@ class UpdateUnknownChannels extends Command
                 ->get();
 
             foreach ($channels as $channel) {
-                $this->line('   ' . str_pad($channel->channel_name ?? 'NULL', 20) . ': ' . number_format($channel->count));
+                $this->line('   '.str_pad($channel->channel_name ?? 'NULL', 20).': '.number_format($channel->count));
             }
         }
 

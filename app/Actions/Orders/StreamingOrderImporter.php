@@ -134,7 +134,7 @@ final class StreamingOrderImporter
 
                 return OrderImportDTO::fromLinnworks($linnworksOrder);
             })
-            ->filter(fn(OrderImportDTO $dto) => $dto->linnworksOrderId !== null || $dto->orderNumber !== null);
+            ->filter(fn (OrderImportDTO $dto) => $dto->linnworksOrderId !== null || $dto->orderNumber !== null);
     }
 
     /**
@@ -168,7 +168,7 @@ final class StreamingOrderImporter
         // Load all existing orders in one or two queries
         $existingOrders = collect();
 
-        if (!empty($orderIds)) {
+        if (! empty($orderIds)) {
             $byLinnworksId = Order::query()
                 ->where(function ($query) use ($orderIds) {
                     $query->whereIn('linnworks_order_id', $orderIds)
@@ -178,7 +178,7 @@ final class StreamingOrderImporter
             $existingOrders = $existingOrders->merge($byLinnworksId);
         }
 
-        if (!empty($orderNumbers)) {
+        if (! empty($orderNumbers)) {
             $byOrderNumber = Order::whereIn('order_number', $orderNumbers)->get();
             $existingOrders = $existingOrders->merge($byOrderNumber);
         }
@@ -226,7 +226,7 @@ final class StreamingOrderImporter
             }
 
             // Check if exists by order number
-            if (!$exists && $dto->orderNumber && $orderNumberMap->has($dto->orderNumber)) {
+            if (! $exists && $dto->orderNumber && $orderNumberMap->has($dto->orderNumber)) {
                 $exists = true;
             }
 

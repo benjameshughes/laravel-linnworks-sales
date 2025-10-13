@@ -57,7 +57,7 @@ readonly class LinnworksOrderItem implements Arrayable
 
     public function profitMargin(): float
     {
-        return $this->pricePerUnit > 0 
+        return $this->pricePerUnit > 0
             ? (($this->pricePerUnit - $this->unitCost) / $this->pricePerUnit) * 100
             : 0;
     }

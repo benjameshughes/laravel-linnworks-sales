@@ -85,14 +85,15 @@ class OrderDeduplicationService
         ])->flatMap(function ($order) {
             $keys = [];
             if ($order['linnworks_id']) {
-                $keys[] = 'id:' . $order['linnworks_id'];
+                $keys[] = 'id:'.$order['linnworks_id'];
             }
             if ($order['order_id']) {
-                $keys[] = 'id:' . $order['order_id'];
+                $keys[] = 'id:'.$order['order_id'];
             }
             if ($order['order_number']) {
-                $keys[] = 'num:' . $order['order_number'];
+                $keys[] = 'num:'.$order['order_number'];
             }
+
             return $keys;
         })->flip();
 
@@ -103,10 +104,10 @@ class OrderDeduplicationService
             // Also check alternative keys
             $alternativeKeys = [];
             if ($order->orderId) {
-                $alternativeKeys[] = 'id:' . $order->orderId;
+                $alternativeKeys[] = 'id:'.$order->orderId;
             }
             if ($order->orderNumber) {
-                $alternativeKeys[] = 'num:' . $order->orderNumber;
+                $alternativeKeys[] = 'num:'.$order->orderNumber;
             }
 
             foreach ($alternativeKeys as $altKey) {
@@ -127,7 +128,7 @@ class OrderDeduplicationService
         $query = Order::query();
 
         // Build query for IDs
-        if (!empty($orderIds)) {
+        if (! empty($orderIds)) {
             $query->where(function ($q) use ($orderIds) {
                 $q->whereIn('linnworks_order_id', $orderIds)
                     ->orWhereIn('order_id', $orderIds);
@@ -135,8 +136,8 @@ class OrderDeduplicationService
         }
 
         // Add query for order numbers
-        if (!empty($orderNumbers)) {
-            if (!empty($orderIds)) {
+        if (! empty($orderNumbers)) {
+            if (! empty($orderIds)) {
                 $query->orWhereIn('order_number', $orderNumbers);
             } else {
                 $query->whereIn('order_number', $orderNumbers);
@@ -153,15 +154,15 @@ class OrderDeduplicationService
     {
         // Prefer order ID, fall back to order number
         if ($order->orderId) {
-            return 'id:' . $order->orderId;
+            return 'id:'.$order->orderId;
         }
 
         if ($order->orderNumber) {
-            return 'num:' . $order->orderNumber;
+            return 'num:'.$order->orderNumber;
         }
 
         // Fallback: use combination of channel + reference
-        return 'ref:' . ($order->channelName ?? 'unknown') . ':' . ($order->channelReferenceNumber ?? uniqid());
+        return 'ref:'.($order->channelName ?? 'unknown').':'.($order->channelReferenceNumber ?? uniqid());
     }
 
     /**

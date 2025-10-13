@@ -5,18 +5,17 @@ namespace App\Services;
 use App\Enums\ProductFilterType;
 use App\Models\Product;
 use App\ValueObjects\FilterCriteria;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 readonly class ProductFilterService
 {
     public function __construct(
-        private ProductBadgeService $badgeService = new ProductBadgeService(),
+        private ProductBadgeService $badgeService = new ProductBadgeService,
     ) {}
 
     /**
-     * @param Collection<FilterCriteria> $filters
+     * @param  Collection<FilterCriteria>  $filters
      */
     public function applyFilters(Collection $products, Collection $filters, int $period = 30): Collection
     {
@@ -24,7 +23,7 @@ readonly class ProductFilterService
             return $products;
         }
 
-        $activeFilters = $filters->filter(fn(FilterCriteria $filter) => $filter->isActive());
+        $activeFilters = $filters->filter(fn (FilterCriteria $filter) => $filter->isActive());
 
         if ($activeFilters->isEmpty()) {
             return $products;
@@ -35,7 +34,7 @@ readonly class ProductFilterService
             $enhancedData = $this->enhanceProductDataForFiltering($productData, $period);
 
             return $activeFilters->every(
-                fn(FilterCriteria $filter) => $filter->matches($enhancedData)
+                fn (FilterCriteria $filter) => $filter->matches($enhancedData)
             );
         });
     }
@@ -43,8 +42,8 @@ readonly class ProductFilterService
     private function enhanceProductDataForFiltering(array $productData, int $period): array
     {
         $product = $productData['product'] ?? null;
-        
-        if (!$product instanceof Product) {
+
+        if (! $product instanceof Product) {
             return $productData;
         }
 
@@ -84,32 +83,30 @@ readonly class ProductFilterService
     private function calculateGrowthRate(string $sku, int $period): float
     {
         $cacheKey = "growth_rate:{$sku}:{$period}";
-        
+
         return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($sku, $period) {
             $currentPeriod = [
                 'from' => now()->subDays($period),
                 'to' => now(),
             ];
-            
+
             $previousPeriod = [
                 'from' => now()->subDays($period * 2),
                 'to' => now()->subDays($period),
             ];
 
             $currentQuantity = \App\Models\OrderItem::where('sku', $sku)
-                ->whereHas('order', fn($query) => 
-                    $query->whereBetween('received_date', [$currentPeriod['from'], $currentPeriod['to']])
+                ->whereHas('order', fn ($query) => $query->whereBetween('received_date', [$currentPeriod['from'], $currentPeriod['to']])
                 )
                 ->sum('quantity');
 
             $previousQuantity = \App\Models\OrderItem::where('sku', $sku)
-                ->whereHas('order', fn($query) => 
-                    $query->whereBetween('received_date', [$previousPeriod['from'], $previousPeriod['to']])
+                ->whereHas('order', fn ($query) => $query->whereBetween('received_date', [$previousPeriod['from'], $previousPeriod['to']])
                 )
                 ->sum('quantity');
 
-            return $previousQuantity > 0 
-                ? (($currentQuantity - $previousQuantity) / $previousQuantity) * 100 
+            return $previousQuantity > 0
+                ? (($currentQuantity - $previousQuantity) / $previousQuantity) * 100
                 : 0.0;
         });
     }
@@ -130,17 +127,17 @@ readonly class ProductFilterService
     }
 
     /**
-     * @param Collection<FilterCriteria> $filters
+     * @param  Collection<FilterCriteria>  $filters
      */
     public function getFilterSummary(Collection $filters): Collection
     {
-        $activeFilters = $filters->filter(fn(FilterCriteria $filter) => $filter->isActive());
-        
+        $activeFilters = $filters->filter(fn (FilterCriteria $filter) => $filter->isActive());
+
         return collect([
             'total_filters' => $filters->count(),
             'active_filters' => $activeFilters->count(),
-            'filter_types' => $activeFilters->pluck('type')->map(fn($type) => $type->value),
-            'summary' => $activeFilters->map(fn(FilterCriteria $filter) => collect([
+            'filter_types' => $activeFilters->pluck('type')->map(fn ($type) => $type->value),
+            'summary' => $activeFilters->map(fn (FilterCriteria $filter) => collect([
                 'type' => $filter->type->value,
                 'label' => $filter->label(),
                 'value' => $filter->getDisplayValue(),
@@ -165,15 +162,15 @@ readonly class ProductFilterService
     }
 
     /**
-     * @param array<string, mixed> $filterData
+     * @param  array<string, mixed>  $filterData
      * @return Collection<FilterCriteria>
      */
     public function createFiltersFromArray(array $filterData): Collection
     {
         return collect($filterData)->map(function ($value, $typeString) {
             $type = ProductFilterType::tryFrom($typeString);
-            
-            if (!$type) {
+
+            if (! $type) {
                 return null;
             }
 

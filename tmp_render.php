@@ -1,11 +1,12 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
-$app = require __DIR__ . '/bootstrap/app.php';
+
+require __DIR__.'/vendor/autoload.php';
+$app = require __DIR__.'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Models\Order;
-use Livewire\Livewire;
 use Carbon\Carbon;
+use Livewire\Livewire;
 
 Carbon::setTestNow(Carbon::parse('2024-11-10 12:00:00'));
 

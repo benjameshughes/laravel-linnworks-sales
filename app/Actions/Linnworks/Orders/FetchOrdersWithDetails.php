@@ -49,7 +49,7 @@ class FetchOrdersWithDetails
 
             $orderIds = $orders->pluck('pkOrderID')->filter()->values()->toArray();
 
-            if (!empty($orderIds)) {
+            if (! empty($orderIds)) {
                 $detailsResponse = $this->orders->getOrdersByIds($userId, $orderIds);
 
                 if ($detailsResponse->isError()) {

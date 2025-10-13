@@ -10,7 +10,7 @@ final class PieChart extends BaseChart
     {
         return 'pie';
     }
-    
+
     protected function getDefaultOptions(): array
     {
         return array_merge(parent::getDefaultOptions(), [

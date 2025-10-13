@@ -55,11 +55,11 @@ readonly class AnalyticsFilter
                 ])
             )
             ->when(
-                !empty($this->channels),
+                ! empty($this->channels),
                 fn (Builder $q) => $q->whereIn('channel_name', $this->channels)
             )
             ->when(
-                !empty($this->products),
+                ! empty($this->products),
                 fn (Builder $q) => $q->whereJsonContains('items', function ($item) {
                     return in_array($item['sku'] ?? null, $this->products);
                 })
@@ -145,8 +145,8 @@ readonly class AnalyticsFilter
 
     public function hasActiveFilters(): bool
     {
-        return !empty($this->channels)
-            || !empty($this->products)
+        return ! empty($this->channels)
+            || ! empty($this->products)
             || $this->isProcessed !== null
             || $this->searchTerm !== null;
     }

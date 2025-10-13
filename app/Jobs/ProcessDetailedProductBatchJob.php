@@ -17,6 +17,7 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected array $stockItemIds;
+
     protected int $syncLogId;
 
     public function __construct(array $stockItemIds, int $syncLogId)
@@ -30,42 +31,45 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
     {
         Log::info('Processing detailed product batch', [
             'batch_size' => count($this->stockItemIds),
-            'sync_log_id' => $this->syncLogId
+            'sync_log_id' => $this->syncLogId,
         ]);
 
-        if (!$linnworksService->isConfigured()) {
+        if (! $linnworksService->isConfigured()) {
             Log::error('Linnworks API is not configured for detailed batch job');
             $this->incrementSyncCounter('failed', count($this->stockItemIds));
+
             return;
         }
 
         try {
             // Fetch detailed info for all products in this batch
             $detailedProducts = $linnworksService->getStockItemsFullByIds($this->stockItemIds);
-            
+
             if ($detailedProducts->isEmpty()) {
                 Log::warning('No detailed product information returned from Linnworks', [
-                    'requested_count' => count($this->stockItemIds)
+                    'requested_count' => count($this->stockItemIds),
                 ]);
                 $this->incrementSyncCounter('failed', count($this->stockItemIds));
+
                 return;
             }
 
             $created = 0;
             $updated = 0;
             $failed = 0;
-            
+
             foreach ($detailedProducts as $productData) {
                 try {
                     $sku = $productData['ItemNumber'] ?? null;
                     $linnworksId = $productData['StockItemId'] ?? null;
 
-                    if (!$sku || !$linnworksId) {
+                    if (! $sku || ! $linnworksId) {
                         Log::warning('Product missing required identifiers in batch', [
                             'sku' => $sku,
-                            'linnworks_id' => $linnworksId
+                            'linnworks_id' => $linnworksId,
                         ]);
                         $failed++;
+
                         continue;
                     }
 
@@ -77,27 +81,27 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
                     if ($existingProduct) {
                         // Update existing product with detailed information
                         $updatedProduct = Product::fromLinnworksDetailedInventory($productData);
-                        
+
                         $existingProduct->update($updatedProduct->getAttributes());
-                        
+
                         Log::info('Updated product with detailed information', [
                             'sku' => $sku,
                             'linnworks_id' => $linnworksId,
-                            'title' => $existingProduct->title
+                            'title' => $existingProduct->title,
                         ]);
-                        
+
                         $updated++;
                     } else {
                         // Create new product with detailed information
                         $product = Product::fromLinnworksDetailedInventory($productData);
                         $product->save();
-                        
+
                         Log::info('Created new product with detailed information', [
                             'sku' => $sku,
                             'linnworks_id' => $linnworksId,
-                            'title' => $product->title
+                            'title' => $product->title,
                         ]);
-                        
+
                         $created++;
                     }
 
@@ -109,14 +113,14 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
                     $failed++;
                 }
             }
-            
+
             // Account for any products that weren't returned by the API
             $notReturned = count($this->stockItemIds) - $detailedProducts->count();
             if ($notReturned > 0) {
                 Log::warning('Some products were not returned by detailed API', [
                     'requested' => count($this->stockItemIds),
                     'returned' => $detailedProducts->count(),
-                    'missing' => $notReturned
+                    'missing' => $notReturned,
                 ]);
                 $failed += $notReturned;
             }
@@ -136,7 +140,7 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
                 'batch_size' => count($this->stockItemIds),
                 'created' => $created,
                 'updated' => $updated,
-                'failed' => $failed
+                'failed' => $failed,
             ]);
 
         } catch (\Exception $e) {
@@ -153,17 +157,18 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
     {
         try {
             $syncLog = SyncLog::find($this->syncLogId);
-            if (!$syncLog) {
+            if (! $syncLog) {
                 Log::warning('Sync log not found for counter increment', [
                     'sync_log_id' => $this->syncLogId,
-                    'counter_type' => $type
+                    'counter_type' => $type,
                 ]);
+
                 return;
             }
 
-            $field = match($type) {
+            $field = match ($type) {
                 'created' => 'total_created',
-                'updated' => 'total_updated', 
+                'updated' => 'total_updated',
                 'skipped' => 'total_skipped',
                 'failed' => 'total_failed',
                 default => null
@@ -171,7 +176,7 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
 
             if ($field) {
                 $syncLog->increment($field, $count);
-                
+
                 // Check if this might be the last job and complete the sync
                 $this->checkAndCompleteSyncIfDone($syncLog);
             }
@@ -180,7 +185,7 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
             Log::error('Failed to increment sync counter', [
                 'sync_log_id' => $this->syncLogId,
                 'counter_type' => $type,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -188,9 +193,9 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
     protected function checkAndCompleteSyncIfDone(SyncLog $syncLog): void
     {
         $totalFetched = $syncLog->total_fetched ?? 0;
-        $totalProcessed = ($syncLog->total_created ?? 0) + 
-                         ($syncLog->total_updated ?? 0) + 
-                         ($syncLog->total_skipped ?? 0) + 
+        $totalProcessed = ($syncLog->total_created ?? 0) +
+                         ($syncLog->total_updated ?? 0) +
+                         ($syncLog->total_skipped ?? 0) +
                          ($syncLog->total_failed ?? 0);
 
         // If we've processed all products, complete the sync
@@ -206,14 +211,14 @@ class ProcessDetailedProductBatchJob implements ShouldQueue
                         'updated' => $syncLog->total_updated,
                         'skipped' => $syncLog->total_skipped,
                         'failed' => $syncLog->total_failed,
-                    ]
-                ])
+                    ],
+                ]),
             ]);
 
             Log::info('Product sync completed by detailed batch job', [
                 'sync_log_id' => $syncLog->id,
                 'total_processed' => $totalProcessed,
-                'total_fetched' => $totalFetched
+                'total_fetched' => $totalFetched,
             ]);
         }
     }

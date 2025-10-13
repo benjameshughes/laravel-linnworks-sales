@@ -30,7 +30,7 @@ return new class extends Migration
             $table->boolean('is_service')->default(false);
             $table->json('item_attributes')->nullable(); // Store additional item data
             $table->timestamps();
-            
+
             $table->index(['order_id', 'sku']);
             $table->index('sku');
             $table->index('category');

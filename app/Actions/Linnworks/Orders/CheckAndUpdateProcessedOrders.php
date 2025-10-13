@@ -31,6 +31,7 @@ class CheckAndUpdateProcessedOrders
                 Log::warning('Failed to inspect processed status for Linnworks order batch.', [
                     'error' => $response->error,
                 ]);
+
                 continue;
             }
 

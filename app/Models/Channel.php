@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Channel extends Model
 {
@@ -42,11 +42,11 @@ class Channel extends Model
     public function getAverageOrderValueAttribute(): float
     {
         $totalOrders = $this->total_orders;
-        
+
         if ($totalOrders === 0) {
             return 0;
         }
-        
+
         return $this->total_revenue / $totalOrders;
     }
 

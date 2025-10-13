@@ -109,7 +109,7 @@ class LinnworksApiException extends Exception
 
     public function getRetryAfter(): ?int
     {
-        if (!$this->isRateLimited()) {
+        if (! $this->isRateLimited()) {
             return null;
         }
 

@@ -10,7 +10,7 @@ final class MixedChart extends BaseChart
     {
         return 'bar'; // Default type, but datasets can override
     }
-    
+
     protected function getDefaultOptions(): array
     {
         return array_merge(parent::getDefaultOptions(), [

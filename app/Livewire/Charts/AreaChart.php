@@ -10,7 +10,7 @@ final class AreaChart extends BaseChart
     {
         return 'line';
     }
-    
+
     protected function getDefaultOptions(): array
     {
         return array_merge(parent::getDefaultOptions(), [
@@ -55,7 +55,7 @@ final class AreaChart extends BaseChart
             ],
         ]);
     }
-    
+
     public function mount(
         array $data = [],
         ?array $options = null,
@@ -64,14 +64,14 @@ final class AreaChart extends BaseChart
     ): void {
         // Create a copy of the data to avoid mutating the reactive property
         $processedData = $data;
-        
+
         // Ensure datasets have fill configuration for area charts
         if (isset($processedData['datasets'])) {
             foreach ($processedData['datasets'] as &$dataset) {
-                if (!isset($dataset['fill'])) {
+                if (! isset($dataset['fill'])) {
                     $dataset['fill'] = 'start';
                 }
-                if (!isset($dataset['backgroundColor'])) {
+                if (! isset($dataset['backgroundColor'])) {
                     // Use borderColor with transparency if no backgroundColor is set
                     if (isset($dataset['borderColor'])) {
                         $dataset['backgroundColor'] = $this->hexToRgba($dataset['borderColor'], 0.1);
@@ -79,24 +79,24 @@ final class AreaChart extends BaseChart
                 }
             }
         }
-        
+
         parent::mount($processedData, $options ?? [], $height, $width);
     }
-    
+
     private function hexToRgba(string $hex, float $alpha): string
     {
         $hex = str_replace('#', '', $hex);
-        
+
         if (strlen($hex) === 3) {
-            $r = hexdec(substr($hex, 0, 1) . substr($hex, 0, 1));
-            $g = hexdec(substr($hex, 1, 1) . substr($hex, 1, 1));
-            $b = hexdec(substr($hex, 2, 1) . substr($hex, 2, 1));
+            $r = hexdec(substr($hex, 0, 1).substr($hex, 0, 1));
+            $g = hexdec(substr($hex, 1, 1).substr($hex, 1, 1));
+            $b = hexdec(substr($hex, 2, 1).substr($hex, 2, 1));
         } else {
             $r = hexdec(substr($hex, 0, 2));
             $g = hexdec(substr($hex, 2, 2));
             $b = hexdec(substr($hex, 4, 2));
         }
-        
+
         return "rgba($r, $g, $b, $alpha)";
     }
 }

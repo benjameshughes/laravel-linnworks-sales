@@ -2,42 +2,55 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Enums\SearchType;
 use App\Services\ProductAnalyticsService;
 use App\Services\ProductFilterService;
 use App\Services\ProductSearchService;
-use App\Enums\ProductFilterType;
-use App\Enums\SearchType;
 use App\ValueObjects\FilterCriteria;
 use App\ValueObjects\SearchCriteria;
-use Livewire\Component;
-use Livewire\Attributes\Computed;
-use Livewire\WithPagination;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Computed;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class ProductAnalytics extends Component
 {
     use WithPagination;
 
     public string $period = '30';
+
     public string $search = '';
+
     public string $sortBy = 'revenue';
+
     public string $sortDirection = 'desc';
+
     public ?string $selectedProduct = null;
+
     public ?string $selectedCategory = null;
+
     public bool $showMetrics = true;
+
     public bool $showCharts = false;
+
     public bool $showOnlyWithSales = true;
-    
+
     // Filter properties
     public array $filters = [];
+
     public bool $showFilters = false;
+
     public ?string $activePreset = null;
-    
+
     // Enhanced search properties
     public string $searchType = 'combined';
+
     public bool $showSearchOptions = false;
+
     public array $searchSuggestions = [];
+
     public bool $exactMatch = false;
+
     public bool $fuzzySearch = true;
 
     public function mount()
@@ -49,9 +62,9 @@ class ProductAnalytics extends Component
     {
         $filterService = app(ProductFilterService::class);
         $defaultFilters = $filterService->createDefaultFilters();
-        
-        $this->filters = $defaultFilters->mapWithKeys(fn(FilterCriteria $filter) => [
-            $filter->type->value => $filter->value
+
+        $this->filters = $defaultFilters->mapWithKeys(fn (FilterCriteria $filter) => [
+            $filter->type->value => $filter->value,
         ])->toArray();
     }
 
@@ -63,11 +76,11 @@ class ProductAnalytics extends Component
 
         return collect([
             'period_label' => $periodEnum?->label() ?? "Last {$days} days",
-            'days' => $days
+            'days' => $days,
         ]);
     }
 
-    #[Computed] 
+    #[Computed]
     public function metrics()
     {
         return collect(app(ProductAnalyticsService::class)->getMetrics(
@@ -81,37 +94,38 @@ class ProductAnalytics extends Component
     public function topSellingProducts()
     {
         // Use enhanced search if there's a search query
-        if (!empty($this->search)) {
+        if (! empty($this->search)) {
             return $this->performEnhancedSearch();
         }
-        
+
         $products = app(ProductAnalyticsService::class)->getTopSellingProducts(
             period: (int) $this->period,
             search: null, // Let our enhanced search handle this
             category: $this->selectedCategory,
             limit: 100 // Increased to allow for filtering
         );
-        
+
         // Filter products based on sales if needed
         if ($this->showOnlyWithSales) {
-            $products = $products->filter(fn($item) => $item['total_sold'] > 0);
+            $products = $products->filter(fn ($item) => $item['total_sold'] > 0);
         }
-        
+
         // Apply custom filters
         $products = $this->applyFilters($products);
-        
+
         // Add badges to each product
         $products = $products->map(function ($item) {
             $badges = app(\App\Services\ProductBadgeService::class)->getProductBadges($item['product'], (int) $this->period);
-            $item['badges'] = $badges->map(fn($badge) => $badge->toArray());
+            $item['badges'] = $badges->map(fn ($badge) => $badge->toArray());
+
             return $item;
         });
-        
+
         // Apply sorting based on UI selection
-        return $products->sortBy(function($item) {
-            return match($this->sortBy) {
+        return $products->sortBy(function ($item) {
+            return match ($this->sortBy) {
                 'quantity' => $item['total_sold'],
-                'revenue' => $item['total_revenue'], 
+                'revenue' => $item['total_revenue'],
                 'profit' => $item['total_profit'],
                 'margin' => $item['profit_margin_percent'],
                 'price' => $item['avg_selling_price'],
@@ -119,14 +133,14 @@ class ProductAnalytics extends Component
                 default => $item['total_revenue'],
             };
         }, SORT_REGULAR, $this->sortDirection === 'desc')
-        ->values();
+            ->values();
     }
 
     private function performEnhancedSearch(): Collection
     {
         $searchService = app(ProductSearchService::class);
         $searchType = SearchType::tryFrom($this->searchType) ?? SearchType::COMBINED;
-        
+
         $criteria = new SearchCriteria(
             query: $this->search,
             type: $searchType,
@@ -139,18 +153,19 @@ class ProductAnalytics extends Component
             sortBy: $this->sortBy === 'name' ? 'title' : $this->sortBy,
             sortDirection: $this->sortDirection,
             includeInactive: false,
-            includeOutOfStock: !$this->showOnlyWithSales,
+            includeOutOfStock: ! $this->showOnlyWithSales,
         );
-        
+
         $searchResults = $searchService->search($criteria);
-        
+
         // Convert search results to analytics format
         return $searchResults->map(function ($product) {
             $analytics = $product->getProfitAnalysis();
             $badges = app(\App\Services\ProductBadgeService::class)->getProductBadges($product, (int) $this->period);
+
             return array_merge($analytics, [
                 'product' => $product,
-                'badges' => $badges->map(fn($badge) => $badge->toArray()),
+                'badges' => $badges->map(fn ($badge) => $badge->toArray()),
             ]);
         });
     }
@@ -159,10 +174,9 @@ class ProductAnalytics extends Component
     {
         $filterService = app(ProductFilterService::class);
         $filterCriteria = $filterService->createFiltersFromArray($this->filters);
-        
+
         return $filterService->applyFilters($products, $filterCriteria, (int) $this->period);
     }
-
 
     #[Computed]
     public function products()
@@ -186,7 +200,7 @@ class ProductAnalytics extends Component
     #[Computed]
     public function productDetails()
     {
-        if (!$this->selectedProduct) {
+        if (! $this->selectedProduct) {
             return null;
         }
 
@@ -196,7 +210,7 @@ class ProductAnalytics extends Component
     #[Computed]
     public function productSalesChart()
     {
-        if (!$this->selectedProduct) {
+        if (! $this->selectedProduct) {
             return [];
         }
 
@@ -208,12 +222,12 @@ class ProductAnalytics extends Component
 
     public function toggleMetrics()
     {
-        $this->showMetrics = !$this->showMetrics;
+        $this->showMetrics = ! $this->showMetrics;
     }
 
     public function toggleCharts()
     {
-        $this->showCharts = !$this->showCharts;
+        $this->showCharts = ! $this->showCharts;
         if ($this->showCharts) {
             $this->dispatch('productSelected');
         }
@@ -223,7 +237,7 @@ class ProductAnalytics extends Component
     {
         // Invalidate all product analytics caches
         app(ProductAnalyticsService::class)->invalidateCache();
-        
+
         // Dispatch a product sync job
         \App\Jobs\GetAllProductsJob::dispatch('ui');
         session()->flash('message', 'Product sync initiated! Check back in a few minutes.');
@@ -264,7 +278,7 @@ class ProductAnalytics extends Component
 
     public function toggleSalesFilter()
     {
-        $this->showOnlyWithSales = !$this->showOnlyWithSales;
+        $this->showOnlyWithSales = ! $this->showOnlyWithSales;
         $this->resetPage();
     }
 
@@ -277,7 +291,7 @@ class ProductAnalytics extends Component
     public function updatedSearchType()
     {
         $this->resetPage();
-        if (!empty($this->search)) {
+        if (! empty($this->search)) {
             $this->loadSearchSuggestions();
         }
     }
@@ -286,12 +300,13 @@ class ProductAnalytics extends Component
     {
         if (strlen($this->search) < 2) {
             $this->searchSuggestions = [];
+
             return;
         }
 
         $searchService = app(ProductSearchService::class);
         $searchType = SearchType::tryFrom($this->searchType) ?? SearchType::COMBINED;
-        
+
         $suggestions = $searchService->autocomplete($this->search, $searchType);
         $this->searchSuggestions = $suggestions->take(5)->toArray();
     }
@@ -305,7 +320,7 @@ class ProductAnalytics extends Component
 
     public function toggleSearchOptions()
     {
-        $this->showSearchOptions = !$this->showSearchOptions;
+        $this->showSearchOptions = ! $this->showSearchOptions;
     }
 
     public function clearSearch()
@@ -328,7 +343,7 @@ class ProductAnalytics extends Component
 
     public function toggleFilters()
     {
-        $this->showFilters = !$this->showFilters;
+        $this->showFilters = ! $this->showFilters;
     }
 
     public function clearAllFilters()
@@ -342,11 +357,11 @@ class ProductAnalytics extends Component
     {
         $filterService = app(ProductFilterService::class);
         $presets = $filterService->getFilterPresets();
-        
-        if (!$presets->has($presetName)) {
+
+        if (! $presets->has($presetName)) {
             return;
         }
-        
+
         $this->filters = array_merge($this->filters, $presets[$presetName]['filters']->toArray());
         $this->activePreset = $presetName;
         $this->resetPage();
@@ -376,13 +391,13 @@ class ProductAnalytics extends Component
     #[Computed]
     public function activeFiltersCount()
     {
-        return collect($this->filters)->filter(fn($value) => !is_null($value) && $value !== '')->count();
+        return collect($this->filters)->filter(fn ($value) => ! is_null($value) && $value !== '')->count();
     }
 
     #[Computed]
     public function searchTypes()
     {
-        return collect(SearchType::cases())->map(fn(SearchType $type) => [
+        return collect(SearchType::cases())->map(fn (SearchType $type) => [
             'value' => $type->value,
             'label' => $type->label(),
             'placeholder' => $type->getPlaceholder(),

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 class SessionManager
 {
     private const CACHE_PREFIX = 'linnworks_session:';
+
     private const CACHE_TTL = 1800; // 30 minutes
 
     public function __construct(
@@ -22,19 +23,19 @@ class SessionManager
     public function getValidSessionToken(int $userId): ?SessionToken
     {
         $cacheKey = $this->getCacheKey($userId);
-        
+
         // Try to get from cache first
         $cachedToken = Cache::get($cacheKey);
         if ($cachedToken) {
             $sessionToken = SessionToken::fromCacheData($cachedToken);
-            
+
             // Check if token is still valid
-            if (!$sessionToken->isExpiringSoon()) {
+            if (! $sessionToken->isExpiringSoon()) {
                 Log::debug('Using cached session token', [
                     'user_id' => $userId,
                     'expires_at' => $sessionToken->expiresAt->toISOString(),
                 ]);
-                
+
                 return $sessionToken;
             }
         }
@@ -50,8 +51,9 @@ class SessionManager
     {
         $connection = LinnworksConnection::where('user_id', $userId)->active()->first();
 
-        if (!$connection) {
+        if (! $connection) {
             Log::warning('No active Linnworks connection found for user', ['user_id' => $userId]);
+
             return null;
         }
 
@@ -83,6 +85,7 @@ class SessionManager
             }
 
             Log::error('Failed to refresh session token', ['user_id' => $userId]);
+
             return null;
 
         } catch (\Exception $e) {
@@ -102,13 +105,13 @@ class SessionManager
     {
         $cacheKey = $this->getCacheKey($userId);
         $cacheData = $sessionToken->toCacheData();
-        
+
         // Cache with TTL based on token expiry
         $secondsUntilExpiry = max(0, $sessionToken->expiresAt->diffInSeconds(now(), false));
         $ttl = max(60, min(self::CACHE_TTL, $secondsUntilExpiry));
-        
+
         Cache::put($cacheKey, $cacheData, $ttl);
-        
+
         Log::debug('Session token cached', [
             'user_id' => $userId,
             'cache_key' => $cacheKey,
@@ -123,7 +126,7 @@ class SessionManager
     {
         $cacheKey = $this->getCacheKey($userId);
         Cache::forget($cacheKey);
-        
+
         Log::debug('Session token cleared', [
             'user_id' => $userId,
             'cache_key' => $cacheKey,
@@ -136,6 +139,7 @@ class SessionManager
     public function hasValidSession(int $userId): bool
     {
         $sessionToken = $this->getValidSessionToken($userId);
+
         return $sessionToken !== null;
     }
 
@@ -146,13 +150,13 @@ class SessionManager
     {
         $cacheKey = $this->getCacheKey($userId);
         $cachedToken = Cache::get($cacheKey);
-        
-        if (!$cachedToken) {
+
+        if (! $cachedToken) {
             return null;
         }
 
         $sessionToken = SessionToken::fromCacheData($cachedToken);
-        
+
         return [
             'user_id' => $userId,
             'server' => $sessionToken->server,
@@ -181,7 +185,7 @@ class SessionManager
         // Pattern-based cache clearing would be needed here
         // For now, just flush all cache (not ideal for production)
         Cache::flush();
-        
+
         Log::info('All session tokens cleared');
     }
 
@@ -190,7 +194,7 @@ class SessionManager
      */
     private function getCacheKey(int $userId): string
     {
-        return self::CACHE_PREFIX . $userId;
+        return self::CACHE_PREFIX.$userId;
     }
 
     /**

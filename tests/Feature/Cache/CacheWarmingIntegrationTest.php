@@ -8,7 +8,6 @@ use App\Jobs\WarmPeriodCacheJob;
 use App\Listeners\WarmMetricsCache;
 use App\Models\Order;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
@@ -52,7 +51,7 @@ test('complete cache warming flow works end-to-end', function () {
 
     // Step 1: Trigger cache warming via OrdersSynced event
     $event = new OrdersSynced(60, 'test');
-    $listener = new WarmMetricsCache();
+    $listener = new WarmMetricsCache;
 
     // Step 2: Listener handles event and dispatches batch
     $listener->handle($event);
@@ -203,7 +202,7 @@ test('all events are dispatched during cache warming', function () {
 
     // Trigger the full flow
     $event = new OrdersSynced(5, 'test');
-    $listener = new WarmMetricsCache();
+    $listener = new WarmMetricsCache;
     $listener->handle($event);
 
     // Verify CacheWarmingStarted was dispatched
@@ -250,7 +249,7 @@ test('cache warming uses all enum cacheable periods', function () {
     ]);
 
     $event = new OrdersSynced(10, 'test');
-    $listener = new WarmMetricsCache();
+    $listener = new WarmMetricsCache;
     $listener->handle($event);
 
     // Get all cacheable periods from enum

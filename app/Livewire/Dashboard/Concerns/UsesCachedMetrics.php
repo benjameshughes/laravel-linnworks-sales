@@ -50,7 +50,7 @@ trait UsesCachedMetrics
     {
         $service = app(DashboardDataService::class);
 
-        if (!$service->canUseCachedMetrics(
+        if (! $service->canUseCachedMetrics(
             $this->period,
             $this->channel,
             $this->status,

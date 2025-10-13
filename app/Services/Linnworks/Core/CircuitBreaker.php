@@ -18,7 +18,9 @@ use Illuminate\Support\Facades\Log;
 class CircuitBreaker
 {
     private const STATE_CLOSED = 'closed';
+
     private const STATE_OPEN = 'open';
+
     private const STATE_HALF_OPEN = 'half_open';
 
     public function __construct(
@@ -79,6 +81,7 @@ class CircuitBreaker
             Log::warning('Circuit breaker reopened after recovery failure', [
                 'service' => $this->serviceName,
             ]);
+
             return;
         }
 
@@ -143,7 +146,7 @@ class CircuitBreaker
     {
         $lastFailure = Cache::get($this->getLastFailureKey());
 
-        if (!$lastFailure) {
+        if (! $lastFailure) {
             return true;
         }
 
@@ -155,6 +158,7 @@ class CircuitBreaker
                 'service' => $this->serviceName,
                 'time_since_failure' => $timeSinceFailure,
             ]);
+
             return true;
         }
 
@@ -187,6 +191,7 @@ class CircuitBreaker
         $count = Cache::get($key, 0) + 1;
         Cache::put($key, $count, now()->addHours(24));
         Cache::put($this->getLastFailureKey(), now(), now()->addHours(24));
+
         return $count;
     }
 
@@ -198,6 +203,7 @@ class CircuitBreaker
         $key = $this->getSuccessCountKey();
         $count = Cache::get($key, 0) + 1;
         Cache::put($key, $count, now()->addHours(24));
+
         return $count;
     }
 

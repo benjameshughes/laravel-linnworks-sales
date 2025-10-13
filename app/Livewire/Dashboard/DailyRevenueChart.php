@@ -15,10 +15,15 @@ use Livewire\Component;
 final class DailyRevenueChart extends Component
 {
     public string $period = '7';
+
     public string $channel = 'all';
+
     public string $status = 'all';
+
     public ?string $customFrom = null;
+
     public ?string $customTo = null;
+
     public string $viewMode = 'orders_revenue'; // 'orders_revenue' or 'items'
 
     public function mount(): void
@@ -90,10 +95,11 @@ final class DailyRevenueChart extends Component
     public function periodLabel(): string
     {
         if ($this->period === 'custom') {
-            return 'Custom: ' . Carbon::parse($this->customFrom)->format('M j') . ' - ' . Carbon::parse($this->customTo)->format('M j, Y');
+            return 'Custom: '.Carbon::parse($this->customFrom)->format('M j').' - '.Carbon::parse($this->customTo)->format('M j, Y');
         }
 
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
+
         return $periodEnum?->label() ?? "Last {$this->period} days";
     }
 

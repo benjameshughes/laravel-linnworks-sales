@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class SyncLog extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'sync_type',
         'status',
@@ -36,13 +37,18 @@ class SyncLog extends Model
 
     // Sync types
     const TYPE_OPEN_ORDERS = 'open_orders';
+
     const TYPE_HISTORICAL_ORDERS = 'historical_orders';
+
     const TYPE_ORDER_UPDATES = 'order_updates';
+
     const TYPE_PRODUCTS = 'products';
 
     // Statuses
     const STATUS_STARTED = 'started';
+
     const STATUS_COMPLETED = 'completed';
+
     const STATUS_FAILED = 'failed';
 
     /**
@@ -102,7 +108,7 @@ class SyncLog extends Model
      */
     public function getDurationAttribute(): ?int
     {
-        if (!$this->completed_at) {
+        if (! $this->completed_at) {
             return null;
         }
 
@@ -114,7 +120,7 @@ class SyncLog extends Model
      */
     public function getDurationForHumansAttribute(): ?string
     {
-        if (!$this->duration) {
+        if (! $this->duration) {
             return null;
         }
 
@@ -132,6 +138,7 @@ class SyncLog extends Model
         }
 
         $successful = $this->total_created + $this->total_updated;
+
         return round(($successful / $total) * 100, 2);
     }
 

@@ -17,7 +17,7 @@ readonly class FilterCriteria implements JsonSerializable
 
     public function isActive(): bool
     {
-        return !$this->isEmpty();
+        return ! $this->isEmpty();
     }
 
     public function label(): string
@@ -116,11 +116,12 @@ readonly class FilterCriteria implements JsonSerializable
 
     private function matchesAge(?string $createdAt, array $range): bool
     {
-        if (!$createdAt || empty($range)) {
+        if (! $createdAt || empty($range)) {
             return true;
         }
 
         $daysOld = now()->diffInDays($createdAt);
+
         return $this->matchesRange($daysOld, $range);
     }
 
@@ -139,11 +140,12 @@ readonly class FilterCriteria implements JsonSerializable
 
     private function matchesCategory(?string $category, mixed $categoryValue): bool
     {
-        if (!$category) {
+        if (! $category) {
             return false;
         }
 
         $categories = is_array($categoryValue) ? $categoryValue : [$categoryValue];
+
         return in_array($category, $categories, true);
     }
 
@@ -176,11 +178,11 @@ readonly class FilterCriteria implements JsonSerializable
         }
 
         return match ($this->type) {
-            ProductFilterType::BADGE_TYPE => is_array($this->value) 
-                ? count($this->value) . ' badges selected'
+            ProductFilterType::BADGE_TYPE => is_array($this->value)
+                ? count($this->value).' badges selected'
                 : ($this->options[$this->value]['label'] ?? $this->value),
             ProductFilterType::CATEGORY => is_array($this->value)
-                ? count($this->value) . ' categories selected'
+                ? count($this->value).' categories selected'
                 : $this->value,
             default => $this->options[$this->value]['label'] ?? $this->value,
         };

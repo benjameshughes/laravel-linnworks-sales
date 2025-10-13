@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Actions\Linnworks\Orders\CheckAndUpdateProcessedOrders;
 use App\Actions\Linnworks\Orders\FetchOrdersWithDetails;
-use App\DataTransferObjects\LinnworksOrder;
 use App\DataTransferObjects\Linnworks\ProcessedOrdersResult;
+use App\DataTransferObjects\LinnworksOrder;
 use App\Models\LinnworksConnection;
 use App\Services\Linnworks\Auth\AuthenticationService;
 use App\Services\Linnworks\Auth\SessionManager;
@@ -22,6 +22,7 @@ use RuntimeException;
 class LinnworksApiService
 {
     private const DEFAULT_ORDER_PAGE_SIZE = 200;
+
     private const DEFAULT_PRODUCT_PAGE_SIZE = 200;
 
     public function __construct(
@@ -50,11 +51,13 @@ class LinnworksApiService
     {
         try {
             $userId = $this->resolveUserId($userId);
+
             return $this->ensureSession($userId) !== null;
         } catch (RuntimeException $exception) {
             Log::warning('Cannot authenticate without an active Linnworks connection.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -82,6 +85,7 @@ class LinnworksApiService
                     'error' => $response->error,
                     'status' => $response->statusCode,
                 ]);
+
                 return collect();
             }
 
@@ -93,6 +97,7 @@ class LinnworksApiService
             Log::error('Unhandled error fetching Linnworks orders.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return collect();
         }
     }
@@ -151,7 +156,7 @@ class LinnworksApiService
             );
             // Calculate total pages needed and continue until we've attempted them all
             $totalPages = (int) ceil($totalResults / $entriesPerPage);
-            $hasMore = $pageNumber < $totalPages && !$orders->isEmpty();
+            $hasMore = $pageNumber < $totalPages && ! $orders->isEmpty();
 
             Log::info('Processed orders page fetched', [
                 'user_id' => $userId,
@@ -258,6 +263,7 @@ class LinnworksApiService
             Log::error('Unhandled error fetching all processed orders.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return collect();
         }
     }
@@ -276,6 +282,7 @@ class LinnworksApiService
                     'order_id' => $orderId,
                     'error' => $response->error,
                 ]);
+
                 return null;
             }
 
@@ -287,6 +294,7 @@ class LinnworksApiService
                 'order_id' => $orderId,
                 'error' => $exception->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -295,8 +303,8 @@ class LinnworksApiService
      * Fetch all orders with their expanded details (items, totals, etc.).
      */
     public function getAllOrdersWithDetails(
-        Carbon $from = null,
-        Carbon $to = null,
+        ?Carbon $from = null,
+        ?Carbon $to = null,
         ?int $userId = null
     ): array {
         $from ??= Carbon::now()->subDays(config('linnworks.sync.default_date_range', 30));
@@ -315,6 +323,7 @@ class LinnworksApiService
             Log::error('Unhandled error fetching orders with details.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return [];
         }
     }
@@ -328,7 +337,7 @@ class LinnworksApiService
             $userId = $this->resolveUserId($userId);
             $sessionToken = $this->ensureSession($userId);
 
-            if (!$sessionToken) {
+            if (! $sessionToken) {
                 return false;
             }
 
@@ -337,6 +346,7 @@ class LinnworksApiService
             Log::error('Linnworks connection test failed.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -352,12 +362,14 @@ class LinnworksApiService
 
         try {
             $userId = $this->resolveUserId($userId);
+
             return $this->processedOrders->getProcessedOrdersWithDetails($userId, $orderIds);
         } catch (\Throwable $exception) {
             Log::error('Failed to fetch processed orders with details.', [
                 'order_count' => count($orderIds),
                 'error' => $exception->getMessage(),
             ]);
+
             return collect();
         }
     }
@@ -369,11 +381,13 @@ class LinnworksApiService
     {
         try {
             $userId = $this->resolveUserId($userId);
+
             return $this->openOrders->getOpenOrderIds($userId);
         } catch (\Throwable $exception) {
             Log::error('Failed to gather open order identifiers.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return collect();
         }
     }
@@ -390,12 +404,14 @@ class LinnworksApiService
 
         try {
             $userId = $this->resolveUserId($userId);
+
             return $this->openOrders->getIdentifiersByOrderIds($userId, $orderIds);
         } catch (\Throwable $exception) {
             Log::error('Failed to fetch order identifiers.', [
                 'order_count' => count($orderIds),
                 'error' => $exception->getMessage(),
             ]);
+
             return collect();
         }
     }
@@ -418,6 +434,7 @@ class LinnworksApiService
             Log::error('Failed to fetch open order details.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return collect();
         }
     }
@@ -440,6 +457,7 @@ class LinnworksApiService
                     'order_count' => count($orderIds),
                     'error' => $response->error,
                 ]);
+
                 return collect();
             }
 
@@ -472,6 +490,7 @@ class LinnworksApiService
             }
 
             Log::error('Unhandled error fetching order details by IDs.', $context);
+
             return collect();
         }
     }
@@ -519,8 +538,7 @@ class LinnworksApiService
                 ->map(fn ($order) => $order instanceof LinnworksOrder
                     ? $order
                     : LinnworksOrder::fromArray(is_array($order) ? $order : (array) $order))
-                ->filter(fn (LinnworksOrder $order) =>
-                    $order->receivedDate === null || $order->receivedDate->greaterThanOrEqualTo($cutoff))
+                ->filter(fn (LinnworksOrder $order) => $order->receivedDate === null || $order->receivedDate->greaterThanOrEqualTo($cutoff))
                 ->values();
 
             Log::info('Recent open orders fetched', [
@@ -549,11 +567,13 @@ class LinnworksApiService
     {
         try {
             $userId = $this->resolveUserId($userId);
+
             return $this->products->getAllProducts($userId, self::DEFAULT_PRODUCT_PAGE_SIZE);
         } catch (\Throwable $exception) {
             Log::error('Failed to fetch inventory items.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return collect();
         }
     }
@@ -597,6 +617,7 @@ class LinnworksApiService
             Log::error('Unhandled error fetching detailed inventory.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return collect();
         }
     }
@@ -612,11 +633,13 @@ class LinnworksApiService
 
         try {
             $userId = $this->resolveUserId($userId);
+
             return $this->products->getMultipleProductDetails($userId, $stockItemIds);
         } catch (\Throwable $exception) {
             Log::error('Failed to fetch full stock items by IDs.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return collect();
         }
     }
@@ -644,6 +667,7 @@ class LinnworksApiService
             Log::error('Unhandled error while checking processed orders.', [
                 'error' => $exception->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -662,7 +686,7 @@ class LinnworksApiService
             ->orderByDesc('updated_at')
             ->first();
 
-        if (!$connection) {
+        if (! $connection) {
             throw new RuntimeException('No active Linnworks connection configured.');
         }
 

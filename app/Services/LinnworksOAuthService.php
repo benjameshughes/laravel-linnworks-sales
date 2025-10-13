@@ -3,10 +3,10 @@
 namespace App\Services;
 
 use App\Models\LinnworksConnection;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 class LinnworksOAuthService
 {
@@ -63,21 +63,21 @@ class LinnworksOAuthService
                 'ApplicationSecret' => $connection->application_secret,
                 'Token' => $connection->access_token, // This is the installation token
             ];
-            
+
             Log::info('Attempting Linnworks session token exchange', [
                 'url' => "{$this->baseUrl}/api/Auth/AuthorizeByApplication",
                 'app_id' => $connection->application_id,
-                'has_secret' => !empty($connection->application_secret),
-                'has_token' => !empty($connection->access_token),
+                'has_secret' => ! empty($connection->application_secret),
+                'has_token' => ! empty($connection->access_token),
                 'token_length' => strlen($connection->access_token),
             ]);
-            
+
             // Step 1: Use installation token to get session token
             $response = Http::asForm()->post("{$this->baseUrl}/api/Auth/AuthorizeByApplication", $requestData);
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 // Step 2: Store the session token and server info
                 $connection->update([
                     'session_token' => $data['Token'], // This is the actual session token for API calls
@@ -90,7 +90,7 @@ class LinnworksOAuthService
                 Log::info('Linnworks session token obtained successfully', [
                     'user_id' => $connection->user_id,
                     'server' => $data['Server'],
-                    'session_token' => substr($data['Token'], 0, 10) . '...',
+                    'session_token' => substr($data['Token'], 0, 10).'...',
                 ]);
 
                 return true;
@@ -104,17 +104,18 @@ class LinnworksOAuthService
                 'url' => "{$this->baseUrl}/api/Auth/AuthorizeByApplication",
                 'request_data' => [
                     'ApplicationId' => $connection->application_id,
-                    'has_secret' => !empty($connection->application_secret),
-                    'has_token' => !empty($connection->access_token),
+                    'has_secret' => ! empty($connection->application_secret),
+                    'has_token' => ! empty($connection->access_token),
                 ],
             ]);
 
             return false;
         } catch (Exception $e) {
-            Log::error('Error getting Linnworks session token: ' . $e->getMessage(), [
+            Log::error('Error getting Linnworks session token: '.$e->getMessage(), [
                 'user_id' => $connection->user_id,
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return false;
         }
     }
@@ -125,10 +126,11 @@ class LinnworksOAuthService
     public function testConnection(LinnworksConnection $connection): bool
     {
         // Step 1: Get a session token using the installation token
-        if (!$this->refreshSession($connection)) {
+        if (! $this->refreshSession($connection)) {
             Log::error('Failed to get session token for connection test', [
                 'user_id' => $connection->user_id,
             ]);
+
             return false;
         }
 
@@ -146,6 +148,7 @@ class LinnworksOAuthService
                     'user_id' => $connection->user_id,
                     'server' => $connection->server_location,
                 ]);
+
                 return true;
             }
 
@@ -157,9 +160,10 @@ class LinnworksOAuthService
 
             return false;
         } catch (Exception $e) {
-            Log::error('Error testing Linnworks session token: ' . $e->getMessage(), [
+            Log::error('Error testing Linnworks session token: '.$e->getMessage(), [
                 'user_id' => $connection->user_id,
             ]);
+
             return false;
         }
     }
@@ -170,13 +174,13 @@ class LinnworksOAuthService
     public function getValidSessionToken(int $userId): ?array
     {
         $connection = $this->getActiveConnection($userId);
-        
-        if (!$connection) {
+
+        if (! $connection) {
             return null;
         }
 
         if ($connection->needs_new_session) {
-            if (!$this->refreshSession($connection)) {
+            if (! $this->refreshSession($connection)) {
                 return null;
             }
             $connection->refresh();
@@ -194,13 +198,13 @@ class LinnworksOAuthService
     public function disconnect(int $userId): bool
     {
         $connection = $this->getActiveConnection($userId);
-        
-        if (!$connection) {
+
+        if (! $connection) {
             return false;
         }
 
         $connection->update(['is_active' => false]);
-        
+
         Log::info('Linnworks connection disconnected', [
             'user_id' => $userId,
         ]);
@@ -214,6 +218,7 @@ class LinnworksOAuthService
     public function isConnected(int $userId): bool
     {
         $connection = $this->getActiveConnection($userId);
+
         return $connection && $connection->is_active;
     }
 
@@ -224,8 +229,8 @@ class LinnworksOAuthService
     {
         // Only check ACTIVE connections for status
         $connection = LinnworksConnection::forUser($userId)->active()->first();
-        
-        if (!$connection) {
+
+        if (! $connection) {
             return [
                 'connected' => false,
                 'status' => 'not_connected',
@@ -233,7 +238,7 @@ class LinnworksOAuthService
             ];
         }
 
-        if (!$connection->is_active) {
+        if (! $connection->is_active) {
             return [
                 'connected' => false,
                 'status' => 'inactive',

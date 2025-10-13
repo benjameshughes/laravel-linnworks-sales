@@ -2,11 +2,6 @@
 
 namespace App\Livewire\Settings;
 
-use App\Events\ImportBatchProcessed;
-use App\Events\ImportCompleted;
-use App\Events\ImportPerformanceUpdate;
-use App\Events\ImportProgressUpdated;
-use App\Events\ImportStarted;
 use App\Jobs\SyncOrdersJob;
 use App\Models\SyncLog;
 use Livewire\Attributes\On;
@@ -15,36 +10,60 @@ use Livewire\Component;
 class ImportProgress extends Component
 {
     public bool $isImporting = false;
+
     public bool $isCompleted = false;
+
     public bool $success = false;
 
     public int $totalProcessed = 0;
+
     public int $totalImported = 0;
+
     public int $totalSkipped = 0;
+
     public int $totalErrors = 0;
+
     public int $currentPage = 0;
+
     public int $totalOrders = 0;
+
     public float $percentage = 0;
+
     public string $status = 'idle';
+
     public ?string $message = null;
 
     // Performance metrics
     public int $batchNumber = 0;
+
     public int $totalBatches = 0;
+
     public int $ordersInBatch = 0;
+
     public int $created = 0;
+
     public int $updated = 0;
+
     public float $ordersPerSecond = 0;
+
     public float $memoryMb = 0;
+
     public float $timeElapsed = 0;
+
     public ?float $estimatedRemaining = null;
+
     public float $avgSpeed = 0;
+
     public float $peakMemory = 0;
 
     public string $fromDate = '';
+
     public string $toDate = '';
+
     public int $batchSize = 200;
+
     public ?string $startedAt = null;
+
     public function mount(): void
     {
         // Set default date range (maximum 730 days)
@@ -62,7 +81,7 @@ class ImportProgress extends Component
     {
         $activeSync = SyncLog::getActiveSync(SyncLog::TYPE_OPEN_ORDERS);
 
-        if (!$activeSync) {
+        if (! $activeSync) {
             return;
         }
 
@@ -203,8 +222,8 @@ class ImportProgress extends Component
         $this->percentage = 100;
         $this->status = $data['success'] ? 'completed' : 'failed';
         $this->message = $data['success']
-            ? "Import completed successfully!"
-            : "Import failed. Check logs for details.";
+            ? 'Import completed successfully!'
+            : 'Import failed. Check logs for details.';
     }
 
     public function resetImport(): void

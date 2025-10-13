@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Dashboard;
 
-use App\Models\Order;
 use App\Services\Metrics\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -20,8 +19,11 @@ use Illuminate\Support\Facades\DB;
 class DashboardDataService
 {
     private ?Collection $orders = null;
+
     private ?Collection $previousPeriodOrders = null;
+
     private ?string $currentFilters = null;
+
     private ?array $cachedMetrics = null;
 
     /**
@@ -41,7 +43,7 @@ class DashboardDataService
         $periodEnum = \App\Enums\Period::tryFrom($period);
 
         // Only support caching for cacheable periods with 'all' channel
-        if ($periodEnum === null || !$periodEnum->isCacheable() || $channel !== 'all') {
+        if ($periodEnum === null || ! $periodEnum->isCacheable() || $channel !== 'all') {
             return null;
         }
 
@@ -177,11 +179,10 @@ class DashboardDataService
             ])
             ->whereBetween('received_date', [
                 $dateRange->get('start'),
-                $dateRange->get('end')
+                $dateRange->get('end'),
             ])
             ->where('channel_name', '!=', 'DIRECT')
-            ->when($channel !== 'all', fn($query) =>
-                $query->where('channel_name', $channel)
+            ->when($channel !== 'all', fn ($query) => $query->where('channel_name', $channel)
             )
             ->when($status !== 'all', function ($query) use ($status) {
                 if ($status === 'open_paid') {
@@ -245,8 +246,7 @@ class DashboardDataService
             ])
             ->whereBetween('received_date', [$start, $end])
             ->where('channel_name', '!=', 'DIRECT')
-            ->when($channel !== 'all', fn($query) =>
-                $query->where('channel_name', $channel)
+            ->when($channel !== 'all', fn ($query) => $query->where('channel_name', $channel)
             )
             ->get()
             ->map(function ($order) {
@@ -271,6 +271,6 @@ class DashboardDataService
         ?string $customFrom,
         ?string $customTo
     ): string {
-        return md5($period . $channel . $status . $customFrom . $customTo);
+        return md5($period.$channel.$status.$customFrom.$customTo);
     }
 }

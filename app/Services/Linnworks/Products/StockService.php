@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Linnworks\Products;
 
-use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -51,7 +50,7 @@ class StockService
     ): ApiResponse {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -67,11 +66,11 @@ class StockService
             $payload['keyword'] = $keyword;
         }
 
-        if (!empty($dataRequirements)) {
+        if (! empty($dataRequirements)) {
             $payload['dataRequirements'] = $dataRequirements;
         }
 
-        if (!empty($searchTypes)) {
+        if (! empty($searchTypes)) {
             $payload['searchTypes'] = $searchTypes;
         }
 
@@ -165,13 +164,13 @@ class StockService
     ): ApiResponse {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
         $payload = ['stockItemIds' => $stockItemIds];
 
-        if (!empty($dataRequirements)) {
+        if (! empty($dataRequirements)) {
             $payload['dataRequirements'] = $dataRequirements;
         }
 
@@ -336,6 +335,7 @@ class StockService
 
         return $allItems->filter(function ($item) use ($threshold) {
             $stockLevel = $item['StockLevel'] ?? 0;
+
             return $stockLevel > 0 && $stockLevel <= $threshold;
         })->values();
     }
@@ -355,6 +355,7 @@ class StockService
 
         return $allItems->filter(function ($item) {
             $stockLevel = $item['StockLevel'] ?? null;
+
             return $stockLevel === 0 || $stockLevel === null;
         })->values();
     }
@@ -390,6 +391,7 @@ class StockService
         $outOfStock = $items->filter(fn ($item) => ($item['StockLevel'] ?? 0) === 0)->count();
         $lowStock = $items->filter(function ($item) {
             $level = $item['StockLevel'] ?? 0;
+
             return $level > 0 && $level <= 10;
         })->count();
 

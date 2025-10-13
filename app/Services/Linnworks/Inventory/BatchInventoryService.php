@@ -11,7 +11,6 @@ use App\ValueObjects\Inventory\InventoryItem;
 use App\ValueObjects\Linnworks\ApiRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -32,6 +31,7 @@ use Illuminate\Validation\ValidationException;
 class BatchInventoryService
 {
     private const MAX_BATCH_SIZE = 200; // Linnworks API limit
+
     private const RATE_LIMIT_PER_MINUTE = 150;
 
     public function __construct(
@@ -71,7 +71,7 @@ class BatchInventoryService
 
         // Get session token
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -94,7 +94,7 @@ class BatchInventoryService
                 'execution_time_ms' => round($executionTime, 2),
             ]);
 
-            throw new \RuntimeException('Batch add operation failed: ' . $response->error);
+            throw new \RuntimeException('Batch add operation failed: '.$response->error);
         }
 
         $executionTime = (microtime(true) - $startTime) * 1000;
@@ -129,7 +129,7 @@ class BatchInventoryService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -158,7 +158,7 @@ class BatchInventoryService
                 'execution_time_ms' => round($executionTime, 2),
             ]);
 
-            throw new \RuntimeException('Batch stock update failed: ' . $response->error);
+            throw new \RuntimeException('Batch stock update failed: '.$response->error);
         }
 
         $executionTime = (microtime(true) - $startTime) * 1000;
@@ -189,7 +189,7 @@ class BatchInventoryService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -208,7 +208,7 @@ class BatchInventoryService
                 'execution_time_ms' => round($executionTime, 2),
             ]);
 
-            throw new \RuntimeException('Batch delete failed: ' . $response->error);
+            throw new \RuntimeException('Batch delete failed: '.$response->error);
         }
 
         $executionTime = (microtime(true) - $startTime) * 1000;
@@ -226,7 +226,7 @@ class BatchInventoryService
      * Process large batch in chunks to respect API limits.
      *
      * @param  Collection<int, InventoryItem>  $items
-     * @return  Collection<int, BatchOperationResult>
+     * @return Collection<int, BatchOperationResult>
      */
     public function addItemsInChunks(
         int $userId,
@@ -279,6 +279,7 @@ class BatchInventoryService
      * Validate inventory items before sending to API.
      *
      * @param  Collection<int, InventoryItem>  $items
+     *
      * @throws ValidationException
      */
     private function validateItems(Collection $items): void
@@ -287,12 +288,12 @@ class BatchInventoryService
 
         foreach ($items as $index => $item) {
             $itemErrors = $item->validate();
-            if (!empty($itemErrors)) {
+            if (! empty($itemErrors)) {
                 $errors["item_{$index}"] = $itemErrors;
             }
         }
 
-        if (!empty($errors)) {
+        if (! empty($errors)) {
             Log::warning('Batch validation failed', [
                 'error_count' => count($errors),
                 'errors' => $errors,

@@ -61,7 +61,7 @@ class ProductIdentifierCollection extends Collection
      */
     public function invalid(): self
     {
-        return $this->filter(fn (ProductIdentifier $id) => !$id->isValid());
+        return $this->filter(fn (ProductIdentifier $id) => ! $id->isValid());
     }
 
     /**
@@ -152,7 +152,7 @@ class ProductIdentifierCollection extends Collection
 
         foreach ($this as $index => $identifier) {
             $idErrors = $identifier->validate();
-            if (!empty($idErrors)) {
+            if (! empty($idErrors)) {
                 $errors["identifier_{$index}"] = $idErrors;
             }
         }

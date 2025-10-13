@@ -28,9 +28,10 @@ class SyncDetailedProductsCommand extends Command
             $this->warn('Note: This uses the GetStockItemsFull endpoint with a 150/minute rate limit.');
         }
 
-        if (!$force) {
-            if (!$this->confirm('Do you want to continue?')) {
+        if (! $force) {
+            if (! $this->confirm('Do you want to continue?')) {
                 $this->info('Sync cancelled.');
+
                 return 0;
             }
         }
@@ -38,24 +39,25 @@ class SyncDetailedProductsCommand extends Command
         try {
             // Dispatch the detailed product sync job
             GetDetailedProductsJob::dispatch('cli', $existingOnly);
-            
+
             $syncType = $existingOnly ? 'existing products' : 'all products';
             $this->info("Detailed product sync job dispatched for {$syncType}!");
             $this->line('Check the logs for progress updates.');
-            
+
             Log::info('Detailed product sync initiated via CLI', [
                 'existing_only' => $existingOnly,
-                'started_by' => 'cli'
+                'started_by' => 'cli',
             ]);
 
             return 0;
 
         } catch (\Exception $e) {
-            $this->error('Failed to dispatch detailed product sync job: ' . $e->getMessage());
+            $this->error('Failed to dispatch detailed product sync job: '.$e->getMessage());
             Log::error('CLI detailed product sync failed', [
                 'error' => $e->getMessage(),
-                'existing_only' => $existingOnly
+                'existing_only' => $existingOnly,
             ]);
+
             return 1;
         }
     }

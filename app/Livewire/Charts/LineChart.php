@@ -10,7 +10,7 @@ final class LineChart extends BaseChart
     {
         return 'line';
     }
-    
+
     protected function getDefaultOptions(): array
     {
         return array_merge(parent::getDefaultOptions(), [

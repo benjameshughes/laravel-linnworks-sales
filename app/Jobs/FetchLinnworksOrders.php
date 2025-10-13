@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Services\LinnworksApiService;
-use App\Jobs\ProcessLinnworksOrders;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -13,10 +12,12 @@ use Illuminate\Support\Facades\Log;
 
 class FetchLinnworksOrders implements ShouldQueue
 {
-    use Queueable, InteractsWithQueue, SerializesModels;
+    use InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $maxExceptions = 2;
+
     public int $timeout = 300; // 5 minutes
 
     /**
@@ -40,12 +41,13 @@ class FetchLinnworksOrders implements ShouldQueue
             'from' => $this->fromDate->toDateString(),
             'to' => $this->toDate->toDateString(),
             'type' => $this->orderType,
-            'batch_size' => $this->batchSize
+            'batch_size' => $this->batchSize,
         ]);
 
-        if (!$linnworksService->isConfigured()) {
+        if (! $linnworksService->isConfigured()) {
             Log::error('Linnworks API not configured, cannot fetch orders');
             $this->fail('Linnworks API is not configured');
+
             return;
         }
 
@@ -97,7 +99,7 @@ class FetchLinnworksOrders implements ShouldQueue
 
             // Dispatch processing jobs in batches
             $chunks = $allOrders->chunk(50); // Process 50 orders per job
-            
+
             foreach ($chunks as $index => $chunk) {
                 ProcessLinnworksOrders::dispatch($chunk->toArray())
                     ->delay(now()->addSeconds($index * 2)); // Stagger jobs by 2 seconds
@@ -108,9 +110,9 @@ class FetchLinnworksOrders implements ShouldQueue
         } catch (\Exception $e) {
             Log::error('Failed to fetch orders from Linnworks', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             $this->fail($e);
         }
     }
@@ -123,7 +125,7 @@ class FetchLinnworksOrders implements ShouldQueue
         Log::error('FetchLinnworksOrders job failed', [
             'from' => $this->fromDate->toDateString(),
             'to' => $this->toDate->toDateString(),
-            'error' => $exception->getMessage()
+            'error' => $exception->getMessage(),
         ]);
     }
 }

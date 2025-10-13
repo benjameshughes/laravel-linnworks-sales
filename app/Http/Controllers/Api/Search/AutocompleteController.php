@@ -21,7 +21,7 @@ class AutocompleteController extends Controller
     {
         $autocompleteRequest = AutocompleteRequest::fromRequest($request);
         $response = $this->autocompleteService->getAutocomplete($autocompleteRequest);
-        
+
         return $response->toJsonResponse();
     }
 }

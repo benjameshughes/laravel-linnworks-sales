@@ -36,7 +36,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->json('raw_data')->nullable(); // Store full API response
             $table->timestamps();
-            
+
             $table->index(['received_date', 'channel_name']);
             $table->index(['processed_date', 'status']);
             $table->index('total_value');

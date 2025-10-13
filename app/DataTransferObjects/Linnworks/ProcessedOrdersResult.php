@@ -11,7 +11,7 @@ use IteratorAggregate;
 use JsonSerializable;
 use Traversable;
 
-final class ProcessedOrdersResult implements Arrayable, Countable, IteratorAggregate, JsonSerializable, \ArrayAccess
+final class ProcessedOrdersResult implements \ArrayAccess, Arrayable, Countable, IteratorAggregate, JsonSerializable
 {
     public function __construct(
         public readonly Collection $orders,

@@ -16,8 +16,8 @@ readonly class ProductMetrics implements JsonSerializable
 
     public function profitMargin(): float
     {
-        return $this->totalRevenue > 0 
-            ? (($this->totalRevenue - $this->totalCost) / $this->totalRevenue) * 100 
+        return $this->totalRevenue > 0
+            ? (($this->totalRevenue - $this->totalCost) / $this->totalRevenue) * 100
             : 0.0;
     }
 
@@ -28,29 +28,29 @@ readonly class ProductMetrics implements JsonSerializable
 
     public function avgOrderValue(): float
     {
-        return $this->orderCount > 0 
-            ? $this->totalRevenue / $this->orderCount 
+        return $this->orderCount > 0
+            ? $this->totalRevenue / $this->orderCount
             : 0.0;
     }
 
     public function avgQuantityPerOrder(): float
     {
-        return $this->orderCount > 0 
-            ? $this->totalQuantity / $this->orderCount 
+        return $this->orderCount > 0
+            ? $this->totalQuantity / $this->orderCount
             : 0.0;
     }
 
     public function avgSellingPrice(): float
     {
-        return $this->totalQuantity > 0 
-            ? $this->totalRevenue / $this->totalQuantity 
+        return $this->totalQuantity > 0
+            ? $this->totalRevenue / $this->totalQuantity
             : 0.0;
     }
 
     public function avgUnitCost(): float
     {
-        return $this->totalQuantity > 0 
-            ? $this->totalCost / $this->totalQuantity 
+        return $this->totalQuantity > 0
+            ? $this->totalCost / $this->totalQuantity
             : 0.0;
     }
 

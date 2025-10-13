@@ -53,7 +53,7 @@ final class ImportOrders
         // Prioritise processed records when duplicates exist.
         $dtoCollection = $dtoCollection
             ->sortByDesc(fn (LinnworksOrder $order) => $order->isProcessed() ? 1 : 0)
-            ->unique(fn (LinnworksOrder $order) => $order->orderId ?? 'order-number:' . $order->orderNumber)
+            ->unique(fn (LinnworksOrder $order) => $order->orderId ?? 'order-number:'.$order->orderNumber)
             ->values();
 
         if ($dtoCollection->isEmpty()) {
@@ -253,7 +253,7 @@ final class ImportOrders
         // Load all existing orders in one or two queries
         $existingOrders = collect();
 
-        if (!empty($orderIds)) {
+        if (! empty($orderIds)) {
             $byLinnworksId = Order::query()
                 ->where(function ($query) use ($orderIds) {
                     $query->whereIn('linnworks_order_id', $orderIds)
@@ -263,7 +263,7 @@ final class ImportOrders
             $existingOrders = $existingOrders->merge($byLinnworksId);
         }
 
-        if (!empty($orderNumbers)) {
+        if (! empty($orderNumbers)) {
             $byOrderNumber = Order::whereIn('order_number', $orderNumbers)->get();
             $existingOrders = $existingOrders->merge($byOrderNumber);
         }
@@ -324,7 +324,7 @@ final class ImportOrders
                 ->first();
         }
 
-        if (!$existingOrder && $orderNumber) {
+        if (! $existingOrder && $orderNumber) {
             $existingOrder = Order::where('order_number', $orderNumber)->first();
         }
 

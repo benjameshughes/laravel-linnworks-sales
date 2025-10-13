@@ -17,29 +17,31 @@ use Livewire\Component;
 class CacheManagement extends Component
 {
     public bool $isWarming = false;
+
     public bool $isClearing = false;
+
     public ?string $currentlyWarmingPeriod = null;
 
     public function mount(): void
     {
         // Check authorization
-        if (!auth()->user()->can('manage-cache')) {
+        if (! auth()->user()->can('manage-cache')) {
             abort(403);
         }
 
         // Check if cache warming is already in progress
         $batch = $this->activeBatch();
-        if ($batch && !$batch['finished']) {
+        if ($batch && ! $batch['finished']) {
             $this->isWarming = true;
 
             // Try to determine which period is currently warming
             // Check which cache keys don't exist yet - those are still warming
             $periods = collect(\App\Enums\Period::cacheable())
-                ->map(fn($p) => "{$p->value}d");
+                ->map(fn ($p) => "{$p->value}d");
 
             foreach ($periods as $period) {
                 $key = "metrics_{$period}_all";
-                if (!Cache::has($key)) {
+                if (! Cache::has($key)) {
                     $this->currentlyWarmingPeriod = $period;
                     break; // First missing period is likely the current one
                 }
@@ -84,19 +86,19 @@ class CacheManagement extends Component
             ->orderByDesc('created_at')
             ->first();
 
-        if (!$batch) {
+        if (! $batch) {
             return null;
         }
 
         // Determine which period is currently being processed
         $currentPeriod = null;
-        if (!$batch->finished_at) {
+        if (! $batch->finished_at) {
             $periods = \App\Enums\Period::cacheable();
             $cacheStatus = $this->cacheStatus;
 
             foreach ($periods as $period) {
                 $periodKey = "{$period->value}d";
-                if (!($cacheStatus[$periodKey]['exists'] ?? false)) {
+                if (! ($cacheStatus[$periodKey]['exists'] ?? false)) {
                     $currentPeriod = $periodKey;
                     break; // First period without cache is currently warming
                 }
@@ -126,7 +128,7 @@ class CacheManagement extends Component
         // Get last 5 cache warming log entries with memory stats
         $logFile = storage_path('logs/laravel.log');
 
-        if (!file_exists($logFile)) {
+        if (! file_exists($logFile)) {
             return [];
         }
 

@@ -4,14 +4,17 @@ namespace App\Livewire\Dashboard;
 
 use App\Models\Order;
 use Carbon\Carbon;
-use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Component;
 
 class ChannelComparison extends Component
 {
     public string $period = '30';
+
     public string $metric = 'revenue';
+
     public ?string $selectedChannel = null;
+
     public bool $showSubsources = false;
 
     public function mount()
@@ -23,6 +26,7 @@ class ChannelComparison extends Component
     public function dateRange()
     {
         $days = (int) $this->period;
+
         return [
             'start' => Carbon::now()->subDays($days)->startOfDay(),
             'end' => Carbon::now()->endOfDay(),
@@ -34,7 +38,7 @@ class ChannelComparison extends Component
     {
         return Order::whereBetween('received_date', [
             $this->dateRange['start'],
-            $this->dateRange['end']
+            $this->dateRange['end'],
         ])->get();
     }
 
@@ -42,11 +46,12 @@ class ChannelComparison extends Component
     public function channelComparison()
     {
         $orders = $this->orders;
-        
+
         $channels = $orders->groupBy(function ($order) {
             if ($this->showSubsources && $order->subsource && $order->subsource !== $order->channel_name) {
                 return "{$order->channel_name} ({$order->subsource})";
             }
+
             return $order->channel_name;
         });
 
@@ -55,14 +60,14 @@ class ChannelComparison extends Component
             $totalOrders = $channelOrders->count();
             $totalItems = $channelOrders->sum('total_items');
             $avgOrderValue = $totalOrders > 0 ? $totalRevenue / $totalOrders : 0;
-            
+
             // Calculate profit
             $totalProfit = $channelOrders->sum('net_profit');
             $profitMargin = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;
-            
+
             // Get conversion rate (assume all orders are conversions for now)
             $conversionRate = 100; // Could be enhanced with visit tracking
-            
+
             return [
                 'channel' => $channelKey,
                 'total_revenue' => $totalRevenue,
@@ -81,35 +86,35 @@ class ChannelComparison extends Component
     #[Computed]
     public function channelDetails()
     {
-        if (!$this->selectedChannel) {
+        if (! $this->selectedChannel) {
             return null;
         }
 
         $channelData = $this->channelComparison->firstWhere('channel', $this->selectedChannel);
-        
-        if (!$channelData) {
+
+        if (! $channelData) {
             return null;
         }
 
         // Get daily performance for the selected channel
         $days = (int) $this->period;
         $dailyData = [];
-        
+
         for ($i = $days - 1; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
-            
+
             $dayOrders = $this->orders->filter(function ($order) use ($date) {
-                if (!$order->received_date || !$order->received_date->isSameDay($date)) {
+                if (! $order->received_date || ! $order->received_date->isSameDay($date)) {
                     return false;
                 }
-                
+
                 $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->channel_name
                     ? "{$order->channel_name} ({$order->subsource})"
                     : $order->channel_name;
-                    
+
                 return $orderChannel === $this->selectedChannel;
             });
-            
+
             $dailyData[] = [
                 'date' => $date->format('M j'),
                 'revenue' => $dayOrders->sum('total_charge'),
@@ -117,21 +122,21 @@ class ChannelComparison extends Component
                 'items' => $dayOrders->sum('total_items'),
             ];
         }
-        
+
         $channelData['daily_data'] = $dailyData;
-        
+
         // Get top products for this channel
         $channelOrders = $this->orders->filter(function ($order) {
             $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->channel_name
                 ? "{$order->channel_name} ({$order->subsource})"
                 : $order->channel_name;
-                
+
             return $orderChannel === $this->selectedChannel;
         });
-        
+
         // Use proper relationships and eager loading - senior Laravel approach
         $orderIds = $channelOrders->pluck('id');
-        
+
         // Get aggregated data first
         $aggregatedData = OrderItem::whereIn('order_id', $orderIds)
             ->selectRaw('
@@ -145,11 +150,11 @@ class ChannelComparison extends Component
             ->limit(5)
             ->get()
             ->keyBy('sku');
-            
+
         // Get product titles for these SKUs in one query
         $products = \App\Models\Product::whereIn('sku', $aggregatedData->keys())
             ->pluck('title', 'sku');
-            
+
         // Combine the data
         $topProducts = $aggregatedData->map(fn ($item) => [
             'sku' => $item->sku,
@@ -158,9 +163,9 @@ class ChannelComparison extends Component
             'total_revenue' => (float) $item->total_revenue,
             'order_count' => (int) $item->order_count,
         ])->values();
-        
+
         $channelData['top_products'] = $topProducts;
-        
+
         return $channelData;
     }
 
@@ -168,14 +173,15 @@ class ChannelComparison extends Component
     public function chartData()
     {
         $comparison = $this->channelComparison;
-        
+
         // Calculate revenue share
         $totalRevenue = $comparison->sum('total_revenue');
         $comparison = $comparison->map(function ($channel) use ($totalRevenue) {
             $channel['revenue_share'] = $totalRevenue > 0 ? ($channel['total_revenue'] / $totalRevenue) * 100 : 0;
+
             return $channel;
         });
-        
+
         return [
             'labels' => $comparison->pluck('channel')->take(10)->toArray(),
             'revenue' => $comparison->pluck('total_revenue')->take(10)->toArray(),
@@ -197,7 +203,7 @@ class ChannelComparison extends Component
 
     public function toggleSubsources()
     {
-        $this->showSubsources = !$this->showSubsources;
+        $this->showSubsources = ! $this->showSubsources;
     }
 
     public function updatedMetric()
@@ -216,23 +222,23 @@ class ChannelComparison extends Component
         $currentPeriodDays = (int) $this->period;
         $previousStart = Carbon::now()->subDays($currentPeriodDays * 2)->startOfDay();
         $previousEnd = Carbon::now()->subDays($currentPeriodDays)->endOfDay();
-        
+
         $previousOrders = Order::whereBetween('received_date', [$previousStart, $previousEnd])->get();
-        
+
         $previousRevenue = $previousOrders->filter(function ($order) use ($channel) {
             $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->channel_name
                 ? "{$order->channel_name} ({$order->subsource})"
                 : $order->channel_name;
-                
+
             return $orderChannel === $channel;
         })->sum('total_charge');
-        
+
         $currentRevenue = $this->channelComparison->firstWhere('channel', $channel)['total_revenue'] ?? 0;
-        
+
         if ($previousRevenue == 0) {
             return $currentRevenue > 0 ? 100 : 0;
         }
-        
+
         return (($currentRevenue - $previousRevenue) / $previousRevenue) * 100;
     }
 

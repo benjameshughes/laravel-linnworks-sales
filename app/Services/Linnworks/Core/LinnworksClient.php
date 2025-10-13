@@ -6,18 +6,19 @@ use App\Exceptions\Linnworks\LinnworksApiException;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
 use App\ValueObjects\Linnworks\SessionToken;
-use App\ValueObjects\Linnworks\RateLimitConfig;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 
 class LinnworksClient
 {
     private const BASE_URL = 'https://api.linnworks.net/api/';
+
     private const CACHE_PREFIX = 'linnworks_response:';
+
     private const CACHE_TTL = 900; // 15 minutes
 
     private readonly CircuitBreaker $circuitBreaker;
@@ -43,7 +44,7 @@ class LinnworksClient
     public function makeRequest(ApiRequest $request, ?SessionToken $sessionToken = null): ApiResponse
     {
         // Check circuit breaker
-        if (!$this->circuitBreaker->canMakeRequest()) {
+        if (! $this->circuitBreaker->canMakeRequest()) {
             $stats = $this->circuitBreaker->getStats();
             throw new LinnworksApiException(
                 message: 'Circuit breaker is open, too many recent failures',
@@ -57,12 +58,13 @@ class LinnworksClient
             $cachedResponse = $this->getCachedResponse($request);
             if ($cachedResponse !== null) {
                 $this->circuitBreaker->recordSuccess();
+
                 return $cachedResponse;
             }
         }
 
         // Check rate limits
-        if (!$this->rateLimiter->canMakeRequest()) {
+        if (! $this->rateLimiter->canMakeRequest()) {
             Log::warning('Linnworks rate limit exceeded, waiting for reset', [
                 'endpoint' => $request->endpoint,
                 'current_requests' => $this->rateLimiter->getCurrentRequestCount(),
@@ -147,7 +149,7 @@ class LinnworksClient
 
         foreach ($requests as $key => $request) {
             $responses[$key] = $this->makeRequest($request, $sessionToken);
-            
+
             // Log progress for large batches
             if ($totalRequests > 10 && ($key + 1) % 10 === 0) {
                 Log::info('Linnworks batch progress', [
@@ -167,11 +169,11 @@ class LinnworksClient
     private function executeHttpRequest(ApiRequest $request, ?SessionToken $sessionToken = null): Response
     {
         $baseUrl = $sessionToken ? $sessionToken->getBaseUrl() : self::BASE_URL;
-        $url = $baseUrl . ltrim($request->endpoint, '/');
+        $url = $baseUrl.ltrim($request->endpoint, '/');
 
         // Build headers
         $headers = $request->headers->toArray();
-        
+
         if ($request->requiresAuth && $sessionToken) {
             $headers = array_merge($headers, $sessionToken->getAuthHeaders());
         }
@@ -199,7 +201,7 @@ class LinnworksClient
      */
     private function getCachedResponse(ApiRequest $request): ?ApiResponse
     {
-        $cacheKey = self::CACHE_PREFIX . $request->getCacheKey();
+        $cacheKey = self::CACHE_PREFIX.$request->getCacheKey();
         $cached = Cache::get($cacheKey);
 
         if ($cached) {
@@ -226,10 +228,10 @@ class LinnworksClient
      */
     private function cacheResponse(ApiRequest $request, ApiResponse $response): void
     {
-        $cacheKey = self::CACHE_PREFIX . $request->getCacheKey();
-        
+        $cacheKey = self::CACHE_PREFIX.$request->getCacheKey();
+
         Cache::put($cacheKey, $response->jsonSerialize(), self::CACHE_TTL);
-        
+
         Log::debug('Linnworks response cached', [
             'endpoint' => $request->endpoint,
             'cache_key' => $cacheKey,
@@ -288,7 +290,7 @@ class LinnworksClient
     {
         if ($endpoint) {
             $request = ApiRequest::get($endpoint);
-            $cacheKey = self::CACHE_PREFIX . $request->getCacheKey();
+            $cacheKey = self::CACHE_PREFIX.$request->getCacheKey();
             Cache::forget($cacheKey);
         } else {
             // Clear all cached responses (pattern-based)

@@ -2,9 +2,9 @@
 
 namespace App\Services\Api;
 
+use App\Enums\SearchType;
 use App\Services\ProductSearchService;
 use App\ValueObjects\Api\ApiResponse;
-use App\Enums\SearchType;
 use Illuminate\Support\Collection;
 
 readonly class SearchAnalyticsService
@@ -77,7 +77,7 @@ readonly class SearchAnalyticsService
 
     private function transformPopularProducts(Collection $products): Collection
     {
-        return $products->map(fn($product) => collect([
+        return $products->map(fn ($product) => collect([
             'id' => $product->id,
             'sku' => $product->sku,
             'title' => $product->title,
@@ -89,7 +89,7 @@ readonly class SearchAnalyticsService
 
     private function transformSearchTypes(): Collection
     {
-        return collect(SearchType::cases())->map(fn($type) => collect([
+        return collect(SearchType::cases())->map(fn ($type) => collect([
             'value' => $type->value,
             'label' => $type->label(),
             'placeholder' => $type->getPlaceholder(),

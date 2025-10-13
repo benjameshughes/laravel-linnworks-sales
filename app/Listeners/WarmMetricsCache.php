@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Events\CachePeriodWarmed;
 use App\Events\CacheWarmingCompleted;
 use App\Events\CacheWarmingStarted;
 use App\Events\OrdersSynced;
@@ -62,7 +61,7 @@ final class WarmMetricsCache implements ShouldQueue
         $channels = ['all']; // Can add specific channels later
 
         // Broadcast that warming has started
-        CacheWarmingStarted::dispatch(collect($periods)->map(fn($p) => "{$p->value}d")->toArray());
+        CacheWarmingStarted::dispatch(collect($periods)->map(fn ($p) => "{$p->value}d")->toArray());
 
         // Dispatch individual jobs for each period/channel combination
         // Jobs are queued and processed sequentially, preventing memory buildup

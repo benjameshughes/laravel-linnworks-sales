@@ -10,14 +10,13 @@ use App\Services\Linnworks\Contracts\RateLimitedServiceInterface;
 use App\Services\Linnworks\Contracts\SessionManagerInterface;
 use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Core\RateLimiter;
+use App\Services\Linnworks\Orders\LocationsService;
+use App\Services\Linnworks\Orders\OpenOrdersService;
 use App\Services\Linnworks\Orders\OrdersApiService;
 use App\Services\Linnworks\Orders\ProcessedOrdersService;
-use App\Services\Linnworks\Orders\OpenOrdersService;
-use App\Services\Linnworks\Orders\LocationsService;
 use App\Services\Linnworks\Orders\ViewsService;
-use App\Services\Linnworks\Products\ProductsApiService;
 use App\Services\Linnworks\Products\InventoryService;
-use App\ValueObjects\Linnworks\ApiCredentials;
+use App\Services\Linnworks\Products\ProductsApiService;
 use App\ValueObjects\Linnworks\RateLimitConfig;
 use Illuminate\Support\ServiceProvider;
 

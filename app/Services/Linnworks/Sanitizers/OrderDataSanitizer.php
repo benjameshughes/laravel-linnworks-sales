@@ -22,7 +22,7 @@ class OrderDataSanitizer
         $items = $orderData['Items'] ?? $orderData['OrderItems'] ?? [];
 
         // If flat structure (from GetOpenOrders)
-        $isFlatStructure = !isset($orderData['GeneralInfo']);
+        $isFlatStructure = ! isset($orderData['GeneralInfo']);
 
         return [
             // Order identifiers
@@ -47,7 +47,7 @@ class OrderDataSanitizer
             'item_cost' => $this->sanitizeDecimal($orderData['ItemCost'] ?? $totalsInfo['ItemCost'] ?? 0),
 
             // Status
-            'is_open' => $this->sanitizeBoolean($orderData['IsOpen'] ?? !isset($orderData['ProcessedDateTime'])),
+            'is_open' => $this->sanitizeBoolean($orderData['IsOpen'] ?? ! isset($orderData['ProcessedDateTime'])),
             'is_processed' => $this->sanitizeBoolean($orderData['IsProcessed'] ?? isset($orderData['ProcessedDateTime'])),
 
             // Location
@@ -232,7 +232,7 @@ class OrderDataSanitizer
             $tags = explode(',', $tags);
         }
 
-        if (!is_array($tags)) {
+        if (! is_array($tags)) {
             return [];
         }
 
@@ -280,8 +280,8 @@ class OrderDataSanitizer
             'sanitized_fields' => count($sanitized),
             'null_fields' => count(array_filter($sanitized, fn ($v) => $v === null)),
             'items_sanitized' => count($sanitized['items'] ?? []),
-            'has_order_id' => !empty($sanitized['order_id']),
-            'has_order_number' => !empty($sanitized['order_number']),
+            'has_order_id' => ! empty($sanitized['order_id']),
+            'has_order_number' => ! empty($sanitized['order_number']),
             'is_valid' => $this->validate($sanitized),
         ];
     }

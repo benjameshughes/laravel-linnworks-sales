@@ -2,14 +2,13 @@
 
 namespace App\Services\Linnworks\Orders;
 
-use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
-use App\ValueObjects\Linnworks\SessionToken;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 class OrdersApiService
 {
@@ -29,8 +28,8 @@ class OrdersApiService
         int $entriesPerPage = 200
     ): ApiResponse {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -65,8 +64,8 @@ class OrdersApiService
     public function getOrderById(int $userId, string $orderId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -87,8 +86,8 @@ class OrdersApiService
     public function getOrdersByIds(int $userId, array $orderIds): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -126,7 +125,7 @@ class OrdersApiService
 
         do {
             $response = $this->getOrders($userId, $from, $to, $page, $entriesPerPage);
-            
+
             if ($response->isError()) {
                 Log::error('Error fetching orders page', [
                     'user_id' => $userId,
@@ -140,7 +139,7 @@ class OrdersApiService
             $orders = collect($payload->get('Data', []));
             $totalResults = $payload->get('TotalResults', $orders->count());
             $allOrders = $allOrders->merge($orders);
-            
+
             Log::info('Fetched orders page', [
                 'user_id' => $userId,
                 'page' => $page,
@@ -150,7 +149,7 @@ class OrdersApiService
             ]);
 
             $page++;
-            
+
             // Safety checks
             if ($allOrders->count() >= $maxOrders) {
                 Log::warning('Maximum orders limit reached', [
@@ -160,7 +159,7 @@ class OrdersApiService
                 ]);
                 break;
             }
-            
+
             if ($orders->count() < $entriesPerPage) {
                 Log::info('All orders fetched (last page)', [
                     'user_id' => $userId,
@@ -169,7 +168,7 @@ class OrdersApiService
                 ]);
                 break;
             }
-            
+
         } while ($orders->count() === $entriesPerPage);
 
         return $allOrders;
@@ -181,8 +180,8 @@ class OrdersApiService
     public function updateOrderStatus(int $userId, string $orderId, string $status): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -206,8 +205,8 @@ class OrdersApiService
     public function addOrderNote(int $userId, string $orderId, string $note): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -231,8 +230,8 @@ class OrdersApiService
     public function getOrderNotes(int $userId, string $orderId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -254,7 +253,7 @@ class OrdersApiService
     public function getOrderStats(int $userId, Carbon $from, Carbon $to): array
     {
         $response = $this->getOrders($userId, $from, $to, 1, 1000);
-        
+
         if ($response->isError()) {
             return [
                 'total_orders' => 0,

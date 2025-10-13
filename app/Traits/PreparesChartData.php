@@ -24,15 +24,15 @@ trait PreparesChartData
             '#EC4899', // pink
             '#14B8A6', // teal
         ];
-        
+
         $colors = $colors ?? $defaultColors;
-        
+
         $labels = $data->pluck($labelKey)->toArray();
         $chartDatasets = [];
-        
+
         foreach ($datasets as $index => $dataset) {
             $color = $colors[$index % count($colors)];
-            
+
             $chartDatasets[] = [
                 'label' => $dataset['label'],
                 'data' => $data->pluck($dataset['dataKey'])->toArray(),
@@ -45,13 +45,13 @@ trait PreparesChartData
                 'borderWidth' => $dataset['borderWidth'] ?? 2,
             ];
         }
-        
+
         return [
             'labels' => $labels,
             'datasets' => $chartDatasets,
         ];
     }
-    
+
     protected function prepareBarChartData(
         Collection $data,
         string $labelKey,
@@ -65,15 +65,15 @@ trait PreparesChartData
             '#F59E0B', // amber
             '#EF4444', // red
         ];
-        
+
         $colors = $colors ?? $defaultColors;
-        
+
         $labels = $data->pluck($labelKey)->toArray();
         $chartDatasets = [];
-        
+
         foreach ($datasets as $index => $dataset) {
             $color = $colors[$index % count($colors)];
-            
+
             $chartDatasets[] = [
                 'label' => $dataset['label'],
                 'data' => $data->pluck($dataset['dataKey'])->toArray(),
@@ -83,13 +83,13 @@ trait PreparesChartData
                 'borderRadius' => $dataset['borderRadius'] ?? 4,
             ];
         }
-        
+
         return [
             'labels' => $labels,
             'datasets' => $chartDatasets,
         ];
     }
-    
+
     protected function prepareDoughnutChartData(
         Collection $data,
         string $labelKey,
@@ -106,10 +106,10 @@ trait PreparesChartData
             '#EC4899', // pink
             '#14B8A6', // teal
         ];
-        
+
         $colors = $colors ?? $defaultColors;
         $useColors = array_slice($colors, 0, $data->count());
-        
+
         return [
             'labels' => $data->pluck($labelKey)->toArray(),
             'datasets' => [
@@ -122,12 +122,12 @@ trait PreparesChartData
             ],
         ];
     }
-    
+
     protected function formatCurrency(float $value, int $decimals = 0): string
     {
-        return '£' . number_format($value, $decimals);
+        return '£'.number_format($value, $decimals);
     }
-    
+
     protected function formatNumber(float $value, int $decimals = 0): string
     {
         return number_format($value, $decimals);

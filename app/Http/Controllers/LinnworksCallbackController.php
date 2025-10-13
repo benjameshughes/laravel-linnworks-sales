@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Services\Linnworks\Auth\AuthenticationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class LinnworksCallbackController extends Controller
 {
@@ -38,14 +38,15 @@ class LinnworksCallbackController extends Controller
             $applicationId = $request->input('ApplicationId');
             $tracking = $request->input('Tracking'); // Our user ID for tracking
 
-            if (!$token || !$applicationId) {
+            if (! $token || ! $applicationId) {
                 Log::error('Missing required parameters in Linnworks callback', [
                     'token' => $token ? 'present' : 'missing',
                     'applicationId' => $applicationId ? 'present' : 'missing',
                 ]);
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Missing required parameters'
+                    'message' => 'Missing required parameters',
                 ], 400);
             }
 
@@ -55,13 +56,14 @@ class LinnworksCallbackController extends Controller
                 $ourUserId = (int) str_replace('user_', '', $tracking);
             }
 
-            if (!$ourUserId) {
+            if (! $ourUserId) {
                 Log::error('Invalid tracking parameter in Linnworks callback', [
                     'tracking' => $tracking,
                 ]);
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid tracking parameter'
+                    'message' => 'Invalid tracking parameter',
                 ], 400);
             }
 
@@ -72,14 +74,15 @@ class LinnworksCallbackController extends Controller
             // Create the connection using new service
             $connection = $this->authService->createConnection($ourUserId, $token);
 
-            if (!$connection) {
+            if (! $connection) {
                 Log::error('Failed to create Linnworks connection', [
                     'user_id' => $ourUserId,
                     'token_length' => strlen($token),
                 ]);
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to create connection'
+                    'message' => 'Failed to create connection',
                 ], 500);
             }
 
@@ -105,7 +108,7 @@ class LinnworksCallbackController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Internal server error',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -116,21 +119,21 @@ class LinnworksCallbackController extends Controller
     public function getInstallationUrl(Request $request): JsonResponse
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             abort(401, 'User not authenticated');
         }
 
         $applicationId = config('linnworks.application_id');
-        if (!$applicationId) {
+        if (! $applicationId) {
             abort(500, 'Linnworks application not configured');
         }
 
         // Generate tracking parameter with user ID
-        $tracking = 'user_' . $user->id;
+        $tracking = 'user_'.$user->id;
 
         // Generate installation URL using new service
         $installUrl = $this->authService->generateInstallUrl();
-        
+
         // Add tracking parameter
         $installUrlWithTracking = "{$installUrl}&Tracking={$tracking}";
 

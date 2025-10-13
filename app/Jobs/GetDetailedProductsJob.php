@@ -2,8 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Jobs\ProcessDetailedProductJob;
-use App\Jobs\ProcessDetailedProductBatchJob;
 use App\Models\Product;
 use App\Models\SyncLog;
 use App\Services\LinnworksApiService;
@@ -15,14 +13,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
+class GetDetailedProductsJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $uniqueFor = 3600; // 1 hour
 
     protected ?string $startedBy;
+
     protected SyncLog $syncLog;
+
     protected bool $updateExistingOnly;
 
     public function __construct(?string $startedBy = null, bool $updateExistingOnly = false)
@@ -37,7 +37,7 @@ class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return 'get-detailed-products-' . ($this->updateExistingOnly ? 'existing' : 'all');
+        return 'get-detailed-products-'.($this->updateExistingOnly ? 'existing' : 'all');
     }
 
     public function handle(LinnworksApiService $linnworksService): void
@@ -50,10 +50,10 @@ class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
 
         Log::info('Starting detailed product sync job', [
             'started_by' => $this->startedBy,
-            'update_existing_only' => $this->updateExistingOnly
+            'update_existing_only' => $this->updateExistingOnly,
         ]);
 
-        if (!$linnworksService->isConfigured()) {
+        if (! $linnworksService->isConfigured()) {
             Log::error('Linnworks API is not configured');
             $this->syncLog->fail('Linnworks API not configured');
             throw new \Exception('Linnworks API is not configured. Please check your credentials.');
@@ -77,9 +77,9 @@ class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
     {
         // Get existing products that need detailed sync
         $existingProducts = Product::whereNotNull('linnworks_id')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereJsonMissing('metadata.sync_type')
-                  ->orWhereJsonDoesntContain('metadata.sync_type', 'detailed');
+                    ->orWhereJsonDoesntContain('metadata.sync_type', 'detailed');
             })
             ->limit(500) // Limit to prevent overwhelming API
             ->get();
@@ -87,6 +87,7 @@ class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
         if ($existingProducts->isEmpty()) {
             Log::info('No existing products need detailed sync');
             $this->syncLog->complete(0);
+
             return;
         }
 
@@ -98,7 +99,7 @@ class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
                 'total_products_found' => $existingProducts->count(),
                 'sync_type' => 'detailed_existing_only',
                 'sample_skus' => $existingProducts->take(3)->pluck('sku')->toArray(),
-            ])
+            ]),
         ]);
 
         // Get detailed info for existing products in batches by IDs
@@ -110,12 +111,13 @@ class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
     {
         Log::info('Fetching all detailed inventory items from Linnworks...');
         $inventoryItems = $linnworksService->getAllInventoryItemsFull();
-        
+
         Log::info("Found {$inventoryItems->count()} detailed inventory items");
-        
+
         if ($inventoryItems->isEmpty()) {
             Log::warning('No detailed inventory items found.');
             $this->syncLog->complete(0);
+
             return;
         }
 
@@ -125,25 +127,25 @@ class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
                 'total_products_found' => $inventoryItems->count(),
                 'sync_type' => 'detailed_full',
                 'sample_skus' => $inventoryItems->take(3)->pluck('ItemNumber')->toArray(),
-            ])
+            ]),
         ]);
 
         $existingProducts = Product::whereIn('sku', $inventoryItems->pluck('ItemNumber')->toArray())
             ->pluck('sku')
             ->toArray();
 
-        if (!empty($existingProducts)) {
+        if (! empty($existingProducts)) {
             Log::info("Found {count($existingProducts)} existing products to update with detailed info");
         }
 
         // Process products in smaller batches due to detailed API limits
         $jobsDispatched = 0;
         $batchSize = 25; // Smaller batch size for detailed endpoint
-        
+
         foreach ($inventoryItems->chunk($batchSize) as $chunkIndex => $chunk) {
             // Delay each batch to respect 150/minute rate limit
             $delay = $chunkIndex * 30; // 30 seconds delay between batches
-            
+
             foreach ($chunk as $inventoryItem) {
                 ProcessDetailedProductJob::dispatch($inventoryItem, $this->syncLog->id)
                     ->delay(now()->addSeconds($delay));
@@ -161,7 +163,7 @@ class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
                 'jobs_dispatched' => $jobsDispatched,
                 'existing_products_count' => count($existingProducts),
                 'master_job_completed_at' => now()->toDateTimeString(),
-            ])
+            ]),
         ]);
 
         Log::info('Detailed product sync job completed successfully', [
@@ -174,14 +176,14 @@ class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
     {
         $jobsDispatched = 0;
         $batchSize = 20; // Efficient batch size for GetStockItemsFullByIds (rate limit: 250/minute)
-        
+
         foreach (array_chunk($stockItemIds, $batchSize) as $chunkIndex => $chunk) {
-            // Delay batches to respect 250/minute rate limit  
+            // Delay batches to respect 250/minute rate limit
             $delay = $chunkIndex * 15; // 15 seconds delay between batches
-            
+
             ProcessDetailedProductBatchJob::dispatch($chunk, $this->syncLog->id)
                 ->delay(now()->addSeconds($delay));
-            
+
             $jobsDispatched++;
         }
 
@@ -195,7 +197,7 @@ class GetDetailedProductsJob implements ShouldQueue, ShouldBeUnique
                 'jobs_dispatched' => $jobsDispatched,
                 'total_product_ids' => count($stockItemIds),
                 'master_job_completed_at' => now()->toDateTimeString(),
-            ])
+            ]),
         ]);
     }
 

@@ -30,8 +30,9 @@ class BusinessEmailDomain implements ValidationRule
         }
 
         // Extract domain from email
-        if (!str_contains($email, '@')) {
+        if (! str_contains($email, '@')) {
             $fail('The :attribute must be a valid email address.');
+
             return;
         }
 
@@ -41,7 +42,7 @@ class BusinessEmailDomain implements ValidationRule
         $allowedDomains = $this->settings->getArray('security.allowed_domains');
         $allowedDomains = array_map('strtolower', $allowedDomains);
 
-        if (!in_array($domain, $allowedDomains)) {
+        if (! in_array($domain, $allowedDomains)) {
             $fail('Registration is restricted to authorized business email addresses.');
         }
     }

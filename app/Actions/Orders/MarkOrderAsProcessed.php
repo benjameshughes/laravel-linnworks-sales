@@ -17,14 +17,15 @@ class MarkOrderAsProcessed
 {
     /**
      * Update orders' processed status in the database
-     * 
-     * @param Collection $processedOrdersData Collection of orders with order_id and is_processed status
+     *
+     * @param  Collection  $processedOrdersData  Collection of orders with order_id and is_processed status
      * @return bool Success status
      */
     public function handle(Collection $processedOrdersData): bool
     {
         if ($processedOrdersData->isEmpty()) {
             Log::info('No processed orders data to update');
+
             return true;
         }
 
@@ -34,29 +35,31 @@ class MarkOrderAsProcessed
             $errorCount = 0;
 
             Log::info('Starting to update orders processed status', [
-                'total_orders' => $processedOrdersData->count()
+                'total_orders' => $processedOrdersData->count(),
             ]);
 
             foreach ($processedOrdersData as $orderData) {
                 $orderId = $orderData['order_id'] ?? null;
                 $isProcessed = $orderData['is_processed'] ?? false;
 
-                if (!$orderId) {
+                if (! $orderId) {
                     Log::warning('Missing order_id in processed orders data', [
-                        'order_data' => $orderData
+                        'order_data' => $orderData,
                     ]);
                     $errorCount++;
+
                     continue;
                 }
 
                 // Find the order in our database by linnworks_order_id
                 $order = Order::where('linnworks_order_id', $orderId)->first();
 
-                if (!$order) {
+                if (! $order) {
                     Log::debug('Order not found in database', [
-                        'linnworks_order_id' => $orderId
+                        'linnworks_order_id' => $orderId,
                     ]);
                     $skippedCount++;
+
                     continue;
                 }
 
@@ -64,24 +67,24 @@ class MarkOrderAsProcessed
                 if ($order->is_processed !== $isProcessed) {
                     $oldStatus = $order->is_processed;
                     $order->is_processed = $isProcessed;
-                    $order->is_open = !$isProcessed;
+                    $order->is_open = ! $isProcessed;
                     if ($isProcessed) {
                         $order->status = 'processed';
                         $order->processed_date = $order->processed_date ?? now();
                     }
-                    
+
                     if ($order->save()) {
                         Log::debug('Updated order processed status', [
                             'order_id' => $order->id,
                             'linnworks_order_id' => $orderId,
                             'old_status' => $oldStatus,
-                            'new_status' => $isProcessed
+                            'new_status' => $isProcessed,
                         ]);
                         $updatedCount++;
                     } else {
                         Log::error('Failed to save order processed status', [
                             'order_id' => $order->id,
-                            'linnworks_order_id' => $orderId
+                            'linnworks_order_id' => $orderId,
                         ]);
                         $errorCount++;
                     }
@@ -95,7 +98,7 @@ class MarkOrderAsProcessed
                 'total_processed' => $processedOrdersData->count(),
                 'updated' => $updatedCount,
                 'skipped' => $skippedCount,
-                'errors' => $errorCount
+                'errors' => $errorCount,
             ]);
 
             // Return true if no errors occurred
@@ -104,8 +107,9 @@ class MarkOrderAsProcessed
         } catch (\Exception $e) {
             Log::error('Error updating orders processed status', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return false;
         }
     }

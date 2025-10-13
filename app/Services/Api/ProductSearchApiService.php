@@ -2,10 +2,10 @@
 
 namespace App\Services\Api;
 
-use App\Services\ProductSearchService;
-use App\ValueObjects\Api\SearchRequest;
-use App\ValueObjects\Api\ApiResponse;
 use App\Http\Resources\ProductSearchResource;
+use App\Services\ProductSearchService;
+use App\ValueObjects\Api\ApiResponse;
+use App\ValueObjects\Api\SearchRequest;
 use Illuminate\Support\Collection;
 
 readonly class ProductSearchApiService
@@ -17,7 +17,7 @@ readonly class ProductSearchApiService
     public function quickSearch(SearchRequest $request): ApiResponse
     {
         $results = $this->searchService->advancedSearch($request->toSearchCriteria());
-        
+
         return ApiResponse::success(
             data: $this->transformProducts($results),
             meta: $this->buildSearchMeta($request, $results->count())
@@ -28,7 +28,7 @@ readonly class ProductSearchApiService
     {
         $product = $this->searchService->findBySku($sku);
 
-        if (!$product) {
+        if (! $product) {
             return ApiResponse::notFound(
                 message: 'Product not found',
                 meta: collect(['sku' => $sku])
@@ -46,8 +46,7 @@ readonly class ProductSearchApiService
 
     private function transformProducts(Collection $products): Collection
     {
-        return $products->map(fn($product) => 
-            ProductSearchResource::basic($product)->toArray(request())
+        return $products->map(fn ($product) => ProductSearchResource::basic($product)->toArray(request())
         );
     }
 

@@ -2,8 +2,8 @@
 
 namespace App\Services\Linnworks\Products;
 
-use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
 use Illuminate\Support\Collection;
@@ -25,8 +25,8 @@ class ProductsApiService
         ?int $entriesPerPage = null
     ): ApiResponse {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -49,7 +49,7 @@ class ProductsApiService
         ]);
 
         $response = $this->client->makeRequest($request, $sessionToken);
-        
+
         if ($response->isSuccess()) {
             Log::info('Retrieved paginated inventory', [
                 'user_id' => $userId,
@@ -78,9 +78,10 @@ class ProductsApiService
         int $maxProducts = 10000
     ): Collection {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             Log::error('No valid session token for products', ['user_id' => $userId]);
+
             return collect();
         }
 
@@ -96,18 +97,19 @@ class ProductsApiService
         ]);
 
         $response = $this->client->makeRequest($request, $sessionToken);
-        
+
         if ($response->isError()) {
             Log::error('Error fetching products', [
                 'user_id' => $userId,
                 'error' => $response->error,
             ]);
+
             return collect();
         }
 
         $payload = $response->getData();
         $products = collect($payload->get('Items', $payload->toArray()));
-        
+
         Log::info('Fetched products', [
             'user_id' => $userId,
             'product_count' => $products->count(),
@@ -132,8 +134,8 @@ class ProductsApiService
     public function getProductDetails(int $userId, string $stockItemId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -155,9 +157,10 @@ class ProductsApiService
     public function getMultipleProductDetails(int $userId, array $stockItemIds): Collection
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             Log::error('No valid session token for multiple product details', ['user_id' => $userId]);
+
             return collect();
         }
 
@@ -171,12 +174,13 @@ class ProductsApiService
         ]);
 
         $response = $this->client->makeRequest($request, $sessionToken);
-        
+
         if ($response->isError()) {
             Log::error('Error fetching multiple product details', [
                 'user_id' => $userId,
                 'error' => $response->error,
             ]);
+
             return collect();
         }
 
@@ -193,8 +197,8 @@ class ProductsApiService
         int $entriesPerPage = 200
     ): ApiResponse {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -205,19 +209,19 @@ class ProductsApiService
         ];
 
         // Add filters if provided
-        if (!empty($filters['category'])) {
+        if (! empty($filters['category'])) {
             $searchParams['category'] = $filters['category'];
         }
 
-        if (!empty($filters['brand'])) {
+        if (! empty($filters['brand'])) {
             $searchParams['brand'] = $filters['brand'];
         }
 
-        if (!empty($filters['minPrice'])) {
+        if (! empty($filters['minPrice'])) {
             $searchParams['minPrice'] = $filters['minPrice'];
         }
 
-        if (!empty($filters['maxPrice'])) {
+        if (! empty($filters['maxPrice'])) {
             $searchParams['maxPrice'] = $filters['maxPrice'];
         }
 
@@ -239,8 +243,8 @@ class ProductsApiService
     public function updateProduct(int $userId, string $stockItemId, array $updates): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -265,8 +269,8 @@ class ProductsApiService
     public function getProductCategories(int $userId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -285,8 +289,8 @@ class ProductsApiService
     public function getProductBrands(int $userId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -305,7 +309,7 @@ class ProductsApiService
     public function getProductStats(int $userId): array
     {
         $products = $this->getAllProducts($userId, 1000);
-        
+
         if ($products->isEmpty()) {
             return [
                 'total_products' => 0,
@@ -319,7 +323,7 @@ class ProductsApiService
 
         $totalValue = $products->sum('PurchasePrice');
         $totalProducts = $products->count();
-        
+
         $categoryStats = $products->groupBy('Category')
             ->map(function ($categoryProducts) {
                 return [
@@ -361,7 +365,7 @@ class ProductsApiService
     public function getLowStockProducts(int $userId, int $threshold = 10): Collection
     {
         $allProducts = $this->getAllProducts($userId);
-        
+
         $lowStockProducts = $allProducts->filter(function ($product) use ($threshold) {
             return isset($product['StockLevel']) && $product['StockLevel'] > 0 && $product['StockLevel'] <= $threshold;
         });
@@ -382,7 +386,7 @@ class ProductsApiService
     public function getOutOfStockProducts(int $userId): Collection
     {
         $allProducts = $this->getAllProducts($userId);
-        
+
         $outOfStockProducts = $allProducts->filter(function ($product) {
             return isset($product['StockLevel']) && $product['StockLevel'] <= 0;
         });

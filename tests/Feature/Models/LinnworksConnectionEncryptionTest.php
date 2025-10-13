@@ -3,7 +3,6 @@
 use App\Models\LinnworksConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);

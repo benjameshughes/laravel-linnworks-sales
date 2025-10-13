@@ -20,9 +20,13 @@ class Order extends Model
      * Temporary storage for pending data during order creation
      */
     public ?Collection $pendingItems = null;
+
     public ?array $pendingShipping = null;
+
     public ?Collection $pendingNotes = null;
+
     public ?Collection $pendingProperties = null;
+
     public ?Collection $pendingIdentifiers = null;
 
     protected $fillable = [
@@ -74,7 +78,6 @@ class Order extends Model
         'num_items',
         'payment_method',
     ];
-
 
     protected function casts(): array
     {
@@ -175,7 +178,6 @@ class Order extends Model
                $this->order_number == $processedOrderData['order_number'];
     }
 
-
     /**
      * Get items as a Collection (modern accessor)
      */
@@ -212,8 +214,7 @@ class Order extends Model
     protected function netProfit(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->total_charge - $this->items_collection->sum(fn ($item) => 
-                ($item['unit_cost'] ?? 0) * ($item['quantity'] ?? 0)
+            get: fn () => $this->total_charge - $this->items_collection->sum(fn ($item) => ($item['unit_cost'] ?? 0) * ($item['quantity'] ?? 0)
             )
         );
     }
@@ -234,7 +235,7 @@ class Order extends Model
     protected function formattedTotal(): Attribute
     {
         return Attribute::make(
-            get: fn () => '£' . number_format($this->total_charge, 2)
+            get: fn () => '£'.number_format($this->total_charge, 2)
         );
     }
 
@@ -321,7 +322,7 @@ class Order extends Model
         return $query->where('is_open', true)
             ->where(function (Builder $q) {
                 $q->whereNull('last_synced_at')
-                  ->orWhere('last_synced_at', '<', now()->subMinutes(15));
+                    ->orWhere('last_synced_at', '<', now()->subMinutes(15));
             });
     }
 
@@ -387,7 +388,7 @@ class Order extends Model
             'subsource' => $linnworksOrder->subsource,
             'order_status' => $linnworksOrder->orderStatus,
             'location_id' => $linnworksOrder->locationId,
-            'is_open' => !$isProcessed,
+            'is_open' => ! $isProcessed,
             'is_paid' => $linnworksOrder->isPaid,
             'paid_date' => $linnworksOrder->paidDate,
             'is_cancelled' => $linnworksOrder->isCancelled,
@@ -400,7 +401,7 @@ class Order extends Model
                 'order_status' => $linnworksOrder->orderStatus,
                 'location_id' => $linnworksOrder->locationId,
             ],
-            'items' => $linnworksOrder->items?->map(fn($item) => [
+            'items' => $linnworksOrder->items?->map(fn ($item) => [
                 'item_id' => $item->itemId,
                 'sku' => $item->sku,
                 'quantity' => $item->quantity,
@@ -469,6 +470,7 @@ class Order extends Model
                         'item_id' => $itemId,
                         'price' => $pricePerUnit,
                     ]);
+
                     continue;
                 }
 
@@ -524,6 +526,7 @@ class Order extends Model
                         'item_id' => $itemId,
                         'price' => $pricePerUnit,
                     ]);
+
                     continue;
                 }
 
@@ -555,7 +558,7 @@ class Order extends Model
         }
 
         // Store unlinked items in order metadata if any were found
-        if (!empty($unlinkedItems)) {
+        if (! empty($unlinkedItems)) {
             $currentMetadata = $this->sync_metadata ?? [];
             $currentMetadata['unlinked_items'] = $unlinkedItems;
             $this->update(['sync_metadata' => $currentMetadata]);
@@ -570,7 +573,7 @@ class Order extends Model
      */
     public function syncShipping(): void
     {
-        if (!$this->pendingShipping) {
+        if (! $this->pendingShipping) {
             return;
         }
 
@@ -589,7 +592,7 @@ class Order extends Model
      */
     public function syncNotes(): void
     {
-        if (!$this->pendingNotes || $this->pendingNotes->isEmpty()) {
+        if (! $this->pendingNotes || $this->pendingNotes->isEmpty()) {
             return;
         }
 
@@ -616,7 +619,7 @@ class Order extends Model
      */
     public function syncProperties(): void
     {
-        if (!$this->pendingProperties || $this->pendingProperties->isEmpty()) {
+        if (! $this->pendingProperties || $this->pendingProperties->isEmpty()) {
             return;
         }
 
@@ -641,7 +644,7 @@ class Order extends Model
      */
     public function syncIdentifiers(): void
     {
-        if (!$this->pendingIdentifiers || $this->pendingIdentifiers->isEmpty()) {
+        if (! $this->pendingIdentifiers || $this->pendingIdentifiers->isEmpty()) {
             return;
         }
 

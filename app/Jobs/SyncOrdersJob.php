@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Actions\Orders\StreamingOrderImporter;
+use App\Actions\Sync\TrackSyncProgress;
 use App\DataTransferObjects\ProcessedOrderFilters;
-use App\Events\ImportBatchProcessed;
-use App\Events\ImportPerformanceUpdate;
 use App\Events\OrdersSynced;
 use App\Events\SyncCompleted;
 use App\Events\SyncProgressUpdated;
 use App\Events\SyncStarted;
 use App\Models\Order;
 use App\Models\SyncLog;
+use App\Services\Linnworks\Sync\Orders\OrderSyncOrchestrator;
 use App\Services\LinnworksApiService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -64,8 +64,11 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
         return 'sync-orders';
     }
 
-    public function handle(LinnworksApiService $api, StreamingOrderImporter $importer): void
-    {
+    public function handle(
+        LinnworksApiService $api,
+        StreamingOrderImporter $importer,
+        OrderSyncOrchestrator $sync
+    ): void {
         // Start sync log
         $syncLog = SyncLog::startSync(SyncLog::TYPE_OPEN_ORDERS, [
             'started_by' => $this->startedBy,
@@ -90,7 +93,7 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
         }
 
         try {
-            $startTime = microtime(true);
+            $progressTracker = TrackSyncProgress::start($syncLog);
             $totalCreated = 0;
             $totalUpdated = 0;
             $totalProcessed = 0;
@@ -254,59 +257,39 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                     'failed' => $result->failed,
                 ]);
 
-                // Broadcast detailed batch metrics (like cache warming UI)
-                $timeElapsed = microtime(true) - $startTime;
-                $ordersPerSecond = $totalProcessed > 0 ? $totalProcessed / max(0.001, $timeElapsed) : 0;
-                $estimatedRemaining = null;
-
-                if ($currentChunk < $totalChunks && $timeElapsed > 0) {
-                    $avgTimePerChunk = $timeElapsed / $currentChunk;
-                    $remainingChunks = $totalChunks - $currentChunk;
-                    $estimatedRemaining = $avgTimePerChunk * $remainingChunks;
-                }
-
-                event(new ImportBatchProcessed(
-                    batchNumber: $currentChunk,
+                // Broadcast detailed batch metrics (using TrackSyncProgress action)
+                $progressTracker->broadcastBatchProgress(
+                    currentBatch: $currentChunk,
                     totalBatches: $totalChunks,
                     ordersInBatch: $orders->count(),
                     totalProcessed: $totalProcessed,
                     created: $totalCreated,
-                    updated: $totalUpdated,
-                    ordersPerSecond: $ordersPerSecond,
-                    memoryMb: memory_get_usage(true) / 1024 / 1024,
-                    timeElapsed: $timeElapsed,
-                    estimatedRemaining: $estimatedRemaining,
-                ));
+                    updated: $totalUpdated
+                );
 
                 // Broadcast aggregate performance update every 5 batches
                 if ($currentChunk % 5 === 0 || $currentChunk === $totalChunks) {
-                    event(new ImportPerformanceUpdate(
+                    $progressTracker->broadcastPerformanceUpdate(
                         totalProcessed: $totalProcessed,
                         created: $totalCreated,
                         updated: $totalUpdated,
                         failed: $totalFailed,
-                        avgSpeed: $ordersPerSecond,
-                        peakMemory: memory_get_peak_usage(true) / 1024 / 1024,
-                        duration: $timeElapsed,
-                        currentOperation: $currentChunk === $totalChunks
-                            ? 'Completed'
-                            : "Processing batch {$currentChunk}/{$totalChunks}",
-                    ));
+                        currentBatch: $currentChunk,
+                        totalBatches: $totalChunks
+                    );
 
                     // Persist progress to database every 5 batches
-                    $syncLog->updateProgress('importing', 2 + $currentChunk, 2 + $totalChunks, [
-                        'message' => "Imported batch {$currentChunk}/{$totalChunks}",
-                        'current_batch' => $currentChunk,
-                        'total_batches' => $totalChunks,
-                        'total_processed' => $totalProcessed,
-                        'created' => $totalCreated,
-                        'updated' => $totalUpdated,
-                        'failed' => $totalFailed,
-                        'orders_per_second' => round($ordersPerSecond, 2),
-                        'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
-                        'time_elapsed' => round($timeElapsed, 2),
-                        'estimated_remaining' => $estimatedRemaining ? round($estimatedRemaining, 2) : null,
-                    ]);
+                    $progressTracker->persistProgress(
+                        phase: 'importing',
+                        current: 2 + $currentChunk,
+                        total: 2 + $totalChunks,
+                        totalProcessed: $totalProcessed,
+                        created: $totalCreated,
+                        updated: $totalUpdated,
+                        failed: $totalFailed,
+                        currentBatch: $currentChunk,
+                        totalBatches: $totalChunks
+                    );
                 }
             }
 

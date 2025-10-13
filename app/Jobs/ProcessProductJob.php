@@ -16,6 +16,7 @@ class ProcessProductJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected array $inventoryItem;
+
     protected int $syncLogId;
 
     public function __construct(array $inventoryItem, int $syncLogId)
@@ -33,22 +34,23 @@ class ProcessProductJob implements ShouldQueue
         Log::info('Processing product sync job', [
             'sku' => $sku,
             'linnworks_id' => $linnworksId,
-            'sync_log_id' => $this->syncLogId
+            'sync_log_id' => $this->syncLogId,
         ]);
 
-        if (!$sku || !$linnworksId) {
+        if (! $sku || ! $linnworksId) {
             Log::error('Invalid product data - missing SKU or ID', [
                 'sku' => $sku,
                 'linnworks_id' => $linnworksId,
-                'inventory_item' => $this->inventoryItem
+                'inventory_item' => $this->inventoryItem,
             ]);
             $this->incrementSyncCounter('failed');
+
             return;
         }
 
         try {
             $existingProduct = Product::where('sku', $sku)->first();
-            
+
             if ($existingProduct) {
                 $this->updateExistingProduct($existingProduct);
             } else {
@@ -69,14 +71,14 @@ class ProcessProductJob implements ShouldQueue
     protected function updateExistingProduct(Product $product): void
     {
         $updatedProduct = Product::fromLinnworksInventory($this->inventoryItem);
-        
+
         $product->update($updatedProduct->toArray());
 
         Log::info('Successfully updated existing product', [
             'sku' => $product->sku,
             'title' => $product->title,
             'category' => $product->category_name,
-            'stock_available' => $product->stock_available
+            'stock_available' => $product->stock_available,
         ]);
 
         $this->incrementSyncCounter('updated');
@@ -91,7 +93,7 @@ class ProcessProductJob implements ShouldQueue
             'sku' => $product->sku,
             'title' => $product->title,
             'category' => $product->category_name,
-            'stock_available' => $product->stock_available
+            'stock_available' => $product->stock_available,
         ]);
 
         $this->incrementSyncCounter('created');
@@ -101,17 +103,18 @@ class ProcessProductJob implements ShouldQueue
     {
         try {
             $syncLog = SyncLog::find($this->syncLogId);
-            if (!$syncLog) {
+            if (! $syncLog) {
                 Log::warning('Sync log not found for counter increment', [
                     'sync_log_id' => $this->syncLogId,
-                    'counter_type' => $type
+                    'counter_type' => $type,
                 ]);
+
                 return;
             }
 
-            $field = match($type) {
+            $field = match ($type) {
                 'created' => 'total_created',
-                'updated' => 'total_updated', 
+                'updated' => 'total_updated',
                 'skipped' => 'total_skipped',
                 'failed' => 'total_failed',
                 default => null
@@ -119,7 +122,7 @@ class ProcessProductJob implements ShouldQueue
 
             if ($field) {
                 $syncLog->increment($field);
-                
+
                 $this->checkAndCompleteSyncIfDone($syncLog);
             }
 
@@ -127,7 +130,7 @@ class ProcessProductJob implements ShouldQueue
             Log::error('Failed to increment sync counter', [
                 'sync_log_id' => $this->syncLogId,
                 'counter_type' => $type,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -135,9 +138,9 @@ class ProcessProductJob implements ShouldQueue
     protected function checkAndCompleteSyncIfDone(SyncLog $syncLog): void
     {
         $totalFetched = $syncLog->total_fetched ?? 0;
-        $totalProcessed = ($syncLog->total_created ?? 0) + 
-                         ($syncLog->total_updated ?? 0) + 
-                         ($syncLog->total_skipped ?? 0) + 
+        $totalProcessed = ($syncLog->total_created ?? 0) +
+                         ($syncLog->total_updated ?? 0) +
+                         ($syncLog->total_skipped ?? 0) +
                          ($syncLog->total_failed ?? 0);
 
         if ($totalProcessed >= $totalFetched && $syncLog->status === SyncLog::STATUS_STARTED) {
@@ -152,14 +155,14 @@ class ProcessProductJob implements ShouldQueue
                         'updated' => $syncLog->total_updated,
                         'skipped' => $syncLog->total_skipped,
                         'failed' => $syncLog->total_failed,
-                    ]
-                ])
+                    ],
+                ]),
             ]);
 
             Log::info('Product sync completed by worker job', [
                 'sync_log_id' => $syncLog->id,
                 'total_processed' => $totalProcessed,
-                'total_fetched' => $totalFetched
+                'total_fetched' => $totalFetched,
             ]);
         }
     }

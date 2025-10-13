@@ -2,11 +2,10 @@
 
 namespace App\Services\Linnworks\Products;
 
-use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class InventoryService
@@ -22,8 +21,8 @@ class InventoryService
     public function getInventoryLevels(int $userId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -46,8 +45,8 @@ class InventoryService
         string $reason = 'Manual adjustment'
     ): ApiResponse {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -76,7 +75,7 @@ class InventoryService
         string $reason = 'Batch update'
     ): array {
         $results = [];
-        
+
         Log::info('Batch updating inventory levels', [
             'user_id' => $userId,
             'update_count' => count($updates),
@@ -85,7 +84,7 @@ class InventoryService
 
         foreach ($updates as $stockItemId => $newLevel) {
             $response = $this->updateInventoryLevel($userId, $stockItemId, $newLevel, $reason);
-            
+
             $results[$stockItemId] = [
                 'success' => $response->isSuccess(),
                 'error' => $response->error,
@@ -125,8 +124,8 @@ class InventoryService
         ?\DateTime $to = null
     ): ApiResponse {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -160,8 +159,8 @@ class InventoryService
     public function getInventoryLocations(int $userId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -180,8 +179,8 @@ class InventoryService
     public function getInventoryByLocation(int $userId, string $locationId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -209,8 +208,8 @@ class InventoryService
         string $reason = 'Location transfer'
     ): ApiResponse {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -240,8 +239,8 @@ class InventoryService
     public function getInventoryValuation(int $userId): array
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return [
                 'total_value' => 0,
                 'total_items' => 0,
@@ -256,7 +255,7 @@ class InventoryService
         ]);
 
         $response = $this->client->makeRequest($request, $sessionToken);
-        
+
         if ($response->isError()) {
             return [
                 'total_value' => 0,
@@ -267,19 +266,19 @@ class InventoryService
         }
 
         $items = $response->getData();
-        
+
         $totalValue = $items->sum(function ($item) {
             return ($item['PurchasePrice'] ?? 0) * ($item['StockLevel'] ?? 0);
         });
 
         $totalItems = $items->sum('StockLevel');
-        
+
         $valuationByCategory = $items->groupBy('Category')
             ->map(function ($categoryItems) {
                 $categoryValue = $categoryItems->sum(function ($item) {
                     return ($item['PurchasePrice'] ?? 0) * ($item['StockLevel'] ?? 0);
                 });
-                
+
                 return [
                     'total_value' => $categoryValue,
                     'total_items' => $categoryItems->sum('StockLevel'),
@@ -310,9 +309,10 @@ class InventoryService
     public function getInventoryCount(int $userId): int
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             Log::error('No valid session token for inventory count', ['user_id' => $userId]);
+
             return 0;
         }
 
@@ -323,12 +323,13 @@ class InventoryService
         ]);
 
         $response = $this->client->makeRequest($request, $sessionToken);
-        
+
         if ($response->isError()) {
             Log::error('Failed to get inventory count', [
                 'user_id' => $userId,
                 'error' => $response->error,
             ]);
+
             return 0;
         }
 
@@ -349,8 +350,8 @@ class InventoryService
     public function getInventoryAlerts(int $userId, int $lowStockThreshold = 10): array
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return [
                 'alerts' => [],
                 'summary' => [
@@ -368,7 +369,7 @@ class InventoryService
         ]);
 
         $response = $this->client->makeRequest($request, $sessionToken);
-        
+
         if ($response->isError()) {
             return [
                 'alerts' => [],
@@ -386,7 +387,7 @@ class InventoryService
 
         foreach ($items as $item) {
             $stockLevel = $item['StockLevel'] ?? 0;
-            
+
             if ($stockLevel <= 0) {
                 $alerts->push([
                     'type' => 'out_of_stock',

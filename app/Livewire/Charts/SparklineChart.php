@@ -10,7 +10,7 @@ final class SparklineChart extends BaseChart
     {
         return 'line';
     }
-    
+
     protected function getDefaultOptions(): array
     {
         return [
@@ -46,7 +46,7 @@ final class SparklineChart extends BaseChart
             ],
         ];
     }
-    
+
     public function mount(
         array $data = [],
         ?array $options = null,
@@ -55,15 +55,15 @@ final class SparklineChart extends BaseChart
     ): void {
         // Set default height for sparklines
         $height = $height ?? '40px';
-        
+
         // Create a copy of the data to avoid mutating the reactive property
         $processedData = $data;
-        
+
         // Ensure single dataset for sparklines
         if (isset($processedData['datasets']) && count($processedData['datasets']) > 0) {
             $processedData['datasets'] = [$processedData['datasets'][0]];
         }
-        
+
         parent::mount($processedData, $options ?? [], $height, $width);
     }
 }

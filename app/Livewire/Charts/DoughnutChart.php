@@ -10,7 +10,7 @@ final class DoughnutChart extends BaseChart
     {
         return 'doughnut';
     }
-    
+
     protected function getDefaultOptions(): array
     {
         return array_merge(parent::getDefaultOptions(), [

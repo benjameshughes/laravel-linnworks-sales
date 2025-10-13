@@ -81,7 +81,7 @@ class OrderItem extends Model
     protected function formattedLineTotal(): Attribute
     {
         return Attribute::make(
-            get: fn () => '£' . number_format($this->line_total, 2)
+            get: fn () => '£'.number_format($this->line_total, 2)
         );
     }
 
@@ -91,7 +91,7 @@ class OrderItem extends Model
     protected function formattedUnitCost(): Attribute
     {
         return Attribute::make(
-            get: fn () => '£' . number_format($this->unit_cost, 2)
+            get: fn () => '£'.number_format($this->unit_cost, 2)
         );
     }
 

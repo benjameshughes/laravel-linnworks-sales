@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\LinnworksConnection;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +22,7 @@ class EncryptLinnworksCredentials extends Command
 
         if ($connections->isEmpty()) {
             $this->info('No Linnworks connections found.');
+
             return self::SUCCESS;
         }
 
@@ -63,9 +63,10 @@ class EncryptLinnworksCredentials extends Command
                     }
                 }
 
-                if (!$needsEncryption) {
+                if (! $needsEncryption) {
                     $skipped++;
                     $this->info("  ✓ Connection {$connection->id} already encrypted");
+
                     continue;
                 }
 
@@ -92,13 +93,13 @@ class EncryptLinnworksCredentials extends Command
                         // Encrypt the value
                         $updates[$field] = Crypt::encryptString($value);
                     } catch (\Exception $e) {
-                        $this->error("  ✗ Failed to encrypt {$field}: " . $e->getMessage());
+                        $this->error("  ✗ Failed to encrypt {$field}: ".$e->getMessage());
                         throw $e;
                     }
                 }
 
                 // Update with raw SQL to bypass model encryption
-                if (!empty($updates)) {
+                if (! empty($updates)) {
                     DB::table('linnworks_connections')
                         ->where('id', $connection->id)
                         ->update($updates);
@@ -109,7 +110,7 @@ class EncryptLinnworksCredentials extends Command
 
             } catch (\Exception $e) {
                 $failed++;
-                $this->error("  ✗ Failed to process connection {$connection->id}: " . $e->getMessage());
+                $this->error("  ✗ Failed to process connection {$connection->id}: ".$e->getMessage());
             }
         }
 

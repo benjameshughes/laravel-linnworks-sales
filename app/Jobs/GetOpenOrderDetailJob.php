@@ -20,6 +20,7 @@ class GetOpenOrderDetailJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected array $orderUuids;
+
     protected int $syncLogId;
 
     /**
@@ -47,12 +48,13 @@ class GetOpenOrderDetailJob implements ShouldQueue
     {
         Log::info('Processing batch order detail job', [
             'order_count' => count($this->orderUuids),
-            'sync_log_id' => $this->syncLogId
+            'sync_log_id' => $this->syncLogId,
         ]);
 
-        if (!$linnworksService->isConfigured()) {
+        if (! $linnworksService->isConfigured()) {
             Log::error('Linnworks API is not configured for detail job');
             $this->incrementSyncCounter('failed', count($this->orderUuids));
+
             return;
         }
 
@@ -61,33 +63,34 @@ class GetOpenOrderDetailJob implements ShouldQueue
             $existingOrderIds = Order::whereIn('linnworks_order_id', $this->orderUuids)
                 ->pluck('linnworks_order_id')
                 ->toArray();
-            
+
             $newOrderUuids = array_diff($this->orderUuids, $existingOrderIds);
-            
+
             if (count($existingOrderIds) > 0) {
                 Log::info('Some orders already exist, skipping', [
                     'existing_count' => count($existingOrderIds),
-                    'new_count' => count($newOrderUuids)
+                    'new_count' => count($newOrderUuids),
                 ]);
                 $this->incrementSyncCounter('skipped', count($existingOrderIds));
             }
-            
+
             if (empty($newOrderUuids)) {
                 return;
             }
 
             // Step 2: Fetch details for new orders from Linnworks
             Log::info('Fetching batch order details from Linnworks', [
-                'order_count' => count($newOrderUuids)
+                'order_count' => count($newOrderUuids),
             ]);
 
             $orderDetails = $linnworksService->getOpenOrderDetails($newOrderUuids);
-            
+
             if ($orderDetails->isEmpty()) {
                 Log::warning('No order details returned from Linnworks', [
-                    'requested_count' => count($newOrderUuids)
+                    'requested_count' => count($newOrderUuids),
                 ]);
                 $this->incrementSyncCounter('failed', count($newOrderUuids));
+
                 return;
             }
 
@@ -141,17 +144,18 @@ class GetOpenOrderDetailJob implements ShouldQueue
     {
         try {
             $syncLog = SyncLog::find($this->syncLogId);
-            if (!$syncLog) {
+            if (! $syncLog) {
                 Log::warning('Sync log not found for counter increment', [
                     'sync_log_id' => $this->syncLogId,
-                    'counter_type' => $type
+                    'counter_type' => $type,
                 ]);
+
                 return;
             }
 
-            $field = match($type) {
+            $field = match ($type) {
                 'created' => 'total_created',
-                'updated' => 'total_updated', 
+                'updated' => 'total_updated',
                 'skipped' => 'total_skipped',
                 'failed' => 'total_failed',
                 default => null
@@ -159,7 +163,7 @@ class GetOpenOrderDetailJob implements ShouldQueue
 
             if ($field) {
                 $syncLog->increment($field, $count);
-                
+
                 // Check if this might be the last job and complete the sync
                 $this->checkAndCompleteSyncIfDone($syncLog);
             }
@@ -168,7 +172,7 @@ class GetOpenOrderDetailJob implements ShouldQueue
             Log::error('Failed to increment sync counter', [
                 'sync_log_id' => $this->syncLogId,
                 'counter_type' => $type,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -179,9 +183,9 @@ class GetOpenOrderDetailJob implements ShouldQueue
     protected function checkAndCompleteSyncIfDone(SyncLog $syncLog): void
     {
         $totalFetched = $syncLog->total_fetched ?? 0;
-        $totalProcessed = ($syncLog->total_created ?? 0) + 
-                         ($syncLog->total_updated ?? 0) + 
-                         ($syncLog->total_skipped ?? 0) + 
+        $totalProcessed = ($syncLog->total_created ?? 0) +
+                         ($syncLog->total_updated ?? 0) +
+                         ($syncLog->total_skipped ?? 0) +
                          ($syncLog->total_failed ?? 0);
 
         // If we've processed all orders, complete the sync
@@ -197,8 +201,8 @@ class GetOpenOrderDetailJob implements ShouldQueue
                         'updated' => $syncLog->total_updated,
                         'skipped' => $syncLog->total_skipped,
                         'failed' => $syncLog->total_failed,
-                    ]
-                ])
+                    ],
+                ]),
             ]);
 
             if ($syncLog->wasChanged('status')) {
@@ -219,7 +223,7 @@ class GetOpenOrderDetailJob implements ShouldQueue
                 Log::info('Sync completed by detail job', [
                     'sync_log_id' => $syncLog->id,
                     'total_processed' => $totalProcessed,
-                    'total_fetched' => $totalFetched
+                    'total_fetched' => $totalFetched,
                 ]);
             }
         }

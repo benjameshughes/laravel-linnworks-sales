@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\LinnworksConnection;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -53,7 +52,7 @@ class User extends Authenticatable
     /**
      * Get the user's initials (modern accessor)
      */
-    public  function initials(): Attribute
+    public function initials(): Attribute
     {
         return Attribute::make(
             get: fn () => Str::of($this->name)

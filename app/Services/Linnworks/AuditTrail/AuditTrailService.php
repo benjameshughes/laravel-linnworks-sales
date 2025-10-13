@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Log;
 class AuditTrailService
 {
     private const MAX_PAGE_SIZE = 100;
+
     private const DEFAULT_PAGE_SIZE = 50;
 
     public function __construct(
@@ -61,7 +62,7 @@ class AuditTrailService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -85,7 +86,7 @@ class AuditTrailService
                 'error' => $response->error,
             ]);
 
-            throw new \RuntimeException('Failed to fetch inventory audit trail: ' . $response->error);
+            throw new \RuntimeException('Failed to fetch inventory audit trail: '.$response->error);
         }
 
         $data = $response->getData();
@@ -119,7 +120,7 @@ class AuditTrailService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -136,7 +137,7 @@ class AuditTrailService
                 'error' => $response->error,
             ]);
 
-            throw new \RuntimeException('Failed to fetch order audit trail: ' . $response->error);
+            throw new \RuntimeException('Failed to fetch order audit trail: '.$response->error);
         }
 
         $events = $response->getData()->toArray();
@@ -170,7 +171,7 @@ class AuditTrailService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -187,7 +188,7 @@ class AuditTrailService
                 'error' => $response->error,
             ]);
 
-            throw new \RuntimeException('Failed to fetch order audit trails: ' . $response->error);
+            throw new \RuntimeException('Failed to fetch order audit trails: '.$response->error);
         }
 
         // Response is an array of order audit trail arrays
@@ -233,7 +234,7 @@ class AuditTrailService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             throw new \RuntimeException('No valid session token available');
         }
 
@@ -254,7 +255,7 @@ class AuditTrailService
                 'error' => $response->error,
             ]);
 
-            throw new \RuntimeException('Failed to fetch processed order audit trail: ' . $response->error);
+            throw new \RuntimeException('Failed to fetch processed order audit trail: '.$response->error);
         }
 
         $data = $response->getData();

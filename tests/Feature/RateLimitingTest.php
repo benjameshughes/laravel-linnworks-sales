@@ -29,7 +29,7 @@ test('login rate limiter uses email and IP combination', function () {
     // The login rate limiter is configured to use email + IP
     // Since we can't test the actual Livewire submission easily,
     // we'll verify the rate limiter configuration exists
-    $key = 'test@example.com' . '127.0.0.1';
+    $key = 'test@example.com'.'127.0.0.1';
 
     // Hit the rate limiter 5 times
     for ($i = 0; $i < 5; $i++) {
@@ -40,7 +40,7 @@ test('login rate limiter uses email and IP combination', function () {
     expect(RateLimiter::tooManyAttempts($key, 5))->toBeTrue();
 
     // Different email should have different limit
-    $differentKey = 'other@example.com' . '127.0.0.1';
+    $differentKey = 'other@example.com'.'127.0.0.1';
     expect(RateLimiter::tooManyAttempts($differentKey, 5))->toBeFalse();
 });
 
@@ -111,7 +111,7 @@ test('rate limiter resets after time window', function () {
 
 test('api rate limiter is configured for 60 requests per minute', function () {
     $user = User::factory()->create(['is_admin' => false]);
-    $key = 'api:' . $user->id;
+    $key = 'api:'.$user->id;
     $maxAttempts = 60;
 
     // Simulate API requests up to limit
@@ -129,7 +129,7 @@ test('api rate limiter is configured for 60 requests per minute', function () {
 test('api rate limiter falls back to IP for guests', function () {
     // For guest users, rate limiter should use IP
     $ip = '192.168.1.1';
-    $key = 'api:' . $ip;
+    $key = 'api:'.$ip;
     $maxAttempts = 60;
 
     // Simulate API requests

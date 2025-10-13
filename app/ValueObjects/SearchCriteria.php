@@ -28,7 +28,7 @@ readonly class SearchCriteria implements JsonSerializable
 
     public function isAdvanced(): bool
     {
-        return !empty($this->filters) || $this->type !== SearchType::COMBINED;
+        return ! empty($this->filters) || $this->type !== SearchType::COMBINED;
     }
 
     public function placeholder(): string
@@ -49,18 +49,18 @@ readonly class SearchCriteria implements JsonSerializable
     public function getProcessedQuery(): string
     {
         $query = trim($this->query);
-        
+
         if ($this->isEmpty()) {
             return '';
         }
 
         // Handle exact match
         if ($this->exactMatch) {
-            return '"' . $query . '"';
+            return '"'.$query.'"';
         }
 
         // Handle wildcards for specific search types
-        if ($this->type->supportsWildcards() && !str_contains($query, '*')) {
+        if ($this->type->supportsWildcards() && ! str_contains($query, '*')) {
             return "*{$query}*";
         }
 
@@ -76,8 +76,8 @@ readonly class SearchCriteria implements JsonSerializable
     {
         // Split query into words and add fuzzy matching
         $words = collect(explode(' ', $query))
-            ->filter(fn($word) => strlen(trim($word)) > 2)
-            ->map(fn($word) => trim($word) . '~')
+            ->filter(fn ($word) => strlen(trim($word)) > 2)
+            ->map(fn ($word) => trim($word).'~')
             ->implode(' ');
 
         return $words ?: $query;
@@ -92,7 +92,7 @@ readonly class SearchCriteria implements JsonSerializable
         }
 
         // Add filters for Scout
-        if (!empty($this->filters)) {
+        if (! empty($this->filters)) {
             $scoutOptions['filters'] = $this->filters;
         }
 
@@ -108,12 +108,12 @@ readonly class SearchCriteria implements JsonSerializable
     {
         return function ($query) {
             // Apply activity filter
-            if (!$this->includeInactive) {
+            if (! $this->includeInactive) {
                 $query->where('is_active', true);
             }
 
             // Apply stock filter
-            if (!$this->includeOutOfStock) {
+            if (! $this->includeOutOfStock) {
                 $query->where('stock_level', '>', 0);
             }
 
@@ -140,11 +140,11 @@ readonly class SearchCriteria implements JsonSerializable
         }
 
         $query = strtolower($this->query);
-        
+
         return $products
             ->flatMap(function ($product) use ($query) {
                 $suggestions = collect();
-                
+
                 // Add exact matches first
                 if (str_contains(strtolower($product->sku ?? ''), $query)) {
                     $suggestions->push([
@@ -155,7 +155,7 @@ readonly class SearchCriteria implements JsonSerializable
                         'priority' => 1,
                     ]);
                 }
-                
+
                 if (str_contains(strtolower($product->title ?? ''), $query)) {
                     $suggestions->push([
                         'type' => 'title',
@@ -165,7 +165,7 @@ readonly class SearchCriteria implements JsonSerializable
                         'priority' => 2,
                     ]);
                 }
-                
+
                 if ($product->category_name && str_contains(strtolower($product->category_name), $query)) {
                     $suggestions->push([
                         'type' => 'category',
@@ -175,7 +175,7 @@ readonly class SearchCriteria implements JsonSerializable
                         'priority' => 3,
                     ]);
                 }
-                
+
                 if ($product->brand && str_contains(strtolower($product->brand), $query)) {
                     $suggestions->push([
                         'type' => 'brand',
@@ -185,7 +185,7 @@ readonly class SearchCriteria implements JsonSerializable
                         'priority' => 4,
                     ]);
                 }
-                
+
                 return $suggestions;
             })
             ->unique('value')

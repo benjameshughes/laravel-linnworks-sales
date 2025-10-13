@@ -124,7 +124,7 @@ readonly class DateRange
 
     public function format(string $format = 'M j, Y'): string
     {
-        return $this->start->format($format) . ' - ' . $this->end->format($format);
+        return $this->start->format($format).' - '.$this->end->format($format);
     }
 
     public function isToday(): bool

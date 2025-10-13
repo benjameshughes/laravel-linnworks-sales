@@ -19,10 +19,10 @@ test('non-admin user is completely blocked from security features', function () 
     $response->assertForbidden();
 
     // 3. Component mount should throw 403
-    $component = new \App\Livewire\Settings\SecuritySettings();
+    $component = new \App\Livewire\Settings\SecuritySettings;
     $this->actingAs($user);
 
-    expect(fn() => $component->mount($settings))
+    expect(fn () => $component->mount($settings))
         ->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
 
     // 4. Navigation item should not appear in blade
@@ -43,10 +43,10 @@ test('admin user has full access to security features', function () {
     $response->assertOk();
 
     // 3. Component mount should succeed
-    $component = new \App\Livewire\Settings\SecuritySettings();
+    $component = new \App\Livewire\Settings\SecuritySettings;
     $this->actingAs($admin);
 
-    expect(fn() => $component->mount($settings))
+    expect(fn () => $component->mount($settings))
         ->not->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
 
     // 4. Navigation item should appear in blade
@@ -60,9 +60,9 @@ test('guest user cannot access security features at all', function () {
     $response->assertRedirect(route('login'));
 
     // 2. Component mount should fail (no authenticated user)
-    $component = new \App\Livewire\Settings\SecuritySettings();
+    $component = new \App\Livewire\Settings\SecuritySettings;
 
-    expect(fn() => $component->mount(app(SettingsService::class)))
+    expect(fn () => $component->mount(app(SettingsService::class)))
         ->toThrow(\Error::class); // Trying to call ->can() on null
 });
 
@@ -73,7 +73,7 @@ test('authorization is enforced on all component actions', function () {
 
     // Admin can perform actions
     $this->actingAs($admin);
-    $component = new \App\Livewire\Settings\SecuritySettings();
+    $component = new \App\Livewire\Settings\SecuritySettings;
     $component->mount($settings);
 
     $component->newDomain = 'example.com';
@@ -82,9 +82,9 @@ test('authorization is enforced on all component actions', function () {
 
     // Non-admin cannot even mount to perform actions
     $this->actingAs($user);
-    $component2 = new \App\Livewire\Settings\SecuritySettings();
+    $component2 = new \App\Livewire\Settings\SecuritySettings;
 
-    expect(fn() => $component2->mount($settings))
+    expect(fn () => $component2->mount($settings))
         ->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
 });
 
@@ -114,9 +114,9 @@ test('multiple authorization layers provide defense in depth', function () {
     expect($response->status())->toBe(403);
 
     // Layer 2: Component authorization
-    $component = new \App\Livewire\Settings\SecuritySettings();
+    $component = new \App\Livewire\Settings\SecuritySettings;
     $this->actingAs($user);
-    expect(fn() => $component->mount(app(SettingsService::class)))
+    expect(fn () => $component->mount(app(SettingsService::class)))
         ->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
 
     // Layer 3: Blade directive (navigation hidden)

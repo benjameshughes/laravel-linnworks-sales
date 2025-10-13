@@ -6,13 +6,13 @@ use App\DataTransferObjects\LinnworksOrder;
 use App\Events\ImportCompleted;
 use App\Events\ImportProgressUpdated;
 use App\Events\ImportStarted;
-use App\Services\LinnworksApiService;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\LinnworksApiService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ImportHistoricalOrders extends Command
 {
@@ -27,9 +27,13 @@ class ImportHistoricalOrders extends Command
     protected $description = 'Import historical processed orders from Linnworks for improved analytics';
 
     private LinnworksApiService $apiService;
+
     private int $totalProcessed = 0;
+
     private int $totalImported = 0;
+
     private int $totalSkipped = 0;
+
     private int $totalErrors = 0;
 
     public function __construct(LinnworksApiService $apiService)
@@ -40,8 +44,9 @@ class ImportHistoricalOrders extends Command
 
     public function handle(): int
     {
-        if (!$this->apiService->isConfigured()) {
+        if (! $this->apiService->isConfigured()) {
             $this->error('Linnworks API is not configured. Please check your credentials.');
+
             return self::FAILURE;
         }
 
@@ -50,6 +55,7 @@ class ImportHistoricalOrders extends Command
             $dateRange = $this->getDateRange();
         } catch (\InvalidArgumentException $exception) {
             $this->error("❌ {$exception->getMessage()}");
+
             return self::FAILURE;
         }
         $batchSize = min((int) $this->option('batch-size'), 200); // Enforce API limit
@@ -64,8 +70,9 @@ class ImportHistoricalOrders extends Command
             ['Rate Limit', '150 requests/minute (auto-managed)'],
         ]);
 
-        if (!$this->option('force') && !$this->confirm('Do you want to continue?')) {
+        if (! $this->option('force') && ! $this->confirm('Do you want to continue?')) {
             $this->info('Import cancelled.');
+
             return self::SUCCESS;
         }
 
@@ -76,9 +83,9 @@ class ImportHistoricalOrders extends Command
 
         // Import orders
         $success = $this->importHistoricalOrders(
-            $dateRange['from'], 
-            $dateRange['to'], 
-            $batchSize, 
+            $dateRange['from'],
+            $dateRange['to'],
+            $batchSize,
             $isDryRun
         );
 
@@ -97,10 +104,10 @@ class ImportHistoricalOrders extends Command
         if ($from && $to) {
             $fromDate = Carbon::parse($from)->startOfDay();
             $toDate = Carbon::parse($to)->endOfDay();
-        } elseif ($from && !$to) {
+        } elseif ($from && ! $to) {
             $fromDate = Carbon::parse($from)->startOfDay();
             $toDate = Carbon::now()->endOfDay();
-        } elseif (!$from && $to) {
+        } elseif (! $from && $to) {
             $toDate = Carbon::parse($to)->endOfDay();
             $fromDate = $toDate->copy()->subDays($days)->startOfDay();
         } else {
@@ -136,33 +143,35 @@ class ImportHistoricalOrders extends Command
     private function testApiConnection(): bool
     {
         $this->info('🔗 Testing API connection...');
-        
-        if (!$this->apiService->testConnection()) {
+
+        if (! $this->apiService->testConnection()) {
             $this->error('❌ Failed to connect to Linnworks API. Please check your credentials and network connection.');
+
             return false;
         }
 
         $this->info('✅ API connection successful');
+
         return true;
     }
 
     private function importHistoricalOrders(Carbon $from, Carbon $to, int $batchSize, bool $isDryRun): bool
     {
         $this->info('📥 Fetching historical orders from Linnworks...');
-        
+
         try {
             $pageNumber = 1;
             $totalOrdersAvailable = 0;
 
             // Get first page to determine total available
             $firstResult = $this->apiService->getProcessedOrders($from, $to, $pageNumber, $batchSize);
-            
+
             $totalOrdersAvailable = $firstResult->totalResults;
-            
+
             if ($totalOrdersAvailable === 0 || $firstResult->orders->isEmpty()) {
                 $this->warn('⚠️  No orders found in the specified date range.');
 
-                if (!$isDryRun) {
+                if (! $isDryRun) {
                     event(new ImportStarted($from, $to, $batchSize, 0));
                     event(new ImportCompleted(
                         totalProcessed: 0,
@@ -178,7 +187,7 @@ class ImportHistoricalOrders extends Command
 
             $this->info("📊 Found {$totalOrdersAvailable} orders to process");
 
-            if (!$isDryRun) {
+            if (! $isDryRun) {
                 event(new ImportStarted($from, $to, $batchSize, $totalOrdersAvailable));
             }
 
@@ -190,9 +199,9 @@ class ImportHistoricalOrders extends Command
             // Process remaining pages if any
             while ($hasMorePages) {
                 $this->info("📄 Processing page {$pageNumber}...");
-                
+
                 $result = $this->apiService->getProcessedOrders($from, $to, $pageNumber, $batchSize);
-                
+
                 if ($result->orders->isEmpty()) {
                     break;
                 }
@@ -202,7 +211,7 @@ class ImportHistoricalOrders extends Command
                 $this->info("✓ Page {$pageNumber} complete ({$result->orders->count()} orders)");
 
                 // Broadcast progress update
-                if (!$isDryRun) {
+                if (! $isDryRun) {
                     event(new ImportProgressUpdated(
                         totalProcessed: $this->totalProcessed,
                         totalImported: $this->totalImported,
@@ -222,12 +231,12 @@ class ImportHistoricalOrders extends Command
             $this->info("✅ Completed processing. Total orders: {$this->totalProcessed}");
 
             // Backfill missing order items
-            if (!$isDryRun) {
+            if (! $isDryRun) {
                 $this->backfillMissingItems($from, $to);
             }
 
             // Broadcast import completed event
-            if (!$isDryRun) {
+            if (! $isDryRun) {
                 event(new ImportCompleted(
                     totalProcessed: $this->totalProcessed,
                     totalImported: $this->totalImported,
@@ -248,14 +257,14 @@ class ImportHistoricalOrders extends Command
             ]);
 
             // Broadcast import failed event
-            if (!$isDryRun) {
-            event(new ImportCompleted(
-                totalProcessed: $this->totalProcessed,
-                totalImported: $this->totalImported,
-                totalSkipped: $this->totalSkipped,
-                totalErrors: $this->totalErrors,
-                success: false
-            ));
+            if (! $isDryRun) {
+                event(new ImportCompleted(
+                    totalProcessed: $this->totalProcessed,
+                    totalImported: $this->totalImported,
+                    totalSkipped: $this->totalSkipped,
+                    totalErrors: $this->totalErrors,
+                    success: false
+                ));
             }
 
             return false;
@@ -269,11 +278,12 @@ class ImportHistoricalOrders extends Command
             $orderData = $order instanceof LinnworksOrder
                 ? $order->toArray()
                 : (array) $order;
-            
+
             try {
                 if ($isDryRun) {
                     $this->line("  [DRY RUN] Would import: {$orderData['order_number']} ({$orderData['received_date']})");
                     $this->totalImported++;
+
                     continue;
                 }
 
@@ -289,18 +299,19 @@ class ImportHistoricalOrders extends Command
                     if ($this->totalProcessed % 50 === 0) {
                         $this->line("  🔄  Updated: {$orderData['order_number']}");
                     }
+
                     continue;
                 }
 
                 // Import new order and its items
                 $this->importOrderAndItems($orderData);
                 $this->totalImported++;
-                
+
                 if ($this->totalProcessed % 25 === 0) {
                     $this->info("📈 Progress: {$this->totalProcessed} processed, {$this->totalImported} imported, {$this->totalSkipped} skipped");
 
                     // Broadcast progress update every 25 orders
-                    if (!$isDryRun) {
+                    if (! $isDryRun) {
                         event(new ImportProgressUpdated(
                             totalProcessed: $this->totalProcessed,
                             totalImported: $this->totalImported,
@@ -374,7 +385,7 @@ class ImportHistoricalOrders extends Command
             ]);
 
             // Create order items
-            if (!empty($orderData['items'])) {
+            if (! empty($orderData['items'])) {
                 foreach ($orderData['items'] as $itemData) {
                     OrderItem::create([
                         'order_id' => $order->id,
@@ -436,6 +447,7 @@ class ImportHistoricalOrders extends Command
 
         if ($totalWithoutItems === 0) {
             $this->info('✨ All orders already have items!');
+
             return;
         }
 
@@ -454,6 +466,7 @@ class ImportHistoricalOrders extends Command
 
             if (empty($orderIds)) {
                 $progressBar->advance($chunk->count());
+
                 continue;
             }
 
@@ -468,12 +481,14 @@ class ImportHistoricalOrders extends Command
                             $orderId = is_array($order)
                                 ? ($order['GeneralInfo']['pkOrderID'] ?? null)
                                 : null;
+
                             return $orderId === $localOrder->linnworks_order_id;
                         });
 
-                        if (!$detailedOrder) {
+                        if (! $detailedOrder) {
                             $skipped++;
                             $progressBar->advance();
+
                             continue;
                         }
 
@@ -482,6 +497,7 @@ class ImportHistoricalOrders extends Command
                         if (empty($items)) {
                             $skipped++;
                             $progressBar->advance();
+
                             continue;
                         }
 
@@ -492,7 +508,7 @@ class ImportHistoricalOrders extends Command
                                 $itemTitle = $itemData['ItemTitle'] ?? null;
 
                                 // If no item title, try to get it from Product model
-                                if (empty($itemTitle) && !empty($sku)) {
+                                if (empty($itemTitle) && ! empty($sku)) {
                                     $product = \App\Models\Product::where('sku', $sku)->first();
                                     $itemTitle = $product?->title ?? "Product {$sku}";
                                 }
@@ -558,9 +574,9 @@ class ImportHistoricalOrders extends Command
         if ($backfilled > 0) {
             $this->info("✅ Backfilled items for {$backfilled} orders!");
             $this->info('📈 Updated Statistics:');
-            $this->line('   Total OrderItem records: ' . number_format(OrderItem::count()));
-            $this->line('   Orders with items: ' . number_format(Order::whereHas('orderItems')->count()));
-            $this->line('   Orders without items: ' . number_format(Order::whereDoesntHave('orderItems')->count()));
+            $this->line('   Total OrderItem records: '.number_format(OrderItem::count()));
+            $this->line('   Orders with items: '.number_format(Order::whereHas('orderItems')->count()));
+            $this->line('   Orders without items: '.number_format(Order::whereDoesntHave('orderItems')->count()));
         }
     }
 

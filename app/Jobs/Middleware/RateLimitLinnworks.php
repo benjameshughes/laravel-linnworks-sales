@@ -29,7 +29,7 @@ class RateLimitLinnworks
 
         if ($currentCount >= $maxRequests) {
             // Calculate remaining time in current window
-            $cacheExpiry = Cache::get($rateLimitKey . ':expiry');
+            $cacheExpiry = Cache::get($rateLimitKey.':expiry');
             $waitTime = $cacheExpiry ? max(1, $cacheExpiry - time()) : 1;
 
             Log::info('Linnworks API rate limit reached, releasing job back to queue', [
@@ -50,7 +50,7 @@ class RateLimitLinnworks
         if ($currentCount === 0) {
             $expiryTime = time() + $windowSeconds;
             Cache::put($rateLimitKey, $newCount, $windowSeconds);
-            Cache::put($rateLimitKey . ':expiry', $expiryTime, $windowSeconds);
+            Cache::put($rateLimitKey.':expiry', $expiryTime, $windowSeconds);
         } else {
             // Just increment without changing expiry
             Cache::put($rateLimitKey, $newCount, $windowSeconds);

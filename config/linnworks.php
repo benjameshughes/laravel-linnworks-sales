@@ -47,7 +47,7 @@ return [
     | Configuration for data synchronization behavior.
     |
     */
-    
+
     'sync' => [
         'batch_size' => env('LINNWORKS_SYNC_BATCH_SIZE', 100),
         'delay_between_requests' => env('LINNWORKS_SYNC_DELAY', 100), // milliseconds
@@ -56,7 +56,7 @@ return [
         'max_open_orders' => env('LINNWORKS_SYNC_MAX_OPEN_ORDERS', 1000),
         'max_processed_orders' => env('LINNWORKS_SYNC_MAX_PROCESSED_ORDERS', 5000),
     ],
-    
+
     /*
     |--------------------------------------------------------------------------
     | Data Storage Configuration
@@ -65,7 +65,7 @@ return [
     | Configuration for how data is stored locally.
     |
     */
-    
+
     'storage' => [
         'store_raw_data' => env('LINNWORKS_STORE_RAW_DATA', true),
         'cleanup_old_data' => env('LINNWORKS_CLEANUP_OLD_DATA', false),

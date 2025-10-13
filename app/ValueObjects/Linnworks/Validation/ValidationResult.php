@@ -12,10 +12,9 @@ use JsonSerializable;
 final readonly class ValidationResult implements JsonSerializable
 {
     /**
-     * @param bool $isValid
-     * @param array<string, array<string>> $errors Keyed by field name, values are arrays of error messages
-     * @param array<string, mixed> $warnings Non-fatal validation warnings
-     * @param array<string, mixed> $metadata Additional validation metadata
+     * @param  array<string, array<string>>  $errors  Keyed by field name, values are arrays of error messages
+     * @param  array<string, mixed>  $warnings  Non-fatal validation warnings
+     * @param  array<string, mixed>  $metadata  Additional validation metadata
      */
     private function __construct(
         public bool $isValid,
@@ -40,7 +39,7 @@ final readonly class ValidationResult implements JsonSerializable
     /**
      * Create a failed validation result
      *
-     * @param array<string, string|array<string>> $errors
+     * @param  array<string, string|array<string>>  $errors
      */
     public static function failed(array $errors, array $warnings = [], array $metadata = []): self
     {
@@ -76,7 +75,7 @@ final readonly class ValidationResult implements JsonSerializable
      */
     public function failed(): bool
     {
-        return !$this->isValid;
+        return ! $this->isValid;
     }
 
     /**
@@ -92,7 +91,7 @@ final readonly class ValidationResult implements JsonSerializable
      */
     public function hasWarnings(): bool
     {
-        return !empty($this->warnings);
+        return ! empty($this->warnings);
     }
 
     /**
@@ -108,6 +107,7 @@ final readonly class ValidationResult implements JsonSerializable
                 $messages[] = "{$field}: {$error}";
             }
         }
+
         return $messages;
     }
 
@@ -126,7 +126,7 @@ final readonly class ValidationResult implements JsonSerializable
      */
     public function hasFieldError(string $field): bool
     {
-        return isset($this->errors[$field]) && !empty($this->errors[$field]);
+        return isset($this->errors[$field]) && ! empty($this->errors[$field]);
     }
 
     /**
@@ -141,7 +141,7 @@ final readonly class ValidationResult implements JsonSerializable
         $firstField = array_key_first($this->errors);
         $fieldErrors = $this->errors[$firstField];
 
-        return !empty($fieldErrors) ? $fieldErrors[0] : null;
+        return ! empty($fieldErrors) ? $fieldErrors[0] : null;
     }
 
     /**
@@ -207,10 +207,10 @@ final readonly class ValidationResult implements JsonSerializable
     {
         if ($this->isValid) {
             return $this->hasWarnings()
-                ? 'Valid with ' . count($this->warnings) . ' warning(s)'
+                ? 'Valid with '.count($this->warnings).' warning(s)'
                 : 'Valid';
         }
 
-        return 'Invalid: ' . implode(', ', $this->getErrorMessages());
+        return 'Invalid: '.implode(', ', $this->getErrorMessages());
     }
 }

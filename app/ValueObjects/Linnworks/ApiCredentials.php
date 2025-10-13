@@ -40,8 +40,8 @@ readonly class ApiCredentials implements JsonSerializable
 
     public function isValid(): bool
     {
-        return !empty($this->applicationId) 
-            && !empty($this->applicationSecret) 
-            && !empty($this->redirectUri);
+        return ! empty($this->applicationId)
+            && ! empty($this->applicationSecret)
+            && ! empty($this->redirectUri);
     }
 }

@@ -17,6 +17,7 @@ final class ImportProducts
 
         if ($productsCollection->isEmpty()) {
             Log::info('ImportProducts: no products to import');
+
             return [
                 'processed' => 0,
                 'created' => 0,
@@ -45,8 +46,9 @@ final class ImportProducts
                     $linnworksId = $productArray['StockItemId'] ?? null;
                     $sku = $productArray['ItemNumber'] ?? null;
 
-                    if (!$linnworksId && !$sku) {
+                    if (! $linnworksId && ! $sku) {
                         $counts['skipped']++;
+
                         continue;
                     }
 
@@ -97,7 +99,7 @@ final class ImportProducts
             $existingProduct = Product::where('linnworks_id', $linnworksId)->first();
         }
 
-        if (!$existingProduct && $sku) {
+        if (! $existingProduct && $sku) {
             $existingProduct = Product::where('sku', $sku)->first();
         }
 

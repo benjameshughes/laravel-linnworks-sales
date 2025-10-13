@@ -3,12 +3,11 @@
 namespace App\Services\Linnworks\Orders;
 
 use App\Models\LinnworksConnection;
+use App\Services\Linnworks\Auth\SessionManager;
 use App\Services\Linnworks\Concerns\HandlesApiRetries;
 use App\Services\Linnworks\Core\LinnworksClient;
-use App\Services\Linnworks\Auth\SessionManager;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -40,8 +39,9 @@ class OpenOrdersService
     ): Collection {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             Log::error('No valid session token for date-filtered open orders', ['user_id' => $userId]);
+
             return collect();
         }
 
@@ -144,8 +144,9 @@ class OpenOrdersService
     ): Collection {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             Log::error('No valid session token for all open orders', ['user_id' => $userId]);
+
             return collect();
         }
 
@@ -171,8 +172,9 @@ class OpenOrdersService
         // Step 1: Get view stats to determine total orders and pages needed
         $stats = $this->getViewStats($userId, $viewId, $locationId);
 
-        if (!$stats) {
+        if (! $stats) {
             Log::warning('Failed to get view stats', ['user_id' => $userId, 'view_id' => $viewId]);
+
             return collect();
         }
 
@@ -214,6 +216,7 @@ class OpenOrdersService
                     'page' => $page,
                     'error' => $response->error,
                 ]);
+
                 continue;
             }
 
@@ -248,7 +251,7 @@ class OpenOrdersService
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             return null;
         }
 
@@ -269,6 +272,7 @@ class OpenOrdersService
                             'view_id' => $viewId,
                             'error' => $response->error,
                         ]);
+
                         return null;
                     }
 
@@ -277,12 +281,13 @@ class OpenOrdersService
                     // Response is an array, find the matching view
                     $viewStats = $data->first(fn ($stat) => ($stat['ViewId'] ?? null) === $viewId);
 
-                    if (!$viewStats) {
+                    if (! $viewStats) {
                         Log::warning('View stats not found in response', [
                             'user_id' => $userId,
                             'view_id' => $viewId,
                             'available_views' => $data->pluck('ViewId')->toArray(),
                         ]);
+
                         return null;
                     }
 
@@ -297,6 +302,7 @@ class OpenOrdersService
                 'view_id' => $viewId,
                 'exception' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -313,8 +319,9 @@ class OpenOrdersService
     ): Collection {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             Log::error('No valid session token for open order IDs', ['user_id' => $userId]);
+
             return collect();
         }
 
@@ -424,12 +431,12 @@ class OpenOrdersService
 
             $data = $response->getData();
             $pageIds = collect($data->get('Data', []))
-                ->filter(fn ($id) => !is_null($id))
+                ->filter(fn ($id) => ! is_null($id))
                 ->map(fn ($id) => (string) $id);
 
             if ($pageIds->isEmpty() && $data->has('Results')) {
                 $pageIds = collect($data->get('Results', []))
-                    ->filter(fn ($id) => !is_null($id))
+                    ->filter(fn ($id) => ! is_null($id))
                     ->map(fn ($id) => (string) $id);
             }
 
@@ -475,8 +482,8 @@ class OpenOrdersService
     public function getOpenOrderDetails(int $userId, string $orderId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -498,14 +505,15 @@ class OpenOrdersService
     public function getMultipleOpenOrderDetails(int $userId, array $orderIds): Collection
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             Log::error('No valid session token for multiple open order details', ['user_id' => $userId]);
+
             return collect();
         }
 
         $orderDetails = collect();
-        
+
         Log::info('Fetching multiple open order details', [
             'user_id' => $userId,
             'order_count' => count($orderIds),
@@ -513,7 +521,7 @@ class OpenOrdersService
 
         // Process in batches to avoid overwhelming the API
         $chunks = array_chunk($orderIds, 10);
-        
+
         foreach ($chunks as $chunkIndex => $chunk) {
             $response = $this->client->makeRequest(
                 ApiRequest::post('OpenOrders/GetOpenOrdersDetails', [
@@ -528,6 +536,7 @@ class OpenOrdersService
                     'chunk' => $chunkIndex + 1,
                     'error' => $response->error,
                 ]);
+
                 continue;
             }
 
@@ -566,7 +575,7 @@ class OpenOrdersService
     public function getOpenOrdersByChannel(int $userId, string $channel): Collection
     {
         $allOrders = $this->getAllOpenOrders($userId);
-        
+
         // Filter by channel
         $channelOrders = $allOrders->filter(function ($order) use ($channel) {
             return isset($order['Channel']) && $order['Channel'] === $channel;
@@ -588,7 +597,7 @@ class OpenOrdersService
     public function getOpenOrdersStats(int $userId): array
     {
         $orders = $this->getAllOpenOrders($userId);
-        
+
         if ($orders->isEmpty()) {
             return [
                 'total_orders' => 0,
@@ -601,7 +610,7 @@ class OpenOrdersService
 
         $totalValue = $orders->sum('TotalValue');
         $totalOrders = $orders->count();
-        
+
         $channelStats = $orders->groupBy('Channel')
             ->map(function ($channelOrders) {
                 return [
@@ -636,8 +645,8 @@ class OpenOrdersService
     public function processOrder(int $userId, string $orderId): ApiResponse
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
-        if (!$sessionToken) {
+
+        if (! $sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
@@ -708,8 +717,9 @@ class OpenOrdersService
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             Log::error('No valid session token for order identifiers', ['user_id' => $userId]);
+
             return collect();
         }
 
@@ -727,6 +737,7 @@ class OpenOrdersService
                 'order_count' => count($orderIds),
                 'error' => $response->error,
             ]);
+
             return collect();
         }
 

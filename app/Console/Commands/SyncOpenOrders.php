@@ -40,7 +40,8 @@ class SyncOpenOrders extends Command
 
             return 0;
         } catch (\Exception $e) {
-            $this->error('Failed to dispatch sync job: ' . $e->getMessage());
+            $this->error('Failed to dispatch sync job: '.$e->getMessage());
+
             return 1;
         }
     }

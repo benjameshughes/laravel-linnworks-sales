@@ -70,7 +70,7 @@ readonly class ProductIdentifier implements Arrayable
             $errors[] = 'Identifier value is required';
         }
 
-        if (!$this->isValid()) {
+        if (! $this->isValid()) {
             $errors[] = sprintf(
                 'Invalid %s format for value: %s',
                 $this->type->value,

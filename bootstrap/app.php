@@ -14,7 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->validateCsrfTokens(except: [
-            'linnworks/callback'
+            'linnworks/callback',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

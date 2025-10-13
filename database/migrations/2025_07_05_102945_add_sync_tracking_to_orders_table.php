@@ -18,10 +18,10 @@ return new class extends Migration
             $table->boolean('has_refund')->default(false)->after('is_open');
             $table->string('sync_status')->default('synced')->after('has_refund');
             $table->json('sync_metadata')->nullable()->after('sync_status');
-            
+
             // Add soft deletes for data integrity
             $table->softDeletes();
-            
+
             // Add composite indexes for better query performance
             $table->index(['is_open', 'last_synced_at']);
             $table->index(['status', 'has_refund']);
@@ -39,10 +39,10 @@ return new class extends Migration
                 'is_open',
                 'has_refund',
                 'sync_status',
-                'sync_metadata'
+                'sync_metadata',
             ]);
             $table->dropSoftDeletes();
-            
+
             // Drop indexes
             $table->dropIndex(['is_open', 'last_synced_at']);
             $table->dropIndex(['status', 'has_refund']);

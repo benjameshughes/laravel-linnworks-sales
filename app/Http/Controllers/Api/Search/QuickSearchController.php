@@ -21,7 +21,7 @@ class QuickSearchController extends Controller
     {
         $searchRequest = SearchRequest::fromRequest($request);
         $response = $this->searchApiService->quickSearch($searchRequest);
-        
+
         return $response->toJsonResponse();
     }
 }

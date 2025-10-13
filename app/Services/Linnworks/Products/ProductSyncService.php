@@ -6,7 +6,6 @@ namespace App\Services\Linnworks\Products;
 
 use App\Models\Product;
 use App\Models\SyncCheckpoint;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -53,6 +52,7 @@ class ProductSyncService
             if ($products->isEmpty()) {
                 Log::info('No products found to sync');
                 $checkpoint->completeSync(0, 0, 0, 0);
+
                 return ['synced' => 0, 'created' => 0, 'updated' => 0, 'failed' => 0];
             }
 
@@ -229,7 +229,7 @@ class ProductSyncService
             ->where('source', 'linnworks')
             ->first();
 
-        if (!$checkpoint) {
+        if (! $checkpoint) {
             return [
                 'never_synced' => true,
                 'last_sync' => null,
@@ -307,6 +307,7 @@ class ProductSyncService
 
         if ($items->isEmpty()) {
             Log::warning('Product not found in Linnworks', ['sku' => $sku]);
+
             return null;
         }
 

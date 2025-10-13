@@ -14,7 +14,7 @@ beforeEach(function () {
 });
 
 test('admin user can mount component', function () {
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
 
     $this->actingAs($this->admin);
 
@@ -27,17 +27,17 @@ test('admin user can mount component', function () {
 });
 
 test('non-admin user cannot mount component', function () {
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
 
     $this->actingAs($this->user);
 
     // Should throw 403 exception
-    expect(fn() => $component->mount(app(SettingsService::class)))
+    expect(fn () => $component->mount(app(SettingsService::class)))
         ->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
 });
 
 test('can add allowed domain', function () {
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
     $this->actingAs($this->admin);
     $component->mount(app(SettingsService::class));
 
@@ -53,7 +53,7 @@ test('can add allowed domain', function () {
 test('can remove allowed domain', function () {
     $this->settings->set('security.allowed_domains', ['company1.com', 'company2.com']);
 
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
     $this->actingAs($this->admin);
     $component->mount(app(SettingsService::class));
 
@@ -66,7 +66,7 @@ test('can remove allowed domain', function () {
 });
 
 test('domain validation rejects invalid domains', function () {
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
     $this->actingAs($this->admin);
     $component->mount(app(SettingsService::class));
 
@@ -83,7 +83,7 @@ test('domain validation rejects invalid domains', function () {
 });
 
 test('can add individual allowed email', function () {
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
     $this->actingAs($this->admin);
     $component->mount(app(SettingsService::class));
 
@@ -99,7 +99,7 @@ test('can add individual allowed email', function () {
 test('can remove individual allowed email', function () {
     $this->settings->set('security.allowed_emails', ['email1@example.com', 'email2@example.com']);
 
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
     $this->actingAs($this->admin);
     $component->mount(app(SettingsService::class));
 
@@ -112,7 +112,7 @@ test('can remove individual allowed email', function () {
 });
 
 test('email validation rejects invalid emails', function () {
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
     $this->actingAs($this->admin);
     $component->mount(app(SettingsService::class));
 
@@ -128,7 +128,7 @@ test('email validation rejects invalid emails', function () {
 });
 
 test('domains are stored in lowercase', function () {
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
     $this->actingAs($this->admin);
     $component->mount(app(SettingsService::class));
 
@@ -142,7 +142,7 @@ test('domains are stored in lowercase', function () {
 });
 
 test('emails are stored in lowercase', function () {
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
     $this->actingAs($this->admin);
     $component->mount(app(SettingsService::class));
 
@@ -158,7 +158,7 @@ test('emails are stored in lowercase', function () {
 test('duplicate domains are not added', function () {
     $this->settings->set('security.allowed_domains', ['existing.com']);
 
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
     $this->actingAs($this->admin);
     $component->mount(app(SettingsService::class));
 
@@ -173,7 +173,7 @@ test('duplicate domains are not added', function () {
 test('duplicate emails are not added', function () {
     $this->settings->set('security.allowed_emails', ['existing@example.com']);
 
-    $component = new SecuritySettings();
+    $component = new SecuritySettings;
     $this->actingAs($this->admin);
     $component->mount(app(SettingsService::class));
 

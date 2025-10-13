@@ -13,13 +13,19 @@ class MultiSelect extends Component
     public array $selected = [];
 
     public array $options = [];
+
     public string $placeholder = 'Select options...';
+
     public ?string $label = null;
+
     public bool $searchable = false;
+
     public ?string $emptyMessage = 'No options available';
+
     public int $maxHeight = 200;
-    
+
     public bool $isOpen = false;
+
     public string $search = '';
 
     protected $listeners = ['close-dropdowns' => 'close'];
@@ -67,7 +73,7 @@ class MultiSelect extends Component
     public function toggleOption(string $value): void
     {
         if (in_array($value, $this->selected)) {
-            $this->selected = array_values(array_filter($this->selected, fn($item) => $item !== $value));
+            $this->selected = array_values(array_filter($this->selected, fn ($item) => $item !== $value));
         } else {
             $this->selected[] = $value;
         }
@@ -87,12 +93,13 @@ class MultiSelect extends Component
 
     public function getFilteredOptions(): array
     {
-        if (!$this->searchable || empty($this->search)) {
+        if (! $this->searchable || empty($this->search)) {
             return $this->options;
         }
 
         return array_filter($this->options, function ($option) {
             $label = is_array($option) ? ($option['label'] ?? $option['value']) : $option;
+
             return str_contains(strtolower($label), strtolower($this->search));
         });
     }
@@ -106,6 +113,7 @@ class MultiSelect extends Component
                     return is_array($option) ? ($option['label'] ?? $option['value']) : $option;
                 }
             }
+
             return $value;
         }, $this->selected);
     }
@@ -113,19 +121,19 @@ class MultiSelect extends Component
     public function getDisplayText(): string
     {
         $count = count($this->selected);
-        
+
         if ($count === 0) {
             return $this->placeholder;
         }
-        
+
         if ($count === 1) {
             return $this->getSelectedLabels()[0];
         }
-        
+
         if ($count <= 3) {
             return implode(', ', $this->getSelectedLabels());
         }
-        
+
         return "{$count} selected";
     }
 

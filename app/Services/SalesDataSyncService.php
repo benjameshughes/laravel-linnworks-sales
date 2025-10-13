@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Channel;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Channel;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -19,8 +19,8 @@ class SalesDataSyncService
      * Sync sales data from Linnworks
      */
     public function syncSalesData(
-        Carbon $from = null,
-        Carbon $to = null,
+        ?Carbon $from = null,
+        ?Carbon $to = null,
         bool $forceUpdate = false
     ): array {
         $from = $from ?? Carbon::now()->subDays(config('linnworks.sync.default_date_range', 30));
@@ -73,7 +73,7 @@ class SalesDataSyncService
 
             $stats['errors']++;
             $stats['end_time'] = now();
-            
+
             return $stats;
         }
     }
@@ -90,7 +90,7 @@ class SalesDataSyncService
             // Check if order already exists
             $existingOrder = Order::where('linnworks_order_id', $orderData['pkOrderID'])->first();
 
-            if ($existingOrder && !$forceUpdate) {
+            if ($existingOrder && ! $forceUpdate) {
                 return; // Skip if order exists and not forcing update
             }
 
@@ -258,7 +258,7 @@ class SalesDataSyncService
      */
     private function parseDate($date): ?Carbon
     {
-        if (!$date) {
+        if (! $date) {
             return null;
         }
 
@@ -270,6 +270,7 @@ class SalesDataSyncService
             return Carbon::parse($date);
         } catch (\Exception $e) {
             Log::warning('Failed to parse date', ['date' => $date, 'error' => $e->getMessage()]);
+
             return null;
         }
     }

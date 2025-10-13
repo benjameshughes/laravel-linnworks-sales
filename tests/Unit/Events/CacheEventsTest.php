@@ -97,7 +97,7 @@ test('CacheWarmingCompleted implements ShouldBroadcastNow', function () {
 });
 
 test('CacheCleared broadcasts on cache-management channel', function () {
-    $event = new CacheCleared();
+    $event = new CacheCleared;
 
     $channels = $event->broadcastOn();
 
@@ -106,7 +106,7 @@ test('CacheCleared broadcasts on cache-management channel', function () {
 });
 
 test('CacheCleared broadcasts with correct data', function () {
-    $event = new CacheCleared();
+    $event = new CacheCleared;
 
     $data = $event->broadcastWith();
 
@@ -115,7 +115,7 @@ test('CacheCleared broadcasts with correct data', function () {
 });
 
 test('CacheCleared implements ShouldBroadcastNow', function () {
-    $event = new CacheCleared();
+    $event = new CacheCleared;
 
     expect($event)->toBeInstanceOf(ShouldBroadcastNow::class);
 });
@@ -124,7 +124,7 @@ test('all cache events use the same channel', function () {
     $started = new CacheWarmingStarted(['7d']);
     $warmed = new CachePeriodWarmed('7d', 100, 5000.00, 250);
     $completed = new CacheWarmingCompleted(3);
-    $cleared = new CacheCleared();
+    $cleared = new CacheCleared;
 
     expect($started->broadcastOn()->name)->toBe('cache-management')
         ->and($warmed->broadcastOn()->name)->toBe('cache-management')

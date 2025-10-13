@@ -25,7 +25,7 @@ return new class extends Migration
             $table->json('metadata')->nullable(); // Store additional sync details
             $table->text('error_message')->nullable();
             $table->timestamps();
-            
+
             $table->index(['sync_type', 'status']);
             $table->index('started_at');
         });

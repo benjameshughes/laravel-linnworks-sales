@@ -10,8 +10,8 @@ readonly class ApiRequest implements JsonSerializable
     public function __construct(
         public string $endpoint,
         public string $method = 'GET',
-        public Collection $parameters = new Collection(),
-        public Collection $headers = new Collection(),
+        public Collection $parameters = new Collection,
+        public Collection $headers = new Collection,
         public int $timeout = 30,
         public bool $requiresAuth = true,
         public bool $asJson = false,
@@ -124,6 +124,6 @@ readonly class ApiRequest implements JsonSerializable
 
     public function getCacheKey(): string
     {
-        return md5($this->endpoint . serialize($this->parameters->toArray()));
+        return md5($this->endpoint.serialize($this->parameters->toArray()));
     }
 }

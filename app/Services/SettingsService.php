@@ -19,6 +19,7 @@ class SettingsService
     {
         return Cache::remember("setting:{$key}", self::CACHE_TTL, function () use ($key, $default) {
             $setting = AppSetting::where('key', $key)->first();
+
             return $setting ? $setting->value : $default;
         });
     }
@@ -85,6 +86,7 @@ class SettingsService
     public function delete(string $key): bool
     {
         Cache::forget("setting:{$key}");
+
         return AppSetting::where('key', $key)->delete() > 0;
     }
 

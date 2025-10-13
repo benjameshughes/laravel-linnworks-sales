@@ -23,6 +23,7 @@ class SalesMetrics extends MetricBase
      * Cache for daily sales data to avoid recalculating for every chart method
      */
     private ?Collection $dailySalesCache = null;
+
     private ?string $dailySalesCacheKey = null;
 
     public function __construct(Collection $data)
@@ -54,6 +55,7 @@ class SalesMetrics extends MetricBase
         if ($this->totalOrders() === 0) {
             return 0.0;
         }
+
         return $this->totalRevenue() / $this->totalOrders();
     }
 
@@ -153,7 +155,7 @@ class SalesMetrics extends MetricBase
         $totalRevenue = $this->totalRevenue();
 
         return $this->data
-            ->groupBy(fn ($order) => $order->channel_name . '|' . ($order->sub_source ?? ''))
+            ->groupBy(fn ($order) => $order->channel_name.'|'.($order->sub_source ?? ''))
             ->map(function (Collection $channelOrders, string $groupKey) use ($totalRevenue) {
                 [$channel, $subsource] = explode('|', $groupKey, 2);
                 $channelRevenue = $channelOrders->sum(fn ($order) => $this->calculateOrderRevenue($order));
@@ -225,7 +227,7 @@ class SalesMetrics extends MetricBase
                 $pricePerUnit = isset($item['price_per_unit']) ? (float) $item['price_per_unit'] : 0.0;
                 $revenue = $lineTotal > 0 ? $lineTotal : $pricePerUnit * $quantity;
 
-                if (!isset($grouped[$sku])) {
+                if (! isset($grouped[$sku])) {
                     $grouped[$sku] = [
                         'sku' => $sku,
                         'title' => $item['item_title'] ?? null,
@@ -243,7 +245,7 @@ class SalesMetrics extends MetricBase
                 }
 
                 // Prefer non-null titles
-                if (!$grouped[$sku]['title'] && isset($item['item_title'])) {
+                if (! $grouped[$sku]['title'] && isset($item['item_title'])) {
                     $grouped[$sku]['title'] = $item['item_title'];
                 }
             }
@@ -270,18 +272,18 @@ class SalesMetrics extends MetricBase
 
         // Fetch product titles from database
         $skus = array_keys($grouped);
-        if (!empty($skus)) {
+        if (! empty($skus)) {
             $products = \App\Models\Product::whereIn('sku', $skus)
                 ->pluck('title', 'sku');
 
             $result = $result->map(function (Collection $product) use ($products) {
                 $sku = $product->get('sku');
 
-                if (!$product->get('title') && isset($products[$sku])) {
+                if (! $product->get('title') && isset($products[$sku])) {
                     $product->put('title', $products[$sku]);
                 }
 
-                if (!$product->get('title')) {
+                if (! $product->get('title')) {
                     $product->put('title', 'Unknown Product');
                 }
 
@@ -301,7 +303,7 @@ class SalesMetrics extends MetricBase
     public function dailySalesData(string $period, ?string $startDate = null, ?string $endDate = null): Collection
     {
         // Create cache key from parameters
-        $cacheKey = md5($period . $startDate . $endDate);
+        $cacheKey = md5($period.$startDate.$endDate);
 
         // Return cached result if available
         if ($this->dailySalesCacheKey === $cacheKey && $this->dailySalesCache !== null) {
@@ -330,6 +332,7 @@ class SalesMetrics extends MetricBase
             }
 
             $dates = collect(CarbonPeriod::create($start, '1 day', $end));
+
             return $this->buildDailyBreakdownBatch($dates);
         }
 
@@ -429,7 +432,7 @@ class SalesMetrics extends MetricBase
 
         // Single pass through orders - bucket by date
         foreach ($this->data as $order) {
-            if (!$order->received_date) {
+            if (! $order->received_date) {
                 continue;
             }
 
@@ -438,7 +441,7 @@ class SalesMetrics extends MetricBase
                 ? $order->received_date->format('Y-m-d')
                 : Carbon::parse($order->received_date)->format('Y-m-d');
 
-            if (!isset($dailyData[$dateKey])) {
+            if (! isset($dailyData[$dateKey])) {
                 continue;
             }
 
@@ -462,6 +465,7 @@ class SalesMetrics extends MetricBase
         // Calculate avg_order_value for each day and convert to Collection
         return collect($dailyData)->map(function (array $day) {
             $day['avg_order_value'] = $day['orders'] > 0 ? $day['revenue'] / $day['orders'] : 0;
+
             return collect($day);
         })->values();
     }
@@ -469,7 +473,7 @@ class SalesMetrics extends MetricBase
     protected function buildDailyBreakdown(Carbon $date): Collection
     {
         $dayOrders = $this->data->filter(function ($order) use ($date) {
-            if (!$order->received_date) {
+            if (! $order->received_date) {
                 return false;
             }
 
@@ -549,11 +553,11 @@ class SalesMetrics extends MetricBase
             ->pluck('channel_name')
             ->filter()
             ->unique()
-            ->reject(fn($channel) => $channel === 'DIRECT')
+            ->reject(fn ($channel) => $channel === 'DIRECT')
             ->sort()
-            ->map(fn($channel) => collect([
+            ->map(fn ($channel) => collect([
                 'name' => $channel,
-                'label' => ucfirst($channel)
+                'label' => ucfirst($channel),
             ]))
             ->values();
     }

@@ -25,7 +25,6 @@ class SyncCompleted implements ShouldBroadcastNow
         return new Channel('sync-progress');
     }
 
-
     public function broadcastWith(): array
     {
         return [

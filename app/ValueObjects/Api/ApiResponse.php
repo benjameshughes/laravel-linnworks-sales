@@ -45,7 +45,7 @@ readonly class ApiResponse implements JsonSerializable
 
     public function isError(): bool
     {
-        return !$this->isSuccess();
+        return ! $this->isSuccess();
     }
 
     public function jsonSerialize(): array

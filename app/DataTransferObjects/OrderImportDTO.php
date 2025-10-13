@@ -69,7 +69,7 @@ readonly class OrderImportDTO
             'subsource' => $linnworks->subsource,
             'order_status' => $linnworks->orderStatus,
             'location_id' => $linnworks->locationId,
-            'is_open' => !$isProcessed,
+            'is_open' => ! $isProcessed,
             'is_paid' => $linnworks->isPaid,
             'paid_date' => $linnworks->paidDate?->toDateTimeString(),
             'is_cancelled' => $linnworks->isCancelled,
@@ -82,7 +82,7 @@ readonly class OrderImportDTO
                 'order_status' => $linnworks->orderStatus,
                 'location_id' => $linnworks->locationId,
             ]),
-            'items' => json_encode($linnworks->items->map(fn($item) => [
+            'items' => json_encode($linnworks->items->map(fn ($item) => [
                 'item_id' => $item->itemId,
                 'sku' => $item->sku,
                 'quantity' => $item->quantity,
@@ -103,7 +103,7 @@ readonly class OrderImportDTO
         ];
 
         // Order items (flat array for DB::insert)
-        $itemsData = $linnworks->items->map(fn($item) => [
+        $itemsData = $linnworks->items->map(fn ($item) => [
             'order_id' => null, // Will be set after order is inserted
             'linnworks_order_id' => $linnworks->orderId,
             'item_id' => $item->itemId,
@@ -145,7 +145,7 @@ readonly class OrderImportDTO
         ] : null;
 
         // Notes (flat array for DB::insert)
-        $notesData = $linnworks->notes->map(fn($note) => [
+        $notesData = $linnworks->notes->map(fn ($note) => [
             'order_id' => null, // Will be set after order is inserted
             'linnworks_order_id' => $linnworks->orderId,
             'linnworks_note_id' => $note['NoteId'] ?? $note['note_id'] ?? null,
@@ -160,7 +160,7 @@ readonly class OrderImportDTO
         ])->toArray();
 
         // Properties (flat array for DB::insert)
-        $propertiesData = $linnworks->extendedProperties->map(fn($property) => [
+        $propertiesData = $linnworks->extendedProperties->map(fn ($property) => [
             'order_id' => null, // Will be set after order is inserted
             'linnworks_order_id' => $linnworks->orderId,
             'property_type' => $property['PropertyType'] ?? $property['property_type'] ?? '',
@@ -171,7 +171,7 @@ readonly class OrderImportDTO
         ])->toArray();
 
         // Identifiers (flat array for DB::insert)
-        $identifiersData = $linnworks->identifiers->map(fn($identifier) => [
+        $identifiersData = $linnworks->identifiers->map(fn ($identifier) => [
             'order_id' => null, // Will be set after order is inserted
             'linnworks_order_id' => $linnworks->orderId,
             'identifier_id' => $identifier['OrderIdentifierId'] ?? $identifier['identifier_id'] ?? 0,
@@ -199,7 +199,7 @@ readonly class OrderImportDTO
      */
     private static function normalizeChannelName(?string $channel): ?string
     {
-        if (!$channel) {
+        if (! $channel) {
             return null;
         }
 

@@ -11,10 +11,12 @@ use Illuminate\Support\Facades\Log;
 
 class ProcessLinnworksOrders implements ShouldQueue
 {
-    use Queueable, InteractsWithQueue, SerializesModels;
+    use InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $maxExceptions = 2;
+
     public int $timeout = 120; // 2 minutes
 
     /**
@@ -34,7 +36,7 @@ class ProcessLinnworksOrders implements ShouldQueue
     {
         Log::info('Starting processing job for orders', [
             'orders_count' => count($this->ordersData),
-            'force_update' => $this->forceUpdate
+            'force_update' => $this->forceUpdate,
         ]);
 
         try {
@@ -48,9 +50,9 @@ class ProcessLinnworksOrders implements ShouldQueue
             Log::error('Failed to process orders batch', [
                 'orders_count' => count($this->ordersData),
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             $this->fail($e);
         }
     }
@@ -62,7 +64,7 @@ class ProcessLinnworksOrders implements ShouldQueue
     {
         Log::error('ProcessLinnworksOrders job failed', [
             'orders_count' => count($this->ordersData),
-            'error' => $exception->getMessage()
+            'error' => $exception->getMessage(),
         ]);
     }
 

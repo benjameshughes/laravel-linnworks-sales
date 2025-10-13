@@ -2,10 +2,10 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Collection;
-use Illuminate\Support\ServiceProvider;
 use App\DataTransferObjects\LinnworksOrder;
 use App\DataTransferObjects\LinnworksOrderItem;
+use Illuminate\Support\Collection;
+use Illuminate\Support\ServiceProvider;
 
 class LinnworksCollectionServiceProvider extends ServiceProvider
 {
@@ -37,19 +37,18 @@ class LinnworksCollectionServiceProvider extends ServiceProvider
         });
 
         Collection::macro('unprocessed', function () {
-            return $this->filter(fn (LinnworksOrder $order) => !$order->isProcessed());
+            return $this->filter(fn (LinnworksOrder $order) => ! $order->isProcessed());
         });
 
         Collection::macro('fromToday', function () {
-            return $this->filter(fn (LinnworksOrder $order) => 
-                $order->receivedDate?->isToday() ?? false
+            return $this->filter(fn (LinnworksOrder $order) => $order->receivedDate?->isToday() ?? false
             );
         });
 
         Collection::macro('fromLastDays', function (int $days) {
             $cutoff = now()->subDays($days);
-            return $this->filter(fn (LinnworksOrder $order) => 
-                $order->receivedDate && $order->receivedDate->gte($cutoff)
+
+            return $this->filter(fn (LinnworksOrder $order) => $order->receivedDate && $order->receivedDate->gte($cutoff)
             );
         });
 
@@ -59,6 +58,7 @@ class LinnworksCollectionServiceProvider extends ServiceProvider
                 ->groupBy('sku')
                 ->map(function (Collection $items) {
                     $firstItem = $items->first();
+
                     return [
                         'sku' => $firstItem->sku,
                         'title' => $firstItem->itemTitle,
@@ -83,8 +83,8 @@ class LinnworksCollectionServiceProvider extends ServiceProvider
                         'total_revenue' => $orders->totalRevenue(),
                         'total_profit' => $orders->totalProfit(),
                         'average_order_value' => $orders->averageOrderValue(),
-                        'profit_margin' => $orders->totalRevenue() > 0 
-                            ? ($orders->totalProfit() / $orders->totalRevenue()) * 100 
+                        'profit_margin' => $orders->totalRevenue() > 0
+                            ? ($orders->totalProfit() / $orders->totalRevenue()) * 100
                             : 0,
                     ];
                 })
@@ -94,8 +94,7 @@ class LinnworksCollectionServiceProvider extends ServiceProvider
 
         Collection::macro('dailySales', function () {
             return $this
-                ->groupBy(fn (LinnworksOrder $order) => 
-                    $order->receivedDate?->format('Y-m-d') ?? 'unknown'
+                ->groupBy(fn (LinnworksOrder $order) => $order->receivedDate?->format('Y-m-d') ?? 'unknown'
                 )
                 ->map(function (Collection $orders, string $date) {
                     return [
@@ -115,7 +114,8 @@ class LinnworksCollectionServiceProvider extends ServiceProvider
             $previous = $this->filter(function (LinnworksOrder $order) use ($days) {
                 $startDate = now()->subDays($days * 2);
                 $endDate = now()->subDays($days);
-                return $order->receivedDate && 
+
+                return $order->receivedDate &&
                        $order->receivedDate->between($startDate, $endDate);
             });
 
@@ -126,8 +126,8 @@ class LinnworksCollectionServiceProvider extends ServiceProvider
                 'recent_revenue' => $recentRevenue,
                 'previous_revenue' => $previousRevenue,
                 'growth_amount' => $recentRevenue - $previousRevenue,
-                'growth_percentage' => $previousRevenue > 0 
-                    ? (($recentRevenue - $previousRevenue) / $previousRevenue) * 100 
+                'growth_percentage' => $previousRevenue > 0
+                    ? (($recentRevenue - $previousRevenue) / $previousRevenue) * 100
                     : 0,
             ];
         });
@@ -146,6 +146,7 @@ class LinnworksCollectionServiceProvider extends ServiceProvider
                 ->groupBy('sku')
                 ->map(function (Collection $items) {
                     $firstItem = $items->first();
+
                     return [
                         'sku' => $firstItem->sku,
                         'title' => $firstItem->itemTitle,

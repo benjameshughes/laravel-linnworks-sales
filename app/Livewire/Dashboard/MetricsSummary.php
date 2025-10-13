@@ -15,9 +15,13 @@ use Livewire\Component;
 final class MetricsSummary extends Component
 {
     public string $period = '7';
+
     public string $channel = 'all';
+
     public string $status = 'all';
+
     public ?string $customFrom = null;
+
     public ?string $customTo = null;
 
     public function mount(): void

@@ -10,14 +10,17 @@ use Livewire\Component;
 class SecuritySettings extends Component
 {
     public array $allowedDomains = [];
+
     public array $allowedEmails = [];
+
     public string $newDomain = '';
+
     public string $newEmail = '';
 
     public function mount(SettingsService $settings): void
     {
         // Check authorization
-        if (!auth()->user()->can('manage-security')) {
+        if (! auth()->user()->can('manage-security')) {
             abort(403);
         }
 
@@ -35,7 +38,7 @@ class SecuritySettings extends Component
 
         $domain = strtolower(trim($this->newDomain));
 
-        if (!in_array($domain, $this->allowedDomains)) {
+        if (! in_array($domain, $this->allowedDomains)) {
             $this->allowedDomains[] = $domain;
             $settings->set('security.allowed_domains', $this->allowedDomains, auth()->id());
         }
@@ -48,7 +51,7 @@ class SecuritySettings extends Component
     {
         $this->allowedDomains = array_values(array_filter(
             $this->allowedDomains,
-            fn($d) => $d !== $domain
+            fn ($d) => $d !== $domain
         ));
 
         $settings->set('security.allowed_domains', $this->allowedDomains, auth()->id());
@@ -62,7 +65,7 @@ class SecuritySettings extends Component
 
         $email = strtolower(trim($this->newEmail));
 
-        if (!in_array($email, $this->allowedEmails)) {
+        if (! in_array($email, $this->allowedEmails)) {
             $this->allowedEmails[] = $email;
             $settings->set('security.allowed_emails', $this->allowedEmails, auth()->id());
         }
@@ -75,7 +78,7 @@ class SecuritySettings extends Component
     {
         $this->allowedEmails = array_values(array_filter(
             $this->allowedEmails,
-            fn($e) => $e !== $email
+            fn ($e) => $e !== $email
         ));
 
         $settings->set('security.allowed_emails', $this->allowedEmails, auth()->id());

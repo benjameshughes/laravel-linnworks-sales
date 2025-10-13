@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Log;
 class AuthenticationService
 {
     private const AUTH_BASE_URL = 'https://api.linnworks.net/api/';
+
     private const INSTALL_URL = 'https://api.linnworks.net/api/Auth/AuthorizeByApplication';
+
     private const TOKEN_URL = 'https://api.linnworks.net/api/Auth/AuthorizeByApplication';
 
     public function __construct(
@@ -29,15 +31,15 @@ class AuthenticationService
             'RedirectUri' => $redirectUri,
         ]);
 
-        return self::INSTALL_URL . '?' . $params;
+        return self::INSTALL_URL.'?'.$params;
     }
 
     /**
      * Exchange installation token for session token
      *
-     * @param string $applicationId Application ID from database
-     * @param string $applicationSecret Application Secret from database
-     * @param string $installationToken Installation/Access token from database
+     * @param  string  $applicationId  Application ID from database
+     * @param  string  $applicationSecret  Application Secret from database
+     * @param  string  $installationToken  Installation/Access token from database
      */
     public function exchangeInstallationToken(
         string $applicationId,
@@ -61,6 +63,7 @@ class AuthenticationService
                 'error' => $response->error,
                 'status_code' => $response->statusCode,
             ]);
+
             return null;
         }
 
@@ -68,6 +71,7 @@ class AuthenticationService
 
         if ($data->isEmpty()) {
             Log::error('Empty response when exchanging installation token');
+
             return null;
         }
 
@@ -86,6 +90,7 @@ class AuthenticationService
                 'error' => $e->getMessage(),
                 'response_data' => $data->toArray(),
             ]);
+
             return null;
         }
     }
@@ -93,9 +98,9 @@ class AuthenticationService
     /**
      * Create session token from installation token
      *
-     * @param string $applicationId Application ID from database
-     * @param string $applicationSecret Application Secret from database
-     * @param string $installationToken Installation/Access token from database
+     * @param  string  $applicationId  Application ID from database
+     * @param  string  $applicationSecret  Application Secret from database
+     * @param  string  $installationToken  Installation/Access token from database
      */
     public function createSessionToken(
         string $applicationId,
@@ -121,6 +126,7 @@ class AuthenticationService
 
         if ($response->isSuccess()) {
             Log::info('Connection test successful');
+
             return true;
         }
 
@@ -146,19 +152,21 @@ class AuthenticationService
         // First exchange the installation token
         $sessionToken = $this->exchangeInstallationToken($applicationId, $applicationSecret, $installationToken);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             Log::error('Cannot create connection: failed to exchange installation token', [
                 'user_id' => $userId,
             ]);
+
             return null;
         }
 
         // Test the connection
-        if (!$this->testConnection($sessionToken)) {
+        if (! $this->testConnection($sessionToken)) {
             Log::error('Cannot create connection: connection test failed', [
                 'user_id' => $userId,
                 'server' => $sessionToken->server,
             ]);
+
             return null;
         }
 
@@ -195,6 +203,7 @@ class AuthenticationService
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -212,17 +221,18 @@ class AuthenticationService
                 $connection->access_token
             );
 
-            if (!$sessionToken) {
+            if (! $sessionToken) {
                 Log::warning('Connection validation failed: cannot create session token', [
                     'connection_id' => $connection->id,
                     'user_id' => $connection->user_id,
                 ]);
+
                 return false;
             }
 
             $isValid = $this->testConnection($sessionToken);
 
-            if (!$isValid) {
+            if (! $isValid) {
                 Log::warning('Connection validation failed: connection test failed', [
                     'connection_id' => $connection->id,
                     'user_id' => $connection->user_id,
@@ -237,6 +247,7 @@ class AuthenticationService
                 'user_id' => $connection->user_id,
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -248,19 +259,20 @@ class AuthenticationService
     {
         try {
             $connection->update(['is_active' => false]);
-            
+
             Log::info('Connection deactivated', [
                 'connection_id' => $connection->id,
                 'user_id' => $connection->user_id,
             ]);
-            
+
             return true;
-            
+
         } catch (\Exception $e) {
             Log::error('Error deactivating connection', [
                 'connection_id' => $connection->id,
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }

@@ -18,7 +18,7 @@ class SearchStatsController extends Controller
     public function __invoke(): JsonResponse
     {
         $response = $this->analyticsService->getAnalytics();
-        
+
         return $response->toJsonResponse();
     }
 }

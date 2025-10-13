@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 class PerformanceMonitor
 {
     private array $activeOperations = [];
+
     private array $completedMetrics = [];
 
     /**
@@ -21,7 +22,7 @@ class PerformanceMonitor
      */
     public function start(string $operation): string
     {
-        $trackingId = uniqid($operation . '_', true);
+        $trackingId = uniqid($operation.'_', true);
 
         $this->activeOperations[$trackingId] = [
             'operation' => $operation,
@@ -38,7 +39,7 @@ class PerformanceMonitor
      */
     public function stop(string $trackingId, int $itemsProcessed = 0, array $metadata = []): PerformanceMetrics
     {
-        if (!isset($this->activeOperations[$trackingId])) {
+        if (! isset($this->activeOperations[$trackingId])) {
             throw new \InvalidArgumentException("Unknown tracking ID: {$trackingId}");
         }
 
@@ -87,7 +88,8 @@ class PerformanceMonitor
      * Track a closure execution and return its result
      *
      * @template T
-     * @param Closure(): T $callback
+     *
+     * @param  Closure(): T  $callback
      * @return T
      */
     public function measure(string $operation, Closure $callback, array $metadata = []): mixed
@@ -118,7 +120,8 @@ class PerformanceMonitor
      * Track a closure execution with explicit item count
      *
      * @template T
-     * @param Closure(): T $callback
+     *
+     * @param  Closure(): T  $callback
      * @return T
      */
     public function measureWithCount(
@@ -132,6 +135,7 @@ class PerformanceMonitor
         try {
             $result = $callback();
             $this->stop($trackingId, $expectedItemCount, $metadata);
+
             return $result;
         } catch (\Throwable $e) {
             $this->stop($trackingId, 0, array_merge($metadata, [
@@ -183,7 +187,7 @@ class PerformanceMonitor
         foreach ($this->completedMetrics as $metric) {
             $operation = $metric->operation;
 
-            if (!isset($grouped[$operation])) {
+            if (! isset($grouped[$operation])) {
                 $grouped[$operation] = [];
             }
 

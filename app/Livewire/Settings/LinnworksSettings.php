@@ -4,23 +4,31 @@ namespace App\Livewire\Settings;
 
 use App\Models\LinnworksLocation;
 use App\Models\LinnworksView;
-use App\Services\LinnworksOAuthService;
 use App\Services\Linnworks\Orders\LocationsService;
 use App\Services\Linnworks\Orders\ViewsService;
-use Livewire\Component;
+use App\Services\LinnworksOAuthService;
 use Livewire\Attributes\Computed;
+use Livewire\Component;
 use Throwable;
 
 class LinnworksSettings extends Component
 {
     public string $applicationId = '';
+
     public string $applicationSecret = '';
+
     public string $accessToken = '';
+
     public bool $showForm = false;
+
     public array $availableLocations = [];
+
     public array $availableViews = [];
+
     public ?string $selectedLocation = null;
+
     public ?int $selectedView = null;
+
     public bool $isRefreshingSources = false;
 
     public function mount(LinnworksOAuthService $oauthService)
@@ -33,6 +41,7 @@ class LinnworksSettings extends Component
     public function connectionStatus()
     {
         $oauthService = app(LinnworksOAuthService::class);
+
         return $oauthService->getConnectionStatus(auth()->id());
     }
 
@@ -42,13 +51,11 @@ class LinnworksSettings extends Component
         $this->reset(['applicationId', 'applicationSecret', 'accessToken']);
     }
 
-
     public function hideConnectionForm()
     {
         $this->showForm = false;
         $this->reset(['applicationId', 'applicationSecret', 'accessToken']);
     }
-
 
     public function connect()
     {
@@ -75,17 +82,17 @@ class LinnworksSettings extends Component
             } else {
                 // Get more detailed error info
                 $status = $oauthService->getConnectionStatus(auth()->id());
-                session()->flash('error', 'Connection created but test failed: ' . ($status['message'] ?? 'Unknown error'));
+                session()->flash('error', 'Connection created but test failed: '.($status['message'] ?? 'Unknown error'));
             }
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to connect to Linnworks: ' . $e->getMessage());
+            session()->flash('error', 'Failed to connect to Linnworks: '.$e->getMessage());
         }
     }
 
     public function disconnect()
     {
         $oauthService = app(LinnworksOAuthService::class);
-        
+
         if ($oauthService->disconnect(auth()->id())) {
             session()->flash('success', 'Successfully disconnected from Linnworks.');
             $this->availableLocations = [];
@@ -102,8 +109,9 @@ class LinnworksSettings extends Component
         $oauthService = app(LinnworksOAuthService::class);
         $connection = $oauthService->getActiveConnection(auth()->id());
 
-        if (!$connection) {
+        if (! $connection) {
             session()->flash('error', 'No active connection found.');
+
             return;
         }
 
@@ -111,8 +119,8 @@ class LinnworksSettings extends Component
         \Log::info('Testing connection', [
             'user_id' => auth()->id(),
             'connection_id' => $connection->id,
-            'has_session_token' => !empty($connection->session_token),
-            'has_server_location' => !empty($connection->server_location),
+            'has_session_token' => ! empty($connection->session_token),
+            'has_server_location' => ! empty($connection->server_location),
             'session_expires_at' => $connection->session_expires_at?->toDateTimeString(),
             'needs_refresh' => $connection->needs_new_session,
         ]);
@@ -121,7 +129,7 @@ class LinnworksSettings extends Component
             session()->flash('success', 'Connection test successful!');
         } else {
             $status = $oauthService->getConnectionStatus(auth()->id());
-            session()->flash('error', 'Test failed: ' . ($status['message'] ?? 'Unknown error'));
+            session()->flash('error', 'Test failed: '.($status['message'] ?? 'Unknown error'));
         }
     }
 
@@ -130,16 +138,17 @@ class LinnworksSettings extends Component
         $oauthService = app(LinnworksOAuthService::class);
         $connection = $oauthService->getActiveConnection(auth()->id());
 
-        if (!$connection) {
+        if (! $connection) {
             session()->flash('error', 'No active connection found.');
+
             return;
         }
 
         \Log::info('Refreshing session', [
             'user_id' => auth()->id(),
             'connection_id' => $connection->id,
-            'current_session_token' => substr($connection->session_token ?? '', 0, 10) . '...',
-            'access_token' => substr($connection->access_token, 0, 10) . '...',
+            'current_session_token' => substr($connection->session_token ?? '', 0, 10).'...',
+            'access_token' => substr($connection->access_token, 0, 10).'...',
         ]);
 
         if ($oauthService->refreshSession($connection)) {
@@ -160,11 +169,12 @@ class LinnworksSettings extends Component
     {
         $userId = auth()->id();
 
-        if (!$userId) {
+        if (! $userId) {
             $this->availableLocations = [];
             $this->availableViews = [];
             $this->selectedLocation = null;
             $this->selectedView = null;
+
             return;
         }
 
@@ -216,15 +226,17 @@ class LinnworksSettings extends Component
         try {
             $userId = auth()->id();
 
-            if (!$userId) {
+            if (! $userId) {
                 session()->flash('error', 'You must be signed in to refresh Linnworks data.');
+
                 return;
             }
 
             $connection = app(LinnworksOAuthService::class)->getActiveConnection($userId);
 
-            if (!$connection) {
+            if (! $connection) {
                 session()->flash('error', 'Connect to Linnworks before refreshing locations or views.');
+
                 return;
             }
 
@@ -246,16 +258,18 @@ class LinnworksSettings extends Component
     {
         $userId = auth()->id();
 
-        if (!$userId) {
+        if (! $userId) {
             session()->flash('error', 'You must be signed in to update preferences.');
+
             return;
         }
 
         $oauthService = app(LinnworksOAuthService::class);
         $connection = $oauthService->getActiveConnection($userId);
 
-        if (!$connection) {
+        if (! $connection) {
             session()->flash('error', 'Connect to Linnworks before saving preferences.');
+
             return;
         }
 

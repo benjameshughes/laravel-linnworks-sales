@@ -107,7 +107,7 @@ enum ProductIdentifierType: string
             self::ISBN => $this->validateNumeric($cleanValue, 13) || $this->validateNumeric($cleanValue, 10),
             self::GTIN => $this->validateGTIN($cleanValue),
             self::ASIN => strlen($cleanValue) === 10 && ctype_alnum($cleanValue),
-            default => !empty($cleanValue),
+            default => ! empty($cleanValue),
         };
     }
 
@@ -125,6 +125,7 @@ enum ProductIdentifierType: string
     private function validateGTIN(string $value): bool
     {
         $length = strlen($value);
+
         return in_array($length, [8, 12, 13, 14], true) && ctype_digit($value);
     }
 }

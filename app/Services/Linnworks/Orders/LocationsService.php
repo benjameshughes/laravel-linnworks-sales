@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Linnworks\Orders;
 
 use App\Models\LinnworksLocation;
-use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
 use App\ValueObjects\Linnworks\ApiRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -22,8 +22,9 @@ final class LocationsService
     {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
-        if (!$sessionToken) {
+        if (! $sessionToken) {
             Log::error('No valid session token for locations request', ['user_id' => $userId]);
+
             return collect();
         }
 
@@ -53,7 +54,7 @@ final class LocationsService
                 ?? $location['Id']
                 ?? null;
 
-            if (!$locationId) {
+            if (! $locationId) {
                 return;
             }
 

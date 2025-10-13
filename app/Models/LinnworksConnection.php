@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -86,8 +85,8 @@ class LinnworksConnection extends Model
     protected function needsNewSession(): Attribute
     {
         return Attribute::make(
-            get: fn () => !$this->session_token ||
-                         !$this->session_expires_at ||
+            get: fn () => ! $this->session_token ||
+                         ! $this->session_expires_at ||
                          $this->session_expires_at->isPast()
         );
     }
@@ -111,7 +110,7 @@ class LinnworksConnection extends Model
     {
         return Attribute::make(
             get: fn () => match (true) {
-                !$this->is_active => 'inactive',
+                ! $this->is_active => 'inactive',
                 $this->needs_new_session => 'expired',
                 $this->is_session_valid => 'active',
                 default => 'unknown'
@@ -150,13 +149,13 @@ class LinnworksConnection extends Model
     public function scopeWithValidSession(Builder $query): Builder
     {
         return $query->where('is_active', true)
-                    ->whereNotNull('session_token')
-                    ->where('session_expires_at', '>', now());
+            ->whereNotNull('session_token')
+            ->where('session_expires_at', '>', now());
     }
 
     public function scopeExpired(Builder $query): Builder
     {
         return $query->where('session_expires_at', '<=', now())
-                    ->orWhereNull('session_expires_at');
+            ->orWhereNull('session_expires_at');
     }
 }

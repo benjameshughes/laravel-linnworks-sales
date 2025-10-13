@@ -18,15 +18,23 @@ use Throwable;
 final class DashboardFilters extends Component
 {
     public string $period;
+
     public string $channel = 'all';
+
     public string $status = 'all';
+
     public ?string $customFrom = null;
+
     public ?string $customTo = null;
 
     public bool $isSyncing = false;
+
     public string $syncStage = '';
+
     public string $syncMessage = '';
+
     public int $syncCount = 0;
+
     public int $rateLimitSeconds = 0;
 
     public function mount(): void
@@ -45,7 +53,7 @@ final class DashboardFilters extends Component
 
     public function checkRateLimit(): void
     {
-        $key = 'sync-orders:' . auth()->id();
+        $key = 'sync-orders:'.auth()->id();
 
         if (RateLimiter::tooManyAttempts($key, 1)) {
             $this->rateLimitSeconds = RateLimiter::availableIn($key);
@@ -80,7 +88,7 @@ final class DashboardFilters extends Component
         }
 
         // Rate limit: 1 sync per 2 minutes per user
-        $key = 'sync-orders:' . auth()->id();
+        $key = 'sync-orders:'.auth()->id();
 
         if (RateLimiter::tooManyAttempts($key, 1)) {
             $this->rateLimitSeconds = RateLimiter::availableIn($key);
@@ -103,7 +111,7 @@ final class DashboardFilters extends Component
 
         try {
             // Dispatch unified sync job
-            SyncOrdersJob::dispatch(startedBy: 'user-' . auth()->id());
+            SyncOrdersJob::dispatch(startedBy: 'user-'.auth()->id());
 
             $this->dispatch('notification', [
                 'message' => 'Sync started in background. Updates will appear automatically.',
@@ -153,7 +161,7 @@ final class DashboardFilters extends Component
             ->where('channel_name', '!=', 'DIRECT')
             ->distinct()
             ->get()
-            ->map(fn($order) => collect([
+            ->map(fn ($order) => collect([
                 'name' => $order->channel_name,
                 'label' => $order->channel_name,
             ]));
@@ -167,7 +175,7 @@ final class DashboardFilters extends Component
             ->latest('completed_at')
             ->first();
 
-        if (!$lastSync) {
+        if (! $lastSync) {
             return collect([
                 'time_human' => 'Never synced',
                 'created' => 0,
@@ -192,19 +200,18 @@ final class DashboardFilters extends Component
         $start = $this->dateRange->get('start');
         $end = $this->dateRange->get('end');
 
-        return $start->format('M j') . ' - ' . $end->format('M j, Y');
+        return $start->format('M j').' - '.$end->format('M j, Y');
     }
 
     #[Computed]
     public function totalOrders(): int
     {
         return Order::whereBetween('received_date', [
-                $this->dateRange->get('start'),
-                $this->dateRange->get('end')
-            ])
+            $this->dateRange->get('start'),
+            $this->dateRange->get('end'),
+        ])
             ->where('channel_name', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn($query) =>
-                $query->where('channel_name', $this->channel)
+            ->when($this->channel !== 'all', fn ($query) => $query->where('channel_name', $this->channel)
             )
             ->when($this->status !== 'all', function ($query) {
                 if ($this->status === 'open_paid') {
@@ -226,7 +233,7 @@ final class DashboardFilters extends Component
     {
         // Only update UI if we're not already showing syncing state
         // This prevents manual button click from being overridden
-        if (!$this->isSyncing) {
+        if (! $this->isSyncing) {
             $this->isSyncing = true;
             $this->syncStage = 'started';
             $this->syncMessage = 'Starting sync...';

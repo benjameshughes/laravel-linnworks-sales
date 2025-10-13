@@ -9,8 +9,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class GetInventoryCountJob implements ShouldQueue
 {
@@ -26,11 +26,12 @@ class GetInventoryCountJob implements ShouldQueue
     public function handle(InventoryService $inventoryService): void
     {
         $user = User::find($this->userId);
-        
-        if (!$user) {
+
+        if (! $user) {
             Log::error('User not found for inventory count job', [
                 'user_id' => $this->userId,
             ]);
+
             return;
         }
 
@@ -41,10 +42,10 @@ class GetInventoryCountJob implements ShouldQueue
 
         try {
             $count = $inventoryService->getInventoryCount($this->userId);
-            
+
             // Cache the count for 1 hour
             Cache::put("inventory_count_user_{$this->userId}", $count, 3600);
-            
+
             Log::info('Inventory count job completed successfully', [
                 'user_id' => $this->userId,
                 'count' => $count,

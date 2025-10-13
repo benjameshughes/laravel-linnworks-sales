@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Product;
 use App\Enums\SearchType;
+use App\Models\Product;
 use App\ValueObjects\SearchCriteria;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -28,7 +28,7 @@ readonly class ProductSearchService
         }
 
         $cacheKey = $this->getCacheKey('search', $criteria);
-        
+
         return Cache::remember($cacheKey, $this->cacheTtl, function () use ($criteria) {
             return $this->performSearch($criteria);
         });
@@ -51,9 +51,10 @@ readonly class ProductSearchService
         );
 
         $cacheKey = $this->getCacheKey('autocomplete', $criteria);
-        
+
         return Cache::remember($cacheKey, $this->cacheTtl / 3, function () use ($criteria) {
             $products = $this->performSearch($criteria);
+
             return $criteria->getSuggestions($products);
         });
     }
@@ -92,7 +93,7 @@ readonly class ProductSearchService
     public function findBySku(string $sku): ?Product
     {
         $cacheKey = "product_search:sku:{$sku}";
-        
+
         return Cache::remember($cacheKey, $this->cacheTtl, function () use ($sku) {
             return Product::where('sku', $sku)->first();
         });
@@ -103,8 +104,8 @@ readonly class ProductSearchService
      */
     public function findBySkus(array $skus): EloquentCollection
     {
-        $cacheKey = "product_search:skus:" . md5(implode(',', $skus));
-        
+        $cacheKey = 'product_search:skus:'.md5(implode(',', $skus));
+
         return Cache::remember($cacheKey, $this->cacheTtl, function () use ($skus) {
             return Product::whereIn('sku', $skus)->get();
         });
@@ -116,7 +117,7 @@ readonly class ProductSearchService
     public function getTrendingSearches(int $limit = 10): Collection
     {
         $cacheKey = "product_search:trending:{$limit}";
-        
+
         return Cache::remember($cacheKey, $this->cacheTtl * 4, function () use ($limit) {
             // This would ideally come from search analytics
             // For now, return popular categories and brands
@@ -136,7 +137,7 @@ readonly class ProductSearchService
     public function getPopularProducts(int $limit = 10): EloquentCollection
     {
         $cacheKey = "product_search:popular:{$limit}";
-        
+
         return Cache::remember($cacheKey, $this->cacheTtl * 2, function () use ($limit) {
             return Product::where('is_active', true)
                 ->where('stock_level', '>', 0)
@@ -176,7 +177,7 @@ readonly class ProductSearchService
 
         // Apply Scout options
         $scoutOptions = $criteria->getScoutQuery();
-        if (!empty($scoutOptions)) {
+        if (! empty($scoutOptions)) {
             $query->options($scoutOptions);
         }
 
@@ -254,6 +255,7 @@ readonly class ProductSearchService
     private function getCacheKey(string $type, SearchCriteria $criteria): string
     {
         $hash = md5(serialize($criteria->toArray()));
+
         return "product_search:{$type}:{$hash}";
     }
 
@@ -289,7 +291,7 @@ readonly class ProductSearchService
                 query: $query,
                 limit: $this->defaultLimit,
             );
-            
+
             $this->search($criteria);
         }
 
@@ -323,7 +325,7 @@ readonly class ProductSearchService
     {
         $products = Product::where('is_active', true)->get();
         $products->searchable();
-        
+
         return $products->count();
     }
 

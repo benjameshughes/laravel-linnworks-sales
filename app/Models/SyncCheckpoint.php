@@ -103,6 +103,7 @@ class SyncCheckpoint extends Model
             if ($this->sync_started_at && $this->sync_started_at->diffInMinutes(now()) > 60) {
                 return true; // Allow retry of stuck sync
             }
+
             return false;
         }
 
@@ -159,9 +160,10 @@ class SyncCheckpoint extends Model
     {
         return Attribute::make(
             get: function () {
-                if (!$this->sync_started_at || !$this->sync_completed_at) {
+                if (! $this->sync_started_at || ! $this->sync_completed_at) {
                     return null;
                 }
+
                 return $this->sync_started_at->diffInMinutes($this->sync_completed_at);
             }
         );
@@ -178,6 +180,7 @@ class SyncCheckpoint extends Model
                     return 0.0;
                 }
                 $successful = $this->records_created + $this->records_updated;
+
                 return round(($successful / $this->records_synced) * 100, 2);
             }
         );
@@ -193,4 +196,3 @@ class SyncCheckpoint extends Model
         );
     }
 }
-

@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('status')->default('pending');
             $table->json('application_data')->nullable();
             $table->timestamps();
-            
+
             $table->index(['user_id', 'is_active']);
         });
     }

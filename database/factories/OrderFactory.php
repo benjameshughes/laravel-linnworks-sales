@@ -3,9 +3,9 @@
 namespace Database\Factories;
 
 use App\Models\Order;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 class OrderFactory extends Factory
 {

@@ -2,9 +2,9 @@
 
 use App\Http\Controllers\LinnworksCallbackController;
 use App\Livewire\Analytics\SalesAnalytics;
-use App\Livewire\Dashboard\SalesDashboard;
-use App\Livewire\Dashboard\ProductAnalytics;
 use App\Livewire\Dashboard\ChannelComparison;
+use App\Livewire\Dashboard\ProductAnalytics;
+use App\Livewire\Dashboard\SalesDashboard;
 use App\Livewire\ProductDetail;
 use App\Livewire\Settings\Appearance;
 use App\Livewire\Settings\ImportProgress;

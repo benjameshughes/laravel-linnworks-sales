@@ -11,10 +11,10 @@ readonly class ApiResponse implements JsonSerializable
     public function __construct(
         public Collection $data,
         public int $statusCode,
-        public Collection $headers = new Collection(),
+        public Collection $headers = new Collection,
         public ?string $error = null,
         public ?Collection $meta = null,
-        public Carbon $requestedAt = new Carbon(),
+        public Carbon $requestedAt = new Carbon,
     ) {}
 
     public static function success(array|Collection $data, int $statusCode = 200): self
@@ -40,7 +40,7 @@ readonly class ApiResponse implements JsonSerializable
     {
         // Handle plain text responses (like inventory count)
         $contentType = $response->header('Content-Type') ?? '';
-        
+
         if (str_contains($contentType, 'application/json')) {
             $data = collect($response->json());
         } else {
@@ -64,7 +64,7 @@ readonly class ApiResponse implements JsonSerializable
 
     public function isError(): bool
     {
-        return !$this->isSuccess();
+        return ! $this->isSuccess();
     }
 
     public function hasData(): bool
@@ -113,8 +113,8 @@ readonly class ApiResponse implements JsonSerializable
 
     public function getRateLimit(): ?int
     {
-        return $this->headers->get('X-RateLimit-Remaining') !== null 
-            ? (int) $this->headers->get('X-RateLimit-Remaining') 
+        return $this->headers->get('X-RateLimit-Remaining') !== null
+            ? (int) $this->headers->get('X-RateLimit-Remaining')
             : null;
     }
 

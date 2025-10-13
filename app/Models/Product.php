@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Collection;
 use Laravel\Scout\Searchable;
 
 final class Product extends Model
@@ -95,7 +94,7 @@ final class Product extends Model
      */
     public function shouldBeSearchable(): bool
     {
-        return $this->is_active && !empty($this->sku);
+        return $this->is_active && ! empty($this->sku);
     }
 
     /**
@@ -147,8 +146,7 @@ final class Product extends Model
     protected function totalRevenue(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->orderItems->sum(fn ($item) => 
-                $item->line_total > 0 ? $item->line_total : ($item->quantity * $item->price_per_unit)
+            get: fn () => $this->orderItems->sum(fn ($item) => $item->line_total > 0 ? $item->line_total : ($item->quantity * $item->price_per_unit)
             )
         );
     }
@@ -173,6 +171,7 @@ final class Product extends Model
                 if ($this->average_selling_price === 0 || $this->purchase_price === null) {
                     return 0;
                 }
+
                 return (($this->average_selling_price - $this->purchase_price) / $this->average_selling_price) * 100;
             }
         );
@@ -228,7 +227,7 @@ final class Product extends Model
     protected function formattedRetailPrice(): Attribute
     {
         return Attribute::make(
-            get: fn () => '£' . number_format((float) ($this->retail_price ?: 0), 2)
+            get: fn () => '£'.number_format((float) ($this->retail_price ?: 0), 2)
         );
     }
 
@@ -238,7 +237,7 @@ final class Product extends Model
     protected function formattedPurchasePrice(): Attribute
     {
         return Attribute::make(
-            get: fn () => '£' . number_format((float) ($this->purchase_price ?: 0), 2)
+            get: fn () => '£'.number_format((float) ($this->purchase_price ?: 0), 2)
         );
     }
 
@@ -259,8 +258,7 @@ final class Product extends Model
     {
         return Attribute::make(
             get: fn () => $this->orderItems
-                ->filter(fn ($item) => 
-                    $item->order && $item->order->received_date >= now()->subDays(30)
+                ->filter(fn ($item) => $item->order && $item->order->received_date >= now()->subDays(30)
                 )->isNotEmpty()
         );
     }
@@ -290,7 +288,7 @@ final class Product extends Model
             'stock_due' => $stockItem['Due'] ?? 0,
             'stock_available' => $stockItem['Available'] ?? 0,
             'is_active' => true, // GetStockItems doesn't return archived items
-            'created_date' => isset($stockItem['CreationDate']) 
+            'created_date' => isset($stockItem['CreationDate'])
                 ? Carbon::parse($stockItem['CreationDate'])
                 : null,
             'metadata' => [
@@ -322,7 +320,7 @@ final class Product extends Model
 
         // StockLevels is an array - get first location or aggregate
         $stockLevels = [];
-        if (isset($stockItem['StockLevels']) && is_array($stockItem['StockLevels']) && !empty($stockItem['StockLevels'])) {
+        if (isset($stockItem['StockLevels']) && is_array($stockItem['StockLevels']) && ! empty($stockItem['StockLevels'])) {
             $stockLevels = $stockItem['StockLevels'][0]; // Use first location
         }
 
@@ -331,7 +329,7 @@ final class Product extends Model
         $retailPrice = null;
 
         // Try to get retail price from channel prices (use first available)
-        if (isset($stockItem['ItemChannelPrices']) && is_array($stockItem['ItemChannelPrices']) && !empty($stockItem['ItemChannelPrices'])) {
+        if (isset($stockItem['ItemChannelPrices']) && is_array($stockItem['ItemChannelPrices']) && ! empty($stockItem['ItemChannelPrices'])) {
             $retailPrice = $stockItem['ItemChannelPrices'][0]['Price'] ?? null;
         }
 
@@ -366,7 +364,7 @@ final class Product extends Model
             'stock_in_orders' => $stockLevels['InOrder'] ?? $stockItem['InOrder'] ?? 0,
             'stock_due' => $stockLevels['Due'] ?? $stockItem['Due'] ?? 0,
             'stock_available' => $stockLevels['Available'] ?? $stockItem['Available'] ?? 0,
-            'is_active' => !($generalInfo['IsArchived'] ?? $stockItem['IsArchived'] ?? false),
+            'is_active' => ! ($generalInfo['IsArchived'] ?? $stockItem['IsArchived'] ?? false),
             'created_date' => isset($generalInfo['CreationDate']) || isset($stockItem['CreationDate'])
                 ? Carbon::parse($generalInfo['CreationDate'] ?? $stockItem['CreationDate'])
                 : null,
@@ -384,7 +382,7 @@ final class Product extends Model
                 'tracking_type' => $generalInfo['InventoryTrackingType'] ?? $stockItem['InventoryTrackingType'] ?? null,
                 'weight_unit' => $generalInfo['WeightUnit'] ?? $stockItem['WeightUnit'] ?? 'kg',
                 'variations' => $variations,
-                'images' => collect($images)->map(fn($img) => [
+                'images' => collect($images)->map(fn ($img) => [
                     'url' => $img['Source'] ?? null,
                     'is_main' => $img['IsMain'] ?? false,
                     'sort_order' => $img['SortOrder'] ?? 0,

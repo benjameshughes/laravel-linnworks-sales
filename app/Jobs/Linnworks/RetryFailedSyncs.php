@@ -20,6 +20,7 @@ class RetryFailedSyncs implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
+
     public int $timeout = 300;
 
     /**
@@ -34,6 +35,7 @@ class RetryFailedSyncs implements ShouldQueue
 
         if ($failedSyncs->isEmpty()) {
             Log::info('No failed syncs ready for retry');
+
             return;
         }
 
@@ -66,12 +68,13 @@ class RetryFailedSyncs implements ShouldQueue
      */
     private function retrySync(FailedOrderSync $failedSync, ImportOrders $importOrders): void
     {
-        if (!$failedSync->order_data) {
+        if (! $failedSync->order_data) {
             Log::warning('Cannot retry sync without order data', [
                 'failed_sync_id' => $failedSync->id,
                 'order_identifier' => $failedSync->order_identifier,
             ]);
             $failedSync->recordRetryFailure();
+
             return;
         }
 

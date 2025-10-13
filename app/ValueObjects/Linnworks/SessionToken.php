@@ -21,7 +21,7 @@ readonly class SessionToken implements JsonSerializable
         $token = $response['Token'] ?? $response['token'] ?? null;
         $server = $response['Server'] ?? $response['server'] ?? null;
 
-        if (!$token || !$server) {
+        if (! $token || ! $server) {
             throw new \InvalidArgumentException('Missing token or server in Linnworks session response.');
         }
 
@@ -76,9 +76,9 @@ readonly class SessionToken implements JsonSerializable
     {
         $server = str_starts_with($this->server, 'http')
             ? rtrim($this->server, '/')
-            : 'https://' . ltrim($this->server, '/');
+            : 'https://'.ltrim($this->server, '/');
 
-        return $server . '/api/';
+        return $server.'/api/';
     }
 
     public function getAuthHeaders(): array

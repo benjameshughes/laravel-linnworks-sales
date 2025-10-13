@@ -40,6 +40,7 @@ class CheckProcessedStatus extends Command
 
         if ($openOrders->isEmpty()) {
             $this->info('✨ No open orders to check');
+
             return self::SUCCESS;
         }
 
@@ -48,13 +49,14 @@ class CheckProcessedStatus extends Command
         if ($isDryRun) {
             $this->table(
                 ['Order Number', 'Order ID', 'Received', 'Channel'],
-                $openOrders->map(fn($o) => [
+                $openOrders->map(fn ($o) => [
                     $o->order_number,
-                    substr($o->order_id, 0, 8) . '...',
+                    substr($o->order_id, 0, 8).'...',
                     $o->received_date->format('Y-m-d H:i'),
                     $o->channel_name,
                 ])->toArray()
             );
+
             return self::SUCCESS;
         }
 
@@ -82,6 +84,7 @@ class CheckProcessedStatus extends Command
                     // Order not found in processed orders = still open
                     $notFoundCount++;
                     $progressBar->advance();
+
                     continue;
                 }
 

@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
-use App\Models\Product;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 final class ProductRepository
 {
@@ -19,18 +19,18 @@ final class ProductRepository
         $query = Product::query()
             ->where('is_active', true)
             ->select(['id', 'sku', 'title', 'category_name', 'purchase_price', 'stock_available', 'stock_minimum']);
-            
+
         if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('title', 'LIKE', '%' . $search . '%')
-                  ->orWhere('sku', 'LIKE', '%' . $search . '%');
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'LIKE', '%'.$search.'%')
+                    ->orWhere('sku', 'LIKE', '%'.$search.'%');
             });
         }
-        
+
         if ($category) {
             $query->where('category_name', $category);
         }
-        
+
         return $query->limit($limit)->get();
     }
 
@@ -50,18 +50,18 @@ final class ProductRepository
             ->where('is_active', true)
             ->select(['id', 'sku', 'title', 'category_name', 'purchase_price'])
             ->get()
-            ->groupBy(fn($product) => $product->category_name ?: 'Uncategorized');
+            ->groupBy(fn ($product) => $product->category_name ?: 'Uncategorized');
     }
 
     public function getProductSalesData(string $sku): array
     {
         // Use the normalized order_items table for better performance
         $items = OrderItem::where('sku', $sku)
-            ->whereHas('order', function($q) {
+            ->whereHas('order', function ($q) {
                 $q->whereNull('deleted_at');
             })
             ->get();
-        
+
         if ($items->isEmpty()) {
             return [
                 'total_sold' => 0,
@@ -70,12 +70,12 @@ final class ProductRepository
                 'order_count' => 0,
             ];
         }
-        
+
         $orderCount = $items->pluck('order_id')->unique()->count();
         $totalSold = $items->sum('quantity');
-        $totalRevenue = $items->sum(fn($item) => $this->calculateItemRevenue($item));
-        $avgPrice = $items->filter(fn($item) => (float) $item->price_per_unit > 0)->avg('price_per_unit');
-        if (!$avgPrice && $totalSold > 0) {
+        $totalRevenue = $items->sum(fn ($item) => $this->calculateItemRevenue($item));
+        $avgPrice = $items->filter(fn ($item) => (float) $item->price_per_unit > 0)->avg('price_per_unit');
+        if (! $avgPrice && $totalSold > 0) {
             $avgPrice = $totalRevenue / $totalSold;
         }
 
@@ -92,18 +92,18 @@ final class ProductRepository
         // Use the normalized order_items table with eager loading
         $items = OrderItem::where('sku', $sku)
             ->with('order:id,channel_name')
-            ->whereHas('order', function($q) {
+            ->whereHas('order', function ($q) {
                 $q->whereNull('deleted_at');
             })
             ->get();
-        
+
         return $items->groupBy('order.channel_name')
-            ->map(function($channelItems, $channel) {
+            ->map(function ($channelItems, $channel) {
                 $orderIds = $channelItems->pluck('order_id')->unique();
                 $quantity = $channelItems->sum('quantity');
-                $revenue = $channelItems->sum(fn($item) => $this->calculateItemRevenue($item));
-                $avgPrice = $channelItems->filter(fn($item) => (float) $item->price_per_unit > 0)->avg('price_per_unit');
-                if (!$avgPrice && $quantity > 0) {
+                $revenue = $channelItems->sum(fn ($item) => $this->calculateItemRevenue($item));
+                $avgPrice = $channelItems->filter(fn ($item) => (float) $item->price_per_unit > 0)->avg('price_per_unit');
+                if (! $avgPrice && $quantity > 0) {
                     $avgPrice = $revenue / $quantity;
                 }
 
@@ -133,9 +133,9 @@ final class ProductRepository
             )
             ->groupBy('sale_date')
             ->get();
-        
+
         return $dailySales->keyBy('sale_date')
-            ->map(function($item) {
+            ->map(function ($item) {
                 return (object) [
                     'sale_date' => $item->sale_date,
                     'quantity' => (int) $item->quantity,
@@ -161,8 +161,8 @@ final class ProductRepository
             ->orderByDesc('total_revenue')
             ->limit(10)
             ->get();
-        
-        return $categoryData->map(function($item) {
+
+        return $categoryData->map(function ($item) {
             return [
                 'category' => $item->category,
                 'product_count' => (int) $item->product_count,
@@ -188,18 +188,18 @@ final class ProductRepository
 
     public function getOrdersContainingProduct(string $sku, ?Carbon $startDate = null): Collection
     {
-        $query = Order::whereHas('orderItems', function($q) use ($sku) {
-                $q->where('sku', $sku);
-            })
-            ->with(['orderItems' => function($q) use ($sku) {
+        $query = Order::whereHas('orderItems', function ($q) use ($sku) {
+            $q->where('sku', $sku);
+        })
+            ->with(['orderItems' => function ($q) use ($sku) {
                 $q->where('sku', $sku);
             }])
             ->select(['id', 'order_number', 'channel_name', 'received_date', 'total_charge']);
-            
+
         if ($startDate) {
             $query->where('received_date', '>=', $startDate);
         }
-        
+
         return $query->get();
     }
 
@@ -223,11 +223,11 @@ final class ProductRepository
             ->groupBy('order_items.sku')
             ->get()
             ->keyBy('sku');
-        
+
         // Build result for all requested SKUs (including ones with no sales)
-        return collect($skus)->mapWithKeys(function($sku) use ($salesData) {
+        return collect($skus)->mapWithKeys(function ($sku) use ($salesData) {
             $data = $salesData->get($sku);
-            
+
             return [$sku => [
                 'total_sold' => $data ? (int) $data->total_sold : 0,
                 'total_revenue' => $data ? (float) $data->total_revenue : 0,

@@ -18,7 +18,7 @@ class ProductLookupController extends Controller
     public function __invoke(string $sku): JsonResponse
     {
         $response = $this->searchApiService->findBySku($sku);
-        
+
         return $response->toJsonResponse();
     }
 }

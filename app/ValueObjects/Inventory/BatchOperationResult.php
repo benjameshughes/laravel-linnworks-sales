@@ -54,7 +54,7 @@ readonly class BatchOperationResult
      */
     public function getFailed(): Collection
     {
-        return $this->results->filter(fn (OperationResult $result) => !$result->isSuccess());
+        return $this->results->filter(fn (OperationResult $result) => ! $result->isSuccess());
     }
 
     /**

@@ -6,7 +6,6 @@ namespace App\Livewire\Dashboard;
 
 use App\Services\Dashboard\DashboardDataService;
 use App\Services\Metrics\SalesMetrics;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -15,9 +14,13 @@ use Livewire\Component;
 final class TopChannels extends Component
 {
     public string $period = '7';
+
     public string $channel = 'all';
+
     public string $status = 'all';
+
     public ?string $customFrom = null;
+
     public ?string $customTo = null;
 
     public function mount(): void

@@ -31,7 +31,7 @@ final class OrderBulkWriter
             return 0;
         }
 
-        $rows = $dtos->map(fn(OrderImportDTO $dto) => $dto->order)->toArray();
+        $rows = $dtos->map(fn (OrderImportDTO $dto) => $dto->order)->toArray();
 
         // Single bulk insert
         DB::table('orders')->insert($rows);
@@ -113,21 +113,24 @@ final class OrderBulkWriter
         $allItems = $dtos->flatMap(function (OrderImportDTO $dto) use ($dbOrderMap) {
             $orderId = $dbOrderMap[$dto->linnworksOrderId] ?? null;
 
-            if (!$orderId) {
+            if (! $orderId) {
                 Log::warning('OrderBulkWriter: Order not found for items', [
                     'linnworks_order_id' => $dto->linnworksOrderId,
                 ]);
+
                 return [];
             }
 
             return collect($dto->items)->map(function (array $item) use ($orderId) {
                 $item['order_id'] = $orderId;
+
                 return $item;
             });
         })->toArray();
 
         if (empty($allItems)) {
             Log::info('OrderBulkWriter: No items to sync');
+
             return;
         }
 
@@ -147,7 +150,7 @@ final class OrderBulkWriter
     public function syncShipping(Collection $dtos): void
     {
         // Only process DTOs that have shipping data
-        $dtosWithShipping = $dtos->filter(fn(OrderImportDTO $dto) => $dto->shipping !== null);
+        $dtosWithShipping = $dtos->filter(fn (OrderImportDTO $dto) => $dto->shipping !== null);
 
         if ($dtosWithShipping->isEmpty()) {
             return;
@@ -176,12 +179,13 @@ final class OrderBulkWriter
         $allShipping = $dtosWithShipping->map(function (OrderImportDTO $dto) use ($dbOrderMap) {
             $orderId = $dbOrderMap[$dto->linnworksOrderId] ?? null;
 
-            if (!$orderId) {
+            if (! $orderId) {
                 return null;
             }
 
             $shipping = $dto->shipping;
             $shipping['order_id'] = $orderId;
+
             return $shipping;
         })->filter()->toArray();
 
@@ -205,7 +209,7 @@ final class OrderBulkWriter
     public function syncNotes(Collection $dtos): void
     {
         // Only process DTOs that have notes
-        $dtosWithNotes = $dtos->filter(fn(OrderImportDTO $dto) => !empty($dto->notes));
+        $dtosWithNotes = $dtos->filter(fn (OrderImportDTO $dto) => ! empty($dto->notes));
 
         if ($dtosWithNotes->isEmpty()) {
             return;
@@ -228,12 +232,13 @@ final class OrderBulkWriter
         $allNotes = $dtosWithNotes->flatMap(function (OrderImportDTO $dto) use ($dbOrderMap) {
             $orderId = $dbOrderMap[$dto->linnworksOrderId] ?? null;
 
-            if (!$orderId) {
+            if (! $orderId) {
                 return [];
             }
 
             return collect($dto->notes)->map(function (array $note) use ($orderId) {
                 $note['order_id'] = $orderId;
+
                 return $note;
             });
         })->toArray();
@@ -257,7 +262,7 @@ final class OrderBulkWriter
      */
     public function syncProperties(Collection $dtos): void
     {
-        $dtosWithProperties = $dtos->filter(fn(OrderImportDTO $dto) => !empty($dto->properties));
+        $dtosWithProperties = $dtos->filter(fn (OrderImportDTO $dto) => ! empty($dto->properties));
 
         if ($dtosWithProperties->isEmpty()) {
             return;
@@ -277,12 +282,13 @@ final class OrderBulkWriter
         $allProperties = $dtosWithProperties->flatMap(function (OrderImportDTO $dto) use ($dbOrderMap) {
             $orderId = $dbOrderMap[$dto->linnworksOrderId] ?? null;
 
-            if (!$orderId) {
+            if (! $orderId) {
                 return [];
             }
 
             return collect($dto->properties)->map(function (array $property) use ($orderId) {
                 $property['order_id'] = $orderId;
+
                 return $property;
             });
         })->toArray();
@@ -305,7 +311,7 @@ final class OrderBulkWriter
      */
     public function syncIdentifiers(Collection $dtos): void
     {
-        $dtosWithIdentifiers = $dtos->filter(fn(OrderImportDTO $dto) => !empty($dto->identifiers));
+        $dtosWithIdentifiers = $dtos->filter(fn (OrderImportDTO $dto) => ! empty($dto->identifiers));
 
         if ($dtosWithIdentifiers->isEmpty()) {
             return;
@@ -325,12 +331,13 @@ final class OrderBulkWriter
         $allIdentifiers = $dtosWithIdentifiers->flatMap(function (OrderImportDTO $dto) use ($dbOrderMap) {
             $orderId = $dbOrderMap[$dto->linnworksOrderId] ?? null;
 
-            if (!$orderId) {
+            if (! $orderId) {
                 return [];
             }
 
             return collect($dto->identifiers)->map(function (array $identifier) use ($orderId) {
                 $identifier['order_id'] = $orderId;
+
                 return $identifier;
             });
         })->toArray();

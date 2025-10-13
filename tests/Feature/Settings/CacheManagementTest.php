@@ -1,9 +1,6 @@
 <?php
 
 use App\Events\CacheCleared;
-use App\Events\CachePeriodWarmed;
-use App\Events\CacheWarmingCompleted;
-use App\Events\CacheWarmingStarted;
 use App\Events\OrdersSynced;
 use App\Livewire\Settings\CacheManagement;
 use App\Models\User;
@@ -23,7 +20,7 @@ beforeEach(function () {
 
     // Create log file for testing
     $logPath = storage_path('logs/laravel.log');
-    if (!File::exists(dirname($logPath))) {
+    if (! File::exists(dirname($logPath))) {
         File::makeDirectory(dirname($logPath), 0755, true);
     }
     File::put($logPath, '');
@@ -40,7 +37,7 @@ afterEach(function () {
 test('admin user can mount component', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     expect($component->isWarming)->toBeFalse()
@@ -65,7 +62,7 @@ test('mount detects active warming batch', function () {
         'finished_at' => null,
     ]);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     // Should detect warming in progress
@@ -92,7 +89,7 @@ test('mount detects currently warming period', function () {
     // 7d is already cached, so mount should detect 30d as currently warming
     Cache::put('metrics_7d_all', ['data'], 3600);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     expect($component->isWarming)->toBeTrue()
@@ -102,16 +99,16 @@ test('mount detects currently warming period', function () {
 test('non-admin user cannot mount component', function () {
     $this->actingAs($this->user);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
 
-    expect(fn() => $component->mount())
+    expect(fn () => $component->mount())
         ->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
 });
 
 test('cacheStatus returns correct cache state for cold cache', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $status = $component->cacheStatus();
@@ -136,7 +133,7 @@ test('cacheStatus returns correct cache state for warm cache', function () {
         'warmed_at' => now()->toISOString(),
     ], 3600);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $status = $component->cacheStatus();
@@ -150,7 +147,7 @@ test('cacheStatus returns correct cache state for warm cache', function () {
 test('activeBatch returns null when no batch exists', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     expect($component->activeBatch())->toBeNull();
@@ -173,7 +170,7 @@ test('activeBatch returns correct batch data', function () {
         'finished_at' => null,
     ]);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $batch = $component->activeBatch();
@@ -204,7 +201,7 @@ test('activeBatch calculates progress correctly', function () {
         'finished_at' => null,
     ]);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $batch = $component->activeBatch();
@@ -228,7 +225,7 @@ test('activeBatch shows finished status correctly', function () {
         'finished_at' => time(),
     ]);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $batch = $component->activeBatch();
@@ -240,7 +237,7 @@ test('activeBatch shows finished status correctly', function () {
 test('recentCacheWarming returns empty array when no logs', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     expect($component->recentCacheWarming())->toBe([]);
@@ -257,7 +254,7 @@ test('recentCacheWarming parses logs correctly', function () {
 
     File::put(storage_path('logs/laravel.log'), implode("\n", $logContent));
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $logs = $component->recentCacheWarming();
@@ -281,7 +278,7 @@ test('recentCacheWarming returns last 5 entries only', function () {
 
     File::put(storage_path('logs/laravel.log'), implode("\n", $logContent));
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $logs = $component->recentCacheWarming();
@@ -299,7 +296,7 @@ test('queuedJobs returns correct count', function () {
         ['queue' => 'default', 'payload' => 'test3', 'attempts' => 0, 'reserved_at' => null, 'available_at' => time(), 'created_at' => time()],
     ]);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     expect($component->queuedJobs())->toBe(2); // Only 'low' queue
@@ -308,7 +305,7 @@ test('queuedJobs returns correct count', function () {
 test('warmCache dispatches OrdersSynced event', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
     $component->warmCache();
 
@@ -321,7 +318,7 @@ test('warmCache dispatches OrdersSynced event', function () {
 test('warmCache sets isWarming to true', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     expect($component->isWarming)->toBeFalse();
@@ -342,7 +339,7 @@ test('clearCache removes all cached periods', function () {
 
     expect(Cache::has('metrics_7d_all'))->toBeTrue();
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
     $component->clearCache();
 
@@ -354,7 +351,7 @@ test('clearCache removes all cached periods', function () {
 test('clearCache broadcasts CacheCleared event', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
     $component->clearCache();
 
@@ -364,7 +361,7 @@ test('clearCache broadcasts CacheCleared event', function () {
 test('clearCache sets isClearing to true', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     expect($component->isClearing)->toBeFalse();
@@ -377,7 +374,7 @@ test('clearCache sets isClearing to true', function () {
 test('handleWarmingStarted updates component state', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $component->handleWarmingStarted(['periods' => ['7d', '30d', '90d']]);
@@ -389,7 +386,7 @@ test('handleWarmingStarted updates component state', function () {
 test('handlePeriodWarmingStarted sets currentlyWarmingPeriod', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $component->handlePeriodWarmingStarted(['period' => '7d']);
@@ -400,7 +397,7 @@ test('handlePeriodWarmingStarted sets currentlyWarmingPeriod', function () {
 test('handlePeriodWarmed clears currently warming period', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $component->currentlyWarmingPeriod = '7d';
@@ -414,7 +411,7 @@ test('handlePeriodWarmed resets computed properties', function () {
 
     Cache::put('metrics_7d_all', ['revenue' => 5000], 3600);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     // Access computed property to cache it
@@ -435,7 +432,7 @@ test('handlePeriodWarmed resets computed properties', function () {
 test('handleWarmingCompleted resets component state', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $component->isWarming = true;
@@ -450,7 +447,7 @@ test('handleWarmingCompleted resets component state', function () {
 test('handleCacheCleared sets isClearing to false', function () {
     $this->actingAs($this->admin);
 
-    $component = new CacheManagement();
+    $component = new CacheManagement;
     $component->mount();
 
     $component->isClearing = true;

@@ -7,7 +7,6 @@ namespace App\Services\Analytics;
 use App\Models\Order;
 use App\Services\Metrics\SalesMetrics;
 use App\ValueObjects\Analytics\AnalyticsFilter;
-use App\ValueObjects\Analytics\DateRange;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -26,6 +25,7 @@ final class AnalyticsService
     public function getOrders(AnalyticsFilter $filter): Collection
     {
         $query = Order::query()->where('channel_name', '!=', 'DIRECT');
+
         return $filter->applyToQuery($query)->get();
     }
 
@@ -142,5 +142,4 @@ final class AnalyticsService
             'open_revenue' => $metrics->openOrdersRevenue(),
         ];
     }
-
 }

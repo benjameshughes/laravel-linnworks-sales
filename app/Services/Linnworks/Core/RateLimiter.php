@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 class RateLimiter
 {
     private const CACHE_PREFIX = 'linnworks_rate_limit:';
+
     private const CACHE_TTL = 60; // 1 minute
 
     public function __construct(
@@ -22,7 +23,7 @@ class RateLimiter
     {
         $key = $this->getCacheKey();
         $currentRequests = Cache::get($key, 0);
-        
+
         return $currentRequests < $this->config->maxRequests;
     }
 
@@ -33,15 +34,15 @@ class RateLimiter
     {
         $key = $this->getCacheKey();
         $currentRequests = Cache::get($key, 0);
-        
+
         // Increment request count
         Cache::put($key, $currentRequests + 1, self::CACHE_TTL);
-        
+
         // Apply delay if configured
         if ($this->config->delayBetweenRequests > 0) {
             usleep($this->config->delayBetweenRequests * 1000); // Convert to microseconds
         }
-        
+
         Log::debug('Linnworks rate limiter: Request recorded', [
             'requests_made' => $currentRequests + 1,
             'max_requests' => $this->config->maxRequests,
@@ -118,7 +119,7 @@ class RateLimiter
      */
     private function getCacheKey(): string
     {
-        return self::CACHE_PREFIX . $this->config->getCacheKey();
+        return self::CACHE_PREFIX.$this->config->getCacheKey();
     }
 
     /**

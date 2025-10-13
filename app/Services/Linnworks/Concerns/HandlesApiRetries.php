@@ -15,9 +15,11 @@ trait HandlesApiRetries
      * Execute a callback with exponential backoff retry logic.
      *
      * @template T
-     * @param Closure(): T $callback
-     * @param array<int> $backoffSchedule Backoff delays in seconds [1, 3, 10]
+     *
+     * @param  Closure(): T  $callback
+     * @param  array<int>  $backoffSchedule  Backoff delays in seconds [1, 3, 10]
      * @return T
+     *
      * @throws LinnworksApiException
      */
     protected function withRetry(
@@ -35,7 +37,7 @@ trait HandlesApiRetries
                 $attempt++;
 
                 // Don't retry if not retryable or last attempt
-                if (!$e->isRetryable() || $attempt >= $maxAttempts) {
+                if (! $e->isRetryable() || $attempt >= $maxAttempts) {
                     Log::error('Linnworks API request failed permanently', [
                         'operation' => $operation,
                         'attempt' => $attempt,
@@ -95,14 +97,15 @@ trait HandlesApiRetries
 
         // Use exponential backoff from schedule
         $index = $attempt - 1;
+
         return $backoffSchedule[$index] ?? end($backoffSchedule);
     }
 
     /**
      * Execute multiple callbacks in parallel with retry logic.
      *
-     * @param array<string, Closure> $callbacks Keyed array of callbacks to execute
-     * @param array<int> $backoffSchedule
+     * @param  array<string, Closure>  $callbacks  Keyed array of callbacks to execute
+     * @param  array<int>  $backoffSchedule
      * @return array<string, mixed>
      */
     protected function withConcurrentRetries(

@@ -3,7 +3,6 @@
 use App\Models\LinnworksConnection;
 use App\Models\User;
 use App\Services\Linnworks\Auth\AuthenticationService;
-use App\Services\Linnworks\Core\LinnworksClient;
 use App\ValueObjects\Linnworks\SessionToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;

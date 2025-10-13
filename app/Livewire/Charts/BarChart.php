@@ -10,7 +10,7 @@ final class BarChart extends BaseChart
     {
         return 'bar';
     }
-    
+
     protected function getDefaultOptions(): array
     {
         return array_merge(parent::getDefaultOptions(), [

@@ -20,7 +20,7 @@ class SearchMaintenanceController extends Controller
     {
         // This would typically be protected by admin middleware
         $response = $this->analyticsService->reindexAll();
-        
+
         return $response->toJsonResponse();
     }
 
@@ -35,7 +35,7 @@ class SearchMaintenanceController extends Controller
 
         $pattern = $validated['pattern'] ?? null;
         $response = $this->analyticsService->clearCache($pattern);
-        
+
         return $response->toJsonResponse();
     }
 }

@@ -24,7 +24,7 @@ class TrendingController extends Controller
 
         $limit = $validated['limit'] ?? 10;
         $response = $this->analyticsService->getTrending($limit);
-        
+
         return $response->toJsonResponse();
     }
 }
