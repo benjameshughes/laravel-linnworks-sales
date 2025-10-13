@@ -15,6 +15,7 @@ use App\Services\Linnworks\Orders\OpenOrdersService;
 use App\Services\Linnworks\Orders\OrdersApiService;
 use App\Services\Linnworks\Orders\ProcessedOrdersService;
 use App\Services\Linnworks\Orders\ViewsService;
+use App\Services\Linnworks\Parsers\ProcessedOrdersResponseParser;
 use App\Services\Linnworks\Products\InventoryService;
 use App\Services\Linnworks\Products\ProductsApiService;
 use App\ValueObjects\Linnworks\RateLimitConfig;
@@ -66,10 +67,15 @@ class LinnworksServiceProvider extends ServiceProvider
             );
         });
 
+        $this->app->singleton(ProcessedOrdersResponseParser::class, function () {
+            return new ProcessedOrdersResponseParser();
+        });
+
         $this->app->singleton(ProcessedOrdersService::class, function ($app) {
             return new ProcessedOrdersService(
                 client: $app->make(LinnworksClient::class),
                 sessionManager: $app->make(SessionManager::class),
+                parser: $app->make(ProcessedOrdersResponseParser::class),
             );
         });
 
