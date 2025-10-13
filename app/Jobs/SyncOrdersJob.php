@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Actions\Orders\StreamingOrderImporter;
+use App\Actions\Sync\Orders\ImportInBulk;
 use App\Actions\Sync\TrackSyncProgress;
 use App\DataTransferObjects\ProcessedOrderFilters;
 use App\Events\OrdersSynced;
@@ -66,7 +66,7 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(
         LinnworksApiService $api,
-        StreamingOrderImporter $importer,
+        ImportInBulk $importer,
         OrderSyncOrchestrator $sync
     ): void {
         // Start sync log

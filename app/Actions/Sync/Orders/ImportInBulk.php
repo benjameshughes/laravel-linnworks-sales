@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Orders;
+namespace App\Actions\Sync\Orders;
 
 use App\DataTransferObjects\ImportOrdersResult;
 use App\DataTransferObjects\LinnworksOrder;
@@ -14,9 +14,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Streaming order importer with bulk operations
+ * Bulk order import action
  *
- * Designed for processing large batches of orders efficiently:
+ * Domain: Order Sync
+ * Responsibility: Import large batches of orders efficiently
+ *
+ * Process:
  * - Converts LinnworksOrder → OrderImportDTO (MEGA data)
  * - Batch loads existing orders (avoid N+1)
  * - Partitions into new vs updates
@@ -25,7 +28,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Performance: ~300 orders/sec vs ~16 orders/sec (18× faster)
  */
-final class StreamingOrderImporter
+final class ImportInBulk
 {
     public function __construct(
         private readonly OrderBulkWriter $bulkWriter,
@@ -53,7 +56,7 @@ final class StreamingOrderImporter
             );
         }
 
-        Log::info('StreamingOrderImporter: Starting import', [
+        Log::info('Sync/Orders/ImportInBulk: Starting import', [
             'order_count' => $linnworksOrders->count(),
             'dry_run' => $this->dryRun,
         ]);
@@ -92,7 +95,7 @@ final class StreamingOrderImporter
                 failed: 0,
             );
 
-            Log::info('StreamingOrderImporter: Import completed', [
+            Log::info('Sync/Orders/ImportInBulk: Import completed', [
                 'processed' => $result->processed,
                 'created' => $result->created,
                 'updated' => $result->updated,
@@ -106,7 +109,7 @@ final class StreamingOrderImporter
             return $result;
 
         } catch (\Throwable $e) {
-            Log::error('StreamingOrderImporter: Import failed', [
+            Log::error('Sync/Orders/ImportInBulk: Import failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -160,7 +163,7 @@ final class StreamingOrderImporter
             ->values()
             ->toArray();
 
-        Log::info('StreamingOrderImporter: Batch loading existing orders', [
+        Log::info('Sync/Orders/ImportInBulk: Batch loading existing orders', [
             'order_ids_count' => count($orderIds),
             'order_numbers_count' => count($orderNumbers),
         ]);
@@ -192,7 +195,7 @@ final class StreamingOrderImporter
             ->filter(fn ($order) => $order->order_number)
             ->keyBy('order_number');
 
-        Log::info('StreamingOrderImporter: Existing orders loaded', [
+        Log::info('Sync/Orders/ImportInBulk: Existing orders loaded', [
             'total_loaded' => $existingOrders->unique('id')->count(),
             'by_order_id' => $orderIdMap->count(),
             'by_order_number' => $orderNumberMap->count(),
@@ -237,7 +240,7 @@ final class StreamingOrderImporter
             }
         }
 
-        Log::info('StreamingOrderImporter: Orders partitioned', [
+        Log::info('Sync/Orders/ImportInBulk: Orders partitioned', [
             'new' => $newOrders->count(),
             'updates' => $updates->count(),
         ]);
@@ -259,7 +262,7 @@ final class StreamingOrderImporter
         $peakMemoryAfter = memory_get_peak_usage(true);
         $memoryUsed = $peakMemoryAfter - $peakMemoryBefore;
 
-        Log::info('StreamingOrderImporter: DRY RUN completed', [
+        Log::info('Sync/Orders/ImportInBulk: DRY RUN completed', [
             'total_orders' => $dtos->count(),
             'would_create' => $newOrders->count(),
             'would_update' => $updates->count(),
