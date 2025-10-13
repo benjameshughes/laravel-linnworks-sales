@@ -29,14 +29,23 @@ class ProcessedOrdersService
         int $entriesPerPage = 200
     ): ApiResponse {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        
+
         if (!$sessionToken) {
             return ApiResponse::error('No valid session token available');
         }
 
-        $searchParams = $this->buildSearchParams($from, $to, $filters, $page, $entriesPerPage);
+        $dateField = $filters['dateField'] ?? 'received';
 
-        $request = ApiRequest::post('ProcessedOrders/SearchProcessedOrders', $searchParams);
+        // Use Laravel HTTP client directly - matching working Guzzle example
+        $body = [
+            'request' => [
+                'FromDate' => $from->copy()->utc()->toISOString(),
+                'DateField' => $dateField,
+                'ToDate' => $to->copy()->utc()->toISOString(),
+                'PageNumber' => $page,
+                'ResultsPerPage' => $entriesPerPage,
+            ],
+        ];
 
         Log::info('Searching processed orders', [
             'user_id' => $userId,
@@ -47,7 +56,17 @@ class ProcessedOrdersService
             'entries_per_page' => $entriesPerPage,
         ]);
 
-        return $this->client->makeRequest($request, $sessionToken);
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => $sessionToken->token,
+            'accept' => 'application/json',
+            'content-type' => 'application/json',
+        ])->post($sessionToken->getBaseUrl() . 'ProcessedOrders/SearchProcessedOrders', $body);
+
+        if ($response->failed()) {
+            return ApiResponse::error('API request failed: ' . $response->body());
+        }
+
+        return ApiResponse::fromHttpResponse($response);
     }
 
     /**
@@ -86,11 +105,12 @@ class ProcessedOrdersService
             }
 
             $data = $response->getData();
-            $orders = collect($data->get('Results', []));
+            $processedOrders = $data->get('ProcessedOrders', []);
+            $orders = collect($processedOrders['Data'] ?? []);
             $allOrders = $allOrders->merge($orders);
 
-            $totalResults = $data->get('ResultsCount', 0);
-            $totalPages = $totalResults > 0 ? ceil($totalResults / $entriesPerPage) : 0;
+            $totalResults = $processedOrders['TotalEntries'] ?? 0;
+            $totalPages = $processedOrders['TotalPages'] ?? 0;
 
             Log::info('Fetched processed orders page', [
                 'user_id' => $userId,
@@ -260,12 +280,13 @@ class ProcessedOrdersService
         }
 
         $data = $response->getData();
-        $orders = $data->get('Results', collect());
-        
+        $processedOrders = $data->get('ProcessedOrders', []);
+        $orders = collect($processedOrders['Data'] ?? []);
+
         $totalValue = $orders->sum('TotalValue');
         $totalProfit = $orders->sum('Profit');
         $totalOrders = $orders->count();
-        
+
         $channelStats = $orders->groupBy('Channel')
             ->map(function ($channelOrders) {
                 return [
@@ -289,7 +310,7 @@ class ProcessedOrdersService
                 'to' => $to->toISOString(),
             ],
             'filters_applied' => $filters,
-            'results_count' => $data->get('ResultsCount', 0),
+            'results_count' => $processedOrders['TotalEntries'] ?? 0,
         ];
     }
 
@@ -303,34 +324,18 @@ class ProcessedOrdersService
         int $page,
         int $entriesPerPage
     ): array {
-        $request = [
-            'DateField' => 'received',  // Search by received date, not processed date
-            'FromDate' => $from->copy()->utc()->format('Y-m-d\TH:i:s'),
-            'ToDate' => $to->copy()->utc()->format('Y-m-d\TH:i:s'),
-            'PageNumber' => $page,
-            'ResultsPerPage' => $entriesPerPage,
-            'SortColumn' => 'ReceivedDate',  // Sort by received date too
-            'SortDirection' => 'DESC',
+        // Use 'processed' date field if specified in filters, otherwise 'received'
+        $dateField = $filters['dateField'] ?? 'received';
+
+        // Match the working Guzzle example EXACTLY: {"request": {...}}
+        return [
+            'request' => [
+                'FromDate' => $from->copy()->utc()->format('Y-m-d\TH:i:s.v\Z'),
+                'DateField' => $dateField,
+                'ToDate' => $to->copy()->utc()->format('Y-m-d\TH:i:s.v\Z'),
+                'PageNumber' => $page,
+                'ResultsPerPage' => $entriesPerPage,
+            ],
         ];
-
-        $filterMap = [
-            'channel' => 'Channel',
-            'status' => 'Status',
-            'reference' => 'Reference',
-            'email' => 'Email',
-            'minValue' => 'MinValue',
-            'maxValue' => 'MaxValue',
-            'country' => 'Country',
-            'sku' => 'SKU',
-            'tag' => 'Tag',
-        ];
-
-        foreach ($filterMap as $inputKey => $apiKey) {
-            if (!empty($filters[$inputKey])) {
-                $request[$apiKey] = $filters[$inputKey];
-            }
-        }
-
-        return ['request' => $request];
     }
 }
