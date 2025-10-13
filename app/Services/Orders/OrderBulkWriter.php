@@ -89,17 +89,23 @@ final class OrderBulkWriter
             return;
         }
 
-        // Collect ALL linnworks_order_ids
-        $orderIds = $dtos->pluck('linnworksOrderId')->unique()->toArray();
+        // Collect ALL linnworks_order_ids to get DB IDs
+        $linnworksOrderIds = $dtos->pluck('linnworksOrderId')->unique()->toArray();
 
-        // Single DELETE for all orders
+        // Get actual database order IDs
+        $dbOrderIds = DB::table('orders')
+            ->whereIn('linnworks_order_id', $linnworksOrderIds)
+            ->pluck('id')
+            ->toArray();
+
+        // Single DELETE for all orders (using order_id foreign key)
         $deleted = DB::table('order_items')
-            ->whereIn('linnworks_order_id', $orderIds)
+            ->whereIn('order_id', $dbOrderIds)
             ->delete();
 
         // Get actual database order IDs for setting foreign keys
         $dbOrderMap = DB::table('orders')
-            ->whereIn('linnworks_order_id', $orderIds)
+            ->whereIn('linnworks_order_id', $linnworksOrderIds)
             ->pluck('id', 'linnworks_order_id')
             ->toArray();
 
@@ -129,7 +135,7 @@ final class OrderBulkWriter
         DB::table('order_items')->insert($allItems);
 
         Log::info('OrderBulkWriter: Bulk synced order items', [
-            'orders_count' => count($orderIds),
+            'orders_count' => count($linnworksOrderIds),
             'deleted' => $deleted,
             'inserted' => count($allItems),
         ]);
@@ -147,16 +153,22 @@ final class OrderBulkWriter
             return;
         }
 
-        $orderIds = $dtosWithShipping->pluck('linnworksOrderId')->unique()->toArray();
+        $linnworksOrderIds = $dtosWithShipping->pluck('linnworksOrderId')->unique()->toArray();
 
-        // Single DELETE for all
+        // Get DB order IDs
+        $dbOrderIds = DB::table('orders')
+            ->whereIn('linnworks_order_id', $linnworksOrderIds)
+            ->pluck('id')
+            ->toArray();
+
+        // Single DELETE for all (using order_id foreign key)
         $deleted = DB::table('order_shipping')
-            ->whereIn('linnworks_order_id', $orderIds)
+            ->whereIn('order_id', $dbOrderIds)
             ->delete();
 
         // Get actual database order IDs
         $dbOrderMap = DB::table('orders')
-            ->whereIn('linnworks_order_id', $orderIds)
+            ->whereIn('linnworks_order_id', $linnworksOrderIds)
             ->pluck('id', 'linnworks_order_id')
             ->toArray();
 
@@ -181,7 +193,7 @@ final class OrderBulkWriter
         DB::table('order_shipping')->insert($allShipping);
 
         Log::info('OrderBulkWriter: Bulk synced shipping', [
-            'orders_count' => count($orderIds),
+            'orders_count' => count($linnworksOrderIds),
             'deleted' => $deleted,
             'inserted' => count($allShipping),
         ]);

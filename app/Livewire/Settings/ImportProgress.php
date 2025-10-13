@@ -7,7 +7,6 @@ use App\Events\ImportCompleted;
 use App\Events\ImportPerformanceUpdate;
 use App\Events\ImportProgressUpdated;
 use App\Events\ImportStarted;
-use App\Jobs\RunHistoricalImportJob;
 use App\Jobs\SyncOrdersJob;
 use App\Models\SyncLog;
 use Livewire\Attributes\On;
@@ -114,10 +113,13 @@ class ImportProgress extends Component
         $this->status = 'queued';
         $this->startedAt = now()->toISOString();
 
-        RunHistoricalImportJob::dispatch(
-            fromDate: $this->fromDate,
-            toDate: $this->toDate,
-            batchSize: $this->batchSize,
+        // Use the unified SyncOrdersJob in historical import mode
+        SyncOrdersJob::dispatch(
+            startedBy: auth()->user()?->name ?? 'UI Import',
+            dryRun: false,
+            historicalImport: true,
+            fromDate: \Carbon\Carbon::parse($this->fromDate)->startOfDay(),
+            toDate: \Carbon\Carbon::parse($this->toDate)->endOfDay(),
         );
 
         $this->message = 'Import queued. Waiting for background workers...';

@@ -48,6 +48,9 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
     public function __construct(
         public ?string $startedBy = null,
         public bool $dryRun = false,
+        public bool $historicalImport = false,
+        public ?Carbon $fromDate = null,
+        public ?Carbon $toDate = null,
     ) {
         $this->startedBy = $startedBy ?? 'system';
         $this->onQueue('high');
@@ -70,6 +73,11 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
         Log::info('Unified streaming order sync started', [
             'started_by' => $this->startedBy,
             'dry_run' => $this->dryRun,
+            'historical_import' => $this->historicalImport,
+            'date_range' => $this->historicalImport ? [
+                'from' => $this->fromDate?->toDateString(),
+                'to' => $this->toDate?->toDateString(),
+            ] : null,
         ]);
 
         if (!$api->isConfigured()) {
@@ -85,30 +93,44 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             $totalProcessed = 0;
             $totalFailed = 0;
 
-            // Step 1: Get ALL open order IDs (fast check)
-            $syncLog->updateProgress('fetching_open_ids', 0, 4, ['message' => 'Checking open orders...']);
-            event(new SyncProgressUpdated('fetching-open-ids', 'Checking open orders...'));
-            Log::info('Fetching open order UUIDs from Linnworks...');
+            // Step 1: Get open order IDs (skip for historical imports)
+            $openOrderIds = collect();
 
-            $openOrderIds = $api->getAllOpenOrderIds();
-            Log::info("Found {$openOrderIds->count()} open order UUIDs");
-            $syncLog->updateProgress('fetching_open_ids', 1, 4, [
-                'message' => "Found {$openOrderIds->count()} open orders",
-                'open_count' => $openOrderIds->count(),
-            ]);
+            if (!$this->historicalImport) {
+                $syncLog->updateProgress('fetching_open_ids', 0, 4, ['message' => 'Checking open orders...']);
+                event(new SyncProgressUpdated('fetching-open-ids', 'Checking open orders...'));
+                Log::info('Fetching open order UUIDs from Linnworks...');
 
-            // Step 2: Get processed order IDs from last 30 days
+                $openOrderIds = $api->getAllOpenOrderIds();
+                Log::info("Found {$openOrderIds->count()} open order UUIDs");
+                $syncLog->updateProgress('fetching_open_ids', 1, 4, [
+                    'message' => "Found {$openOrderIds->count()} open orders",
+                    'open_count' => $openOrderIds->count(),
+                ]);
+            } else {
+                Log::info('Skipping open orders (historical import mode)');
+            }
+
+            // Step 2: Get processed order IDs (use custom date range for historical imports)
             $syncLog->updateProgress('fetching_processed_ids', 1, 4, ['message' => 'Fetching processed orders (this may take several minutes)...']);
             event(new SyncProgressUpdated('fetching-processed-ids', 'Fetching processed orders (this may take several minutes)...'));
 
-            $processedFrom = Carbon::now()->subDays(30)->startOfDay();
-            $processedTo = Carbon::now()->endOfDay();
+            // Use custom date range if historical import, otherwise last 30 days
+            $processedFrom = $this->historicalImport && $this->fromDate
+                ? $this->fromDate
+                : Carbon::now()->subDays(30)->startOfDay();
+            $processedTo = $this->historicalImport && $this->toDate
+                ? $this->toDate
+                : Carbon::now()->endOfDay();
 
             // Use existing logic to get processed order data with progress callback
+            // For historical imports, search by processed date; for regular syncs, use received date
+            $filters = $this->historicalImport ? ['dateField' => 'processed'] : [];
+
             $processedOrders = $api->getAllProcessedOrders(
                 from: $processedFrom,
                 to: $processedTo,
-                filters: [],
+                filters: $filters,
                 maxOrders: (int) config('linnworks.sync.max_processed_orders', 5000),
                 userId: null,
                 progressCallback: function ($page, $totalPages, $fetchedCount, $totalResults) use ($syncLog) {
@@ -153,8 +175,8 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
             // Broadcast sync started
             event(new SyncStarted($allOrderIds->count(), 30));
 
-            // Step 4: Mark existing orders as open/closed based on current state
-            if ($openOrderIds->isNotEmpty()) {
+            // Step 4: Mark existing orders as open/closed (skip for historical imports)
+            if (!$this->historicalImport && $openOrderIds->isNotEmpty()) {
                 $existingOrderIds = Order::whereIn('linnworks_order_id', $openOrderIds->toArray())
                     ->pluck('linnworks_order_id')
                     ->toArray();
@@ -170,6 +192,8 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
 
                 // Mark orders not in the current sync as closed
                 $this->markMissingOrdersAsClosed($openOrderIds);
+            } elseif ($this->historicalImport) {
+                Log::info('Skipping open/closed status updates (historical import mode)');
             }
 
             // Step 5: Stream fetch + import (THE MAGIC!)
@@ -322,6 +346,16 @@ final class SyncOrdersJob implements ShouldQueue, ShouldBeUnique
                 'trace' => $e->getTraceAsString(),
             ]);
             $syncLog->fail($e->getMessage());
+
+            // Broadcast failure to UI
+            event(new SyncCompleted(
+                processed: $totalProcessed,
+                created: $totalCreated,
+                updated: $totalUpdated,
+                failed: $totalFailed,
+                success: false,
+            ));
+
             throw $e;
         }
     }
