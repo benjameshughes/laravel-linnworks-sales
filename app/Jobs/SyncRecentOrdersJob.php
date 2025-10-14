@@ -12,6 +12,7 @@ use App\Events\SyncCompleted;
 use App\Events\SyncProgressUpdated;
 use App\Events\SyncStarted;
 use App\Models\Order;
+use App\Models\SyncCheckpoint;
 use App\Models\SyncLog;
 use App\Services\Linnworks\Sync\Orders\OrderSyncOrchestrator;
 use App\Services\LinnworksApiService;
@@ -25,26 +26,27 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Sync recent orders - fast and comprehensive
+ * Sync recent orders - fast and incremental
  *
- * Syncs ALL open orders + ALL processed orders from last 30 days.
- * No limits, no conditionals - just gets everything recent.
+ * Uses checkpoints for efficient incremental syncing:
+ * - Syncs ALL open orders (no limit)
+ * - Syncs processed orders from last checkpoint (or last 7 days if first run)
+ * - No artificial limits - gets everything since last sync
  *
  * Flow:
  * 1. Get ALL open order IDs (no date filter, no limit)
- * 2. Get ALL processed order IDs from last 30 days (no limit)
+ * 2. Get processed order IDs since last checkpoint (no limit)
  * 3. Fetch full details in batches of 200
  * 4. Bulk write to DB
  * 5. Update open/closed status
- * 6. Warm cache
+ * 6. Update checkpoint timestamp
+ * 7. Warm cache
  *
  * Performance: ~300-500 orders/sec with retry logic
  */
 final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    private const SYNC_WINDOW_DAYS = 30;
 
     public readonly int $uniqueFor;
 
@@ -71,16 +73,27 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
         ImportInBulk $importer,
         OrderSyncOrchestrator $sync
     ): void {
+        // Get or create checkpoint for incremental sync
+        $checkpoint = SyncCheckpoint::getOrCreateCheckpoint('recent_orders', 'linnworks');
+        $checkpoint->startSync();
+
+        // Use checkpoint for efficient incremental sync
+        $processedFrom = $checkpoint->getIncrementalStartDate();
+        $processedTo = Carbon::now()->endOfDay();
+
         // Start sync log
         $syncLog = SyncLog::startSync(SyncLog::TYPE_OPEN_ORDERS, [
             'started_by' => $this->startedBy ?? 'system',
             'job_type' => 'recent_orders_sync',
-            'sync_window_days' => self::SYNC_WINDOW_DAYS,
+            'incremental_from' => $processedFrom->toDateTimeString(),
+            'incremental_to' => $processedTo->toDateTimeString(),
         ]);
 
-        Log::info('Recent orders sync started', [
+        Log::info('Recent orders sync started (incremental)', [
             'started_by' => $this->startedBy,
-            'sync_window_days' => self::SYNC_WINDOW_DAYS,
+            'from' => $processedFrom->toDateString(),
+            'to' => $processedTo->toDateString(),
+            'days_covered' => $processedFrom->diffInDays($processedTo),
         ]);
 
         if (! $api->isConfigured()) {
@@ -108,16 +121,14 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 'open_count' => $openOrderIds->count(),
             ]);
 
-            // Step 2: Stream ALL processed order IDs from last 30 days (no limit)
-            $syncLog->updateProgress('fetching_processed_ids', 1, 4, ['message' => 'Streaming processed orders...']);
-            event(new SyncProgressUpdated('fetching-processed-ids', 'Streaming processed orders...'));
+            // Step 2: Stream processed order IDs since last checkpoint (no limit)
+            $syncLog->updateProgress('fetching_processed_ids', 1, 4, ['message' => 'Streaming processed orders (incremental)...']);
+            event(new SyncProgressUpdated('fetching-processed-ids', 'Streaming processed orders (incremental)...'));
 
-            $processedFrom = Carbon::now()->subDays(self::SYNC_WINDOW_DAYS)->startOfDay();
-            $processedTo = Carbon::now()->endOfDay();
-
-            Log::info('Streaming processed order IDs', [
+            Log::info('Streaming processed order IDs (incremental)', [
                 'from' => $processedFrom->toDateString(),
                 'to' => $processedTo->toDateString(),
+                'days_covered' => $processedFrom->diffInDays($processedTo),
             ]);
 
             // Stream processed orders - NO maxOrders parameter
@@ -143,7 +154,8 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             );
 
             // Broadcast sync started
-            event(new SyncStarted(0, self::SYNC_WINDOW_DAYS));
+            $daysCovered = (int) $processedFrom->diffInDays($processedTo);
+            event(new SyncStarted(0, $daysCovered));
 
             // Step 3: Mark existing open orders
             if ($openOrderIds->isNotEmpty()) {
@@ -214,6 +226,19 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 failed: $totalFailed
             );
 
+            // Update checkpoint for next incremental sync
+            $checkpoint->completeSync(
+                synced: $totalProcessed,
+                created: $totalCreated,
+                updated: $totalUpdated,
+                failed: $totalFailed,
+                metadata: [
+                    'from' => $processedFrom->toDateTimeString(),
+                    'to' => $processedTo->toDateTimeString(),
+                    'open_orders_count' => $openOrderIds->count(),
+                ]
+            );
+
             // Step 6: Broadcast completion
             $success = $totalFailed === 0 && $totalProcessed > 0;
             event(new SyncCompleted(
@@ -251,6 +276,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 'trace' => $e->getTraceAsString(),
             ]);
             $syncLog->fail($e->getMessage());
+            $checkpoint->failSync($e->getMessage());
 
             // Broadcast failure to UI
             event(new SyncCompleted(

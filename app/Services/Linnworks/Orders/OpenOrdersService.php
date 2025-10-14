@@ -309,13 +309,15 @@ class OpenOrdersService
 
     /**
      * Retrieve paginated open order identifiers.
+     *
+     * No artificial limits - fetches ALL open order IDs.
+     * Memory is controlled by pagination (200 IDs per page).
      */
     public function getOpenOrderIds(
         int $userId,
         int $entriesPerPage = 200,
         ?int $viewId = null,
-        ?string $locationId = null,
-        int $maxResults = 5000
+        ?string $locationId = null
     ): Collection {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
@@ -403,7 +405,6 @@ class OpenOrdersService
             'view_id' => $viewId,
             'location_id' => $locationId,
             'entries_per_page' => $entriesPerPage,
-            'max_results' => $maxResults,
         ]);
 
         do {
@@ -462,18 +463,10 @@ class OpenOrdersService
 
             $page++;
 
-            if ($ids->count() >= $maxResults) {
-                Log::info('Reached max open order IDs limit', [
-                    'user_id' => $userId,
-                    'limit' => $maxResults,
-                ]);
-                break;
-            }
-
             $totalPages = (int) ($data->get('TotalPages') ?? $page - 1);
         } while ($pageIds->isNotEmpty() && $page <= max(1, $totalPages));
 
-        return $ids->take($maxResults)->values();
+        return $ids->values();
     }
 
     /**
