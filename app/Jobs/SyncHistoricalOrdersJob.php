@@ -11,13 +11,11 @@ use App\Events\OrdersSynced;
 use App\Events\SyncCompleted;
 use App\Events\SyncProgressUpdated;
 use App\Events\SyncStarted;
-use App\Models\Order;
 use App\Models\SyncLog;
 use App\Services\Linnworks\Sync\Orders\OrderSyncOrchestrator;
 use App\Services\LinnworksApiService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -25,43 +23,46 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 /**
- * UNIFIED order sync job - handles BOTH open and processed orders
+ * Sync historical orders - one-time backfill for specific date range
  *
- * Key insight: getOrdersByIds() fetches full details for ANY order (open or processed).
- * No need for separate jobs - the only difference is the isProcessed flag!
+ * Only syncs PROCESSED orders (no open orders - historical data is all processed).
+ * Uses 'processed' date field (when order was fulfilled).
+ * Shows progress, persists state for UI.
  *
  * Flow:
- * 1. Get all order IDs (open + processed from last 30 days)
- * 2. Fetch in chunks of 200 using getOrdersByIds()
- * 3. Stream to StreamingOrderImporter (processes while fetching next chunk)
- * 4. Bulk write to DB using DB facade (no Eloquent overhead)
+ * 1. Get ALL processed order IDs in date range (no limit)
+ * 2. Fetch full details in batches of 200
+ * 3. Bulk write to DB
+ * 4. Persist progress every 10 batches
+ * 5. Conditional cache warming (only if affects dashboard periods)
  *
- * Performance: ~300 orders/sec vs ~16 orders/sec (18× faster)
+ * Performance: ~300-500 orders/sec with retry logic
  */
-final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
+final class SyncHistoricalOrdersJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $uniqueFor = 3600; // 1 hour
+    public readonly int $tries;
 
-    public int $tries = 1;
-
-    public int $timeout = 1800; // 30 minutes - allows for retries with backoff on slow batches
+    public readonly int $timeout;
 
     public function __construct(
-        public ?string $startedBy = null,
-        public bool $dryRun = false,
-        public bool $historicalImport = false,
-        public ?Carbon $fromDate = null,
-        public ?Carbon $toDate = null,
+        public readonly Carbon $fromDate,
+        public readonly Carbon $toDate,
+        public readonly ?string $startedBy = null,
     ) {
-        $this->startedBy = $startedBy ?? 'system';
-        $this->onQueue('high');
+        $this->tries = 1;
+        $this->timeout = 3600; // 1 hour for large historical imports
+        $this->onQueue('low'); // Don't block recent syncs
     }
 
     public function uniqueId(): string
     {
-        return 'sync-orders';
+        return sprintf(
+            'sync-historical-orders-%s-%s',
+            $this->fromDate->format('Ymd'),
+            $this->toDate->format('Ymd')
+        );
     }
 
     public function handle(
@@ -69,21 +70,20 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
         ImportInBulk $importer,
         OrderSyncOrchestrator $sync
     ): void {
-        // Start sync log
-        $syncLog = SyncLog::startSync(SyncLog::TYPE_OPEN_ORDERS, [
-            'started_by' => $this->startedBy,
-            'job_type' => 'unified_streaming_sync',
-            'dry_run' => $this->dryRun,
+        // Start sync log with proper type
+        $syncLog = SyncLog::startSync(SyncLog::TYPE_HISTORICAL_ORDERS, [
+            'started_by' => $this->startedBy ?? 'system',
+            'job_type' => 'historical_import',
+            'date_range' => [
+                'from' => $this->fromDate->toDateString(),
+                'to' => $this->toDate->toDateString(),
+            ],
         ]);
 
-        Log::info('Unified streaming order sync started', [
+        Log::info('Historical import started', [
             'started_by' => $this->startedBy,
-            'dry_run' => $this->dryRun,
-            'historical_import' => $this->historicalImport,
-            'date_range' => $this->historicalImport ? [
-                'from' => $this->fromDate?->toDateString(),
-                'to' => $this->toDate?->toDateString(),
-            ] : null,
+            'from' => $this->fromDate->toDateString(),
+            'to' => $this->toDate->toDateString(),
         ]);
 
         if (! $api->isConfigured()) {
@@ -99,56 +99,26 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
             $totalProcessed = 0;
             $totalFailed = 0;
 
-            // Step 1: Get open order IDs (skip for historical imports)
-            $openOrderIds = collect();
+            // Skip open orders entirely - historical data is all processed
+            Log::info('Historical import - processed orders only', [
+                'from' => $this->fromDate->toDateString(),
+                'to' => $this->toDate->toDateString(),
+            ]);
 
-            if (! $this->historicalImport) {
-                $syncLog->updateProgress('fetching_open_ids', 0, 4, ['message' => 'Checking open orders...']);
-                event(new SyncProgressUpdated('fetching-open-ids', 'Checking open orders...'));
-                Log::info('Fetching open order UUIDs from Linnworks...');
+            // Stream ALL processed order IDs in date range (no limit)
+            $syncLog->updateProgress('fetching_processed_ids', 0, 3, ['message' => 'Streaming historical orders...']);
+            event(new SyncProgressUpdated('fetching-processed-ids', 'Streaming historical orders...'));
 
-                $openOrderIds = $api->getAllOpenOrderIds();
-                Log::info("Found {$openOrderIds->count()} open order UUIDs");
-                $syncLog->updateProgress('fetching_open_ids', 1, 4, [
-                    'message' => "Found {$openOrderIds->count()} open orders",
-                    'open_count' => $openOrderIds->count(),
-                ]);
-            } else {
-                Log::info('Skipping open orders (historical import mode)');
-            }
-
-            // Step 2: Stream processed order IDs (MEMORY-EFFICIENT!)
-            // Instead of loading ALL order IDs into memory, we stream and process page by page
-            $syncLog->updateProgress('fetching_processed_ids', 1, 4, ['message' => 'Streaming processed orders (memory-efficient)...']);
-            event(new SyncProgressUpdated('fetching-processed-ids', 'Streaming processed orders (memory-efficient)...'));
-
-            // Use custom date range if historical import, otherwise last 30 days
-            $processedFrom = $this->historicalImport && $this->fromDate
-                ? $this->fromDate
-                : Carbon::now()->subDays(30)->startOfDay();
-            $processedTo = $this->historicalImport && $this->toDate
-                ? $this->toDate
-                : Carbon::now()->endOfDay();
-
-            // Use existing logic to get processed order data with progress callback
-            // For historical imports, search by processed date; for regular syncs, use received date
-            $filters = $this->historicalImport
-                ? ProcessedOrderFilters::forHistoricalImport()->toArray()
-                : ProcessedOrderFilters::forRecentSync()->toArray();
-
-            // Streaming approach: Get a generator that yields order IDs page by page
+            // Use 'processed' date field for historical imports
             $processedOrderIdsStream = $api->streamProcessedOrderIds(
-                from: $processedFrom,
-                to: $processedTo,
-                filters: $filters,
-                maxOrders: (int) config('linnworks.sync.max_processed_orders', 5000),
+                from: $this->fromDate,
+                to: $this->toDate,
+                filters: ProcessedOrderFilters::forHistoricalImport()->toArray(),
                 userId: null,
                 progressCallback: function ($page, $totalPages, $fetchedCount, $totalResults) use ($syncLog) {
-                    // Broadcast progress every page
-                    $message = "Streaming processed orders: page {$page}/".($totalPages ?: '?')." ({$fetchedCount} fetched)";
+                    $message = "Streaming historical orders: page {$page}/".($totalPages ?: '?')." ({$fetchedCount} fetched)";
                     event(new SyncProgressUpdated('fetching-processed-ids', $message, $fetchedCount));
 
-                    // Update sync log every 10 pages to avoid too many database writes
                     if ($page % 10 === 0 || $page === $totalPages) {
                         $syncLog->updateProgress('fetching_processed_ids', $page, max($totalPages, $page), [
                             'message' => $message,
@@ -161,61 +131,31 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                 }
             );
 
-            // Broadcast sync started (we don't know total count yet with streaming)
-            event(new SyncStarted(0, 30));
+            // Broadcast sync started
+            $days = (int) $this->fromDate->diffInDays($this->toDate);
+            event(new SyncStarted(0, $days));
 
-            // Step 3: Mark existing open orders (skip for historical imports)
-            if (! $this->historicalImport && $openOrderIds->isNotEmpty()) {
-                $existingOrderIds = Order::whereIn('linnworks_order_id', $openOrderIds->toArray())
-                    ->pluck('linnworks_order_id')
-                    ->toArray();
+            // Skip open/closed status updates (not relevant for historical)
 
-                if (! empty($existingOrderIds)) {
-                    Order::whereIn('linnworks_order_id', $existingOrderIds)
-                        ->update([
-                            'is_open' => true,
-                            'last_synced_at' => now(),
-                        ]);
-                    Log::info('Marked '.count($existingOrderIds).' existing orders as open');
-                }
-
-                // Mark orders not in the current sync as closed
-                $this->markMissingOrdersAsClosed($openOrderIds);
-            } elseif ($this->historicalImport) {
-                Log::info('Skipping open/closed status updates (historical import mode)');
-            }
-
-            // Step 4: STREAMING MICRO-BATCH PROCESSING (Memory-efficient!)
-            // Process each page of order IDs as it comes in, never loading all IDs into memory
-            $syncLog->updateProgress('importing', 2, 3, [
-                'message' => 'Starting streaming import...',
+            // STREAMING MICRO-BATCH PROCESSING
+            $syncLog->updateProgress('importing', 1, 3, [
+                'message' => 'Starting historical import...',
             ]);
 
             $currentBatch = 0;
             $totalOrdersFetched = 0;
 
-            // First, process open orders if any
-            if ($openOrderIds->isNotEmpty()) {
-                $openChunks = $openOrderIds->chunk(200);
-                foreach ($openChunks as $chunk) {
-                    $currentBatch++;
-                    $this->processBatch($api, $importer, $progressTracker, $chunk, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
-                    $totalOrdersFetched += $chunk->count();
-
-                    // Free memory
-                    unset($chunk);
-                }
-            }
-
-            // Then, stream and process processed orders page by page
+            // Stream and process historical orders page by page
             foreach ($processedOrderIdsStream as $pageOrderIds) {
-                // Each iteration yields ~200 order IDs
-                // We fetch full details and import immediately, then free memory
                 $currentBatch++;
                 $this->processBatch($api, $importer, $progressTracker, $pageOrderIds, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
                 $totalOrdersFetched += $pageOrderIds->count();
 
-                // Free memory immediately after processing
+                // Persist progress every 10 batches (for UI display)
+                if ($currentBatch % 10 === 0) {
+                    $this->persistProgress($syncLog, $currentBatch, $totalProcessed, $totalCreated, $totalUpdated, $totalFailed);
+                }
+
                 unset($pageOrderIds);
 
                 // Explicit garbage collection hint every 10 batches
@@ -224,7 +164,7 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                 }
             }
 
-            Log::info('Streaming import completed', [
+            Log::info('Historical import completed', [
                 'total_batches' => $currentBatch,
                 'total_orders_fetched' => $totalOrdersFetched,
                 'total_processed' => $totalProcessed,
@@ -233,7 +173,7 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                 'failed' => $totalFailed,
             ]);
 
-            // Step 5: Complete sync log
+            // Complete sync log
             $syncLog->complete(
                 fetched: $totalOrdersFetched,
                 created: $totalCreated,
@@ -242,7 +182,7 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                 failed: $totalFailed
             );
 
-            // Step 6: Broadcast completion events
+            // Broadcast completion
             $success = $totalFailed === 0 && $totalProcessed > 0;
             event(new SyncCompleted(
                 processed: $totalProcessed,
@@ -252,54 +192,44 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                 success: $success,
             ));
 
-            // Step 7: Warm cache ONLY if successful
-            // Conditions for cache warming:
-            // 1. NOT a dry run
-            // 2. Sync was successful (no failures)
-            // 3. Actually processed at least 1 order
-            // 4. For historical imports, only warm if within dashboard periods (730 days)
-            $shouldWarmCache = ! $this->dryRun
-                && $success
-                && $totalProcessed > 0
-                && (! $this->historicalImport || $this->affectsDashboardPeriods());
-
-            if ($shouldWarmCache) {
-                Log::info('Triggering cache warming after successful sync', [
+            // Conditional cache warming - only if affects dashboard periods
+            if ($success && $totalProcessed > 0 && $this->affectsDashboardPeriods()) {
+                Log::info('Triggering cache warming after successful historical import', [
                     'orders_processed' => $totalProcessed,
-                    'historical_import' => $this->historicalImport,
+                    'date_range' => [
+                        'from' => $this->fromDate->toDateString(),
+                        'to' => $this->toDate->toDateString(),
+                    ],
                 ]);
 
                 event(new OrdersSynced(
                     ordersProcessed: $totalProcessed,
-                    syncType: 'unified_streaming_sync'
+                    syncType: 'historical_import'
                 ));
             } else {
-                $reason = $this->dryRun ? 'dry run mode' :
-                    (! $success ? 'sync had failures' :
+                $reason = ! $success ? 'sync had failures' :
                     ($totalProcessed === 0 ? 'no orders processed' :
-                    'historical import outside dashboard periods'));
+                    'historical data outside dashboard periods (last 730 days)');
 
                 Log::info('Skipping cache warming', [
                     'reason' => $reason,
-                    'dry_run' => $this->dryRun,
                     'success' => $success,
                     'total_processed' => $totalProcessed,
-                    'historical_import' => $this->historicalImport,
+                    'affects_dashboard' => $this->affectsDashboardPeriods(),
                 ]);
             }
 
-            Log::info('Unified streaming sync completed', [
+            Log::info('Historical import finished', [
                 'total_orders_fetched' => $totalOrdersFetched,
                 'processed' => $totalProcessed,
                 'created' => $totalCreated,
                 'updated' => $totalUpdated,
                 'failed' => $totalFailed,
                 'success' => $success,
-                'dry_run' => $this->dryRun,
             ]);
 
         } catch (\Throwable $e) {
-            Log::error('Unified streaming sync failed', [
+            Log::error('Historical import failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -307,10 +237,10 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
 
             // Broadcast failure to UI
             event(new SyncCompleted(
-                processed: $totalProcessed,
-                created: $totalCreated,
-                updated: $totalUpdated,
-                failed: $totalFailed,
+                processed: $totalProcessed ?? 0,
+                created: $totalCreated ?? 0,
+                updated: $totalUpdated ?? 0,
+                failed: $totalFailed ?? 0,
                 success: false,
             ));
 
@@ -326,23 +256,37 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
      */
     protected function affectsDashboardPeriods(): bool
     {
-        if (! $this->historicalImport || ! $this->toDate) {
-            return false;
-        }
-
         $maxDashboardPeriod = 730; // days
         $oldestDashboardDate = now()->subDays($maxDashboardPeriod)->startOfDay();
 
-        // If the import's end date is within the last 730 days, it affects the dashboard
         return $this->toDate->greaterThanOrEqualTo($oldestDashboardDate);
+    }
+
+    /**
+     * Persist progress to database for UI display
+     */
+    private function persistProgress(
+        SyncLog $syncLog,
+        int $currentBatch,
+        int $totalProcessed,
+        int $totalCreated,
+        int $totalUpdated,
+        int $totalFailed
+    ): void {
+        $syncLog->updateProgress('importing', $currentBatch, 0, [
+            'total_processed' => $totalProcessed,
+            'created' => $totalCreated,
+            'updated' => $totalUpdated,
+            'failed' => $totalFailed,
+            'current_batch' => $currentBatch,
+            'message' => "Processed {$totalProcessed} orders in {$currentBatch} batches",
+        ]);
     }
 
     /**
      * Process a single batch of order IDs (fetch full details + import)
      *
-     * This method is called repeatedly for each micro-batch.
      * Includes retry logic with exponential backoff for resilience.
-     * Memory is freed after each call.
      */
     protected function processBatch(
         LinnworksApiService $api,
@@ -431,7 +375,6 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                         'status_code' => $e->getCode(),
                     ]);
 
-                    // Don't retry auth failures, rate limits with no retry-after, etc.
                     throw $e;
                 }
 
@@ -458,7 +401,7 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
                     ]);
                 }
 
-                // If this was our last attempt, throw the exception
+                // If this was our last attempt, throw
                 if ($attempt >= $maxRetries) {
                     Log::error('Batch failed after all retry attempts', [
                         'batch' => $currentBatch,
@@ -501,28 +444,12 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
         }
     }
 
-    /**
-     * Mark orders that are no longer open
-     */
-    protected function markMissingOrdersAsClosed($currentOpenOrderIds): void
-    {
-        $closedCount = Order::where('is_open', true)
-            ->whereNotIn('linnworks_order_id', $currentOpenOrderIds->toArray())
-            ->where('last_synced_at', '<', now()->subMinutes(30))
-            ->update([
-                'is_open' => false,
-                'sync_metadata' => \DB::raw("JSON_SET(COALESCE(sync_metadata, '{}'), '$.marked_closed_at', '".now()->toDateTimeString()."')"),
-            ]);
-
-        if ($closedCount > 0) {
-            Log::info("Marked {$closedCount} missing orders as closed");
-        }
-    }
-
     public function failed(\Throwable $exception): void
     {
-        Log::error('SyncOrdersJob failed', [
+        Log::error('SyncHistoricalOrdersJob failed', [
             'started_by' => $this->startedBy,
+            'from' => $this->fromDate->toDateString(),
+            'to' => $this->toDate->toDateString(),
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString(),
         ]);

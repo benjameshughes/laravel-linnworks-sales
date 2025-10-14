@@ -53,8 +53,6 @@ return [
         'delay_between_requests' => env('LINNWORKS_SYNC_DELAY', 100), // milliseconds
         'max_retries' => env('LINNWORKS_SYNC_MAX_RETRIES', 3),
         'default_date_range' => env('LINNWORKS_SYNC_DEFAULT_DAYS', 30), // days
-        'max_open_orders' => env('LINNWORKS_SYNC_MAX_OPEN_ORDERS', 1000),
-        'max_processed_orders' => env('LINNWORKS_SYNC_MAX_PROCESSED_ORDERS', 5000),
     ],
 
     /*

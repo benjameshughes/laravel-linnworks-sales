@@ -105,6 +105,260 @@ vendor/bin/pint            # Run Laravel Pint (code formatter)
 - **Flux License**: Requires `FLUX_USERNAME` and `FLUX_LICENSE_KEY` secrets for Flux UI access
 - **Environment**: Uses "Testing" environment in GitHub Actions
 
+## Order Sync Architecture
+
+This application uses a two-job architecture for syncing orders from Linnworks, splitting concerns between recent data updates and historical imports.
+
+### Sync Jobs Overview
+
+**1. SyncRecentOrdersJob** (`app/Jobs/SyncRecentOrdersJob.php`)
+- **Purpose**: Keep dashboard fresh with up-to-date order data
+- **Frequency**: Every 15 minutes (scheduled) + user-triggered
+- **Speed**: < 2 minutes typically
+- **Data Scope**: Last 30 days + ALL open orders
+- **Behavior**: NO LIMITS - syncs ALL recent data
+- **Queue Priority**: `high` (doesn't block dashboard updates)
+- **Cache**: ALWAYS warms cache on success
+- **PHP 8.2+**: Uses readonly properties, constructor promotion
+
+**Key characteristics:**
+```php
+// Always syncs ALL open orders (no date filter, no limit)
+$openOrderIds = $api->getAllOpenOrderIds();
+
+// Always syncs ALL processed orders from last 30 days (no limit)
+$processedOrderIdsStream = $api->streamProcessedOrderIds(
+    from: Carbon::now()->subDays(30)->startOfDay(),
+    to: Carbon::now()->endOfDay(),
+    // NO maxOrders parameter - streams everything
+);
+
+// Always updates open/closed status
+$this->markMissingOrdersAsClosed($openOrderIds);
+
+// Always warms cache (no conditionals)
+if ($success && $totalProcessed > 0) {
+    event(new OrdersSynced(...));
+}
+```
+
+**Triggered by:**
+- Dashboard sync button: `app/Livewire/Dashboard/DashboardFilters.php::syncOrders()`
+- CLI command: `php artisan sync:orders` (`app/Console/Commands/SyncOpenOrders.php`)
+- Scheduled task (if configured in `app/Console/Kernel.php`)
+
+**2. SyncHistoricalOrdersJob** (`app/Jobs/SyncHistoricalOrdersJob.php`)
+- **Purpose**: One-time backfill of historical data
+- **Frequency**: Manual (triggered from settings page)
+- **Speed**: 10-60+ minutes (depends on date range)
+- **Data Scope**: User-specified date range
+- **Behavior**: Only syncs PROCESSED orders (skips open orders)
+- **Queue Priority**: `low` (doesn't block recent syncs)
+- **Cache**: Only warms if data affects dashboard (last 730 days)
+- **Progress**: Persists state to database every 10 batches for UI display
+- **PHP 8.2+**: Uses readonly properties for date range parameters
+
+**Key characteristics:**
+```php
+public function __construct(
+    public readonly Carbon $fromDate,
+    public readonly Carbon $toDate,
+    public readonly ?string $startedBy = null,
+) {
+    $this->timeout = 3600; // 1 hour for large imports
+    $this->onQueue('low'); // Don't block recent syncs
+}
+
+// Only syncs processed orders (no open orders)
+$processedOrderIdsStream = $api->streamProcessedOrderIds(
+    from: $this->fromDate,
+    to: $this->toDate,
+    filters: ProcessedOrderFilters::forHistoricalImport()->toArray(),
+    // Uses 'processed' date field (when order was fulfilled)
+);
+
+// Skips open/closed status updates (not relevant for historical)
+
+// Conditional cache warming
+if ($success && $totalProcessed > 0 && $this->affectsDashboardPeriods()) {
+    event(new OrdersSynced(...));
+}
+```
+
+**Triggered by:**
+- Settings import page: `app/Livewire/Settings/ImportProgress.php::startImport()`
+
+### Why Two Jobs?
+
+**Previous unified job problems:**
+- Complex conditional logic (`if (!$historicalImport)` scattered throughout)
+- Artificial 5,000 order limit caused recent data to be truncated
+- Single Responsibility Principle violation
+- Hard to understand and maintain
+
+**Benefits of split:**
+1. **Fixes the bug**: No artificial limits for recent sync
+2. **Simpler code**: Each job has single responsibility
+3. **Better performance**: Recent sync optimized for speed
+4. **Better UX**: Recent sync fast, historical shows progress
+5. **Safer operations**: Historical import isolated, can't break daily operations
+
+### Memory Management
+
+Both jobs use streaming with generators to handle large datasets:
+
+**Streaming Pattern:**
+```php
+// Stream order IDs page by page (memory-efficient)
+foreach ($processedOrderIdsStream as $pageOrderIds) {
+    // Fetch full details for this batch (200 orders)
+    $orders = $api->getOrdersByIds($pageOrderIds->toArray());
+
+    // Import batch
+    $result = $importer->import($orders);
+
+    // Free memory
+    unset($orders, $result, $pageOrderIds);
+
+    // GC hint every 10 batches
+    if ($currentBatch % 10 === 0 && function_exists('gc_collect_cycles')) {
+        gc_collect_cycles();
+    }
+}
+```
+
+**Why this works:**
+- Memory controlled by **batch size (200)**, not total count
+- Generator pattern (`yield from`) streams IDs without loading all into memory
+- Explicit memory cleanup with `unset()` and `gc_collect_cycles()`
+- No artificial `maxOrders` limit needed
+
+### Retry Logic
+
+Both jobs include exponential backoff for resilient API calls:
+
+```php
+// Retry failed batches up to 3 times
+$maxRetries = 3;
+$baseBackoffSeconds = 5;
+
+while ($attempt < $maxRetries) {
+    try {
+        // Attempt fetch and import
+        $orders = $api->getOrdersByIds($orderIds->toArray());
+        $result = $importer->import($orders);
+        return; // Success!
+
+    } catch (\App\Exceptions\Linnworks\LinnworksApiException $e) {
+        if (!$e->isRetryable()) {
+            throw $e; // Don't retry auth failures
+        }
+
+        // Exponential backoff: 5s, 10s, 20s
+        $backoffSeconds = $baseBackoffSeconds * (2 ** ($attempt - 1));
+
+        // Special handling for rate limits
+        if ($e->isRateLimited() && $e->getRetryAfter()) {
+            $backoffSeconds = $e->getRetryAfter();
+        }
+
+        sleep($backoffSeconds);
+    }
+}
+```
+
+### Progress Tracking
+
+**Recent Sync:**
+- Uses `SyncLog` with type `TYPE_OPEN_ORDERS`
+- Broadcasts real-time events for UI updates
+- Updates SyncLog on completion
+
+**Historical Import:**
+- Uses `SyncLog` with type `TYPE_HISTORICAL_ORDERS`
+- Persists progress to database every 10 batches
+- UI can refresh page and see live progress
+- ImportProgress component reads from SyncLog
+
+**SyncLog Usage:**
+```php
+// Start sync
+$syncLog = SyncLog::startSync(SyncLog::TYPE_HISTORICAL_ORDERS, [
+    'started_by' => 'user-123',
+    'date_range' => [
+        'from' => '2024-01-01',
+        'to' => '2024-12-31',
+    ],
+]);
+
+// Update progress (every 10 batches for historical)
+$syncLog->updateProgress('importing', $currentBatch, 0, [
+    'total_processed' => $totalProcessed,
+    'created' => $totalCreated,
+    'updated' => $totalUpdated,
+    'failed' => $totalFailed,
+    'current_batch' => $currentBatch,
+    'message' => "Processed {$totalProcessed} orders",
+]);
+
+// Complete
+$syncLog->complete(
+    fetched: $totalOrdersFetched,
+    created: $totalCreated,
+    updated: $totalUpdated,
+    skipped: $totalSkipped,
+    failed: $totalFailed
+);
+```
+
+### Date Field Strategy
+
+**Recent Sync** uses `received` date:
+- Date when customer placed the order
+- Captures orders placed in last 30 days
+- Correct for sales metrics and revenue tracking
+
+**Historical Import** uses `processed` date:
+- Date when order was fulfilled
+- Better for backfilling by fulfillment date
+- Useful for operational metrics
+
+### Important Notes
+
+**Orders Updated After 30 Days:**
+- If an order from 60 days ago gets updated today, it won't be synced by recent sync
+- Use historical import to refresh old data if needed
+- Consider adding "sync specific order" feature later if needed
+
+**No Artificial Limits:**
+- Both jobs removed all `maxOrders` parameters
+- Memory controlled by batch size (200), not total count
+- If you have 10,000 orders in 30 days, you NEED all 10,000
+- Recent sync will handle any volume within 30-day window
+
+**Queue Worker Caching:**
+- When updating job code, restart queue workers: `php artisan queue:restart`
+- `composer dev` uses `queue:listen` which auto-reloads on changes
+- Manual `queue:work` requires restart to pick up code changes
+
+### Key Files
+
+**Jobs:**
+- `app/Jobs/SyncRecentOrdersJob.php` - Recent data sync (30 days + open orders)
+- `app/Jobs/SyncHistoricalOrdersJob.php` - Historical import (custom date range)
+
+**Services:**
+- `app/Services/LinnworksApiService.php` - Public API facade
+- `app/Services/Linnworks/Orders/ProcessedOrdersService.php` - Order ID streaming
+- `app/Actions/Sync/Orders/ImportInBulk.php` - Bulk order import
+
+**UI Components:**
+- `app/Livewire/Dashboard/DashboardFilters.php` - Dashboard sync button
+- `app/Livewire/Settings/ImportProgress.php` - Historical import UI
+
+**Commands:**
+- `app/Console/Commands/SyncOpenOrders.php` - CLI sync trigger
+
 ## Development Notes
 
 ### Flux UI Credentials

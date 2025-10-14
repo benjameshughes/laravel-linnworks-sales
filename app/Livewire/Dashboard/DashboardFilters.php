@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Jobs\SyncOrdersJob;
+use App\Jobs\SyncRecentOrdersJob;
 use App\Models\Order;
 use App\Models\SyncLog;
 use Carbon\Carbon;
@@ -110,8 +110,8 @@ final class DashboardFilters extends Component
         $this->syncMessage = 'Sync job queued...';
 
         try {
-            // Dispatch unified sync job
-            SyncOrdersJob::dispatch(startedBy: 'user-'.auth()->id());
+            // Dispatch recent orders sync job
+            SyncRecentOrdersJob::dispatch(startedBy: 'user-'.auth()->id());
 
             $this->dispatch('notification', [
                 'message' => 'Sync started in background. Updates will appear automatically.',
