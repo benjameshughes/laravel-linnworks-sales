@@ -7,13 +7,19 @@
         <flux:sidebar sticky stashable collapsible class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.toggle class="lg:hidden" icon="x-mark" />
 
-            <flux:sidebar.collapse class="max-lg:hidden" />
+            <flux:sidebar.header>
+                <flux:sidebar.brand
+                    :href="route('dashboard')"
+                    :name="config('app.name')"
+                    wire:navigate
+                >
+                    <x-slot:logo>
+                        <x-app-logo-icon class="size-6" />
+                    </x-slot:logo>
+                </flux:sidebar.brand>
 
-            <flux:brand :href="route('dashboard')" :name="config('app.name')" wire:navigate>
-                <x-slot name="logo" class="flex aspect-square size-8 items-center justify-center rounded-md bg-accent-content text-accent-foreground">
-                    <x-app-logo-icon class="size-5 fill-current text-white dark:text-black" />
-                </x-slot>
-            </flux:brand>
+                <flux:sidebar.collapse class="max-lg:hidden" />
+            </flux:sidebar.header>
 
             <flux:sidebar.nav>
                 <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:sidebar.item>
@@ -25,20 +31,19 @@
 
             <flux:sidebar.nav>
                 <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                {{ __('Repository') }}
+                    {{ __('Repository') }}
                 </flux:sidebar.item>
 
                 <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                {{ __('Documentation') }}
+                    {{ __('Documentation') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
 
             <!-- Desktop User Menu -->
-            <flux:dropdown class="hidden lg:block" position="bottom" align="start">
-                <flux:profile
+            <flux:dropdown class="max-lg:hidden" position="top" align="start">
+                <flux:sidebar.profile
                     :name="auth()->user()->name"
                     :initials="auth()->user()->initials"
-                    icon:trailing="chevrons-up-down"
                 />
 
                 <flux:menu class="w-[220px]">
