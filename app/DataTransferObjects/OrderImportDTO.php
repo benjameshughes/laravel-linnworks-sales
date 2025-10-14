@@ -83,7 +83,9 @@ readonly class OrderImportDTO
             // Extended order fields
             'marker' => $linnworks->marker,
             'is_parked' => $linnworks->isParked,
-            'despatch_by_date' => $linnworks->despatchByDate?->toDateTimeString(),
+            'despatch_by_date' => $linnworks->despatchByDate && $linnworks->despatchByDate->year > 1970
+                ? $linnworks->despatchByDate->toDateTimeString()
+                : null,
             'dispatched_at' => null, // Set when order is actually dispatched
             'num_items' => $linnworks->numItems,
             'payment_method' => $linnworks->paymentMethod,
