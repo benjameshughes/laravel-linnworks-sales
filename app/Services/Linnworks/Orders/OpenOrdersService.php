@@ -308,15 +308,83 @@ class OpenOrdersService
     }
 
     /**
-     * Retrieve paginated open order identifiers.
+     * Retrieve ALL open order identifiers in a single call (no pagination).
+     *
+     * Uses Orders/GetAllOpenOrders endpoint which returns all order IDs at once.
+     * More accurate than paginated approach - no orders slip through gaps.
+     * Higher rate limit: 250/min vs 150/min for GetOpenOrderIds.
      *
      * Simple config-driven approach - no database preferences, no auto-detection.
-     * ViewId 4 is the standard "All Open Orders" view in Linnworks.
-     *
-     * No artificial limits - fetches ALL open order IDs.
-     * Memory is controlled by pagination (200 IDs per page).
      */
     public function getOpenOrderIds(
+        int $userId,
+        ?string $locationId = null
+    ): Collection {
+        $sessionToken = $this->sessionManager->getValidSessionToken($userId);
+
+        if (! $sessionToken) {
+            Log::error('No valid session token for open order IDs', ['user_id' => $userId]);
+
+            return collect();
+        }
+
+        // Use config value with sensible default
+        $locationId ??= config('linnworks.open_orders.location_id', '00000000-0000-0000-0000-000000000000');
+
+        Log::info('Fetching ALL open order IDs (single call)', [
+            'user_id' => $userId,
+            'location_id' => $locationId,
+        ]);
+
+        try {
+            $request = ApiRequest::post('Orders/GetAllOpenOrders', [
+                'fulfilmentCenter' => $locationId,
+            ]);
+
+            $response = $this->client->makeRequest($request, $sessionToken);
+
+            if ($response->isError()) {
+                Log::error('Failed to fetch all open order IDs', [
+                    'user_id' => $userId,
+                    'error' => $response->error,
+                    'status_code' => $response->statusCode,
+                ]);
+
+                return collect();
+            }
+
+            $data = $response->getData();
+
+            // Response is a flat array of order ID strings
+            $ids = collect($data->toArray())
+                ->filter(fn ($id) => ! is_null($id))
+                ->map(fn ($id) => (string) $id)
+                ->unique()
+                ->values();
+
+            Log::info('Fetched all open order IDs', [
+                'user_id' => $userId,
+                'total_ids' => $ids->count(),
+            ]);
+
+            return $ids;
+        } catch (\Throwable $e) {
+            Log::error('Exception fetching all open order IDs', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
+            ]);
+
+            return collect();
+        }
+    }
+
+    /**
+     * Retrieve paginated open order identifiers (LEGACY - prefer getOpenOrderIds).
+     *
+     * @deprecated Use getOpenOrderIds() instead - uses GetAllOpenOrders (no pagination, more accurate)
+     */
+    public function getOpenOrderIdsPaginated(
         int $userId,
         int $entriesPerPage = 200,
         ?int $viewId = null,
@@ -325,7 +393,9 @@ class OpenOrdersService
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
         if (! $sessionToken) {
-            Log::error('No valid session token for open order IDs', ['user_id' => $userId]);
+            Log::warning('DEPRECATED: getOpenOrderIdsPaginated() called - use getOpenOrderIds() instead', [
+                'user_id' => $userId,
+            ]);
 
             return collect();
         }
