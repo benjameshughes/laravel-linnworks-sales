@@ -188,7 +188,7 @@ final class DashboardFilters extends Component
         return collect([
             'time_human' => $lastSync->completed_at->diffForHumans(),
             'timestamp' => $lastSync->completed_at->toIso8601String(), // For client-side calculation
-            'elapsed_seconds' => now()->diffInSeconds($lastSync->completed_at), // Initial elapsed time
+            'elapsed_seconds' => (int) $lastSync->completed_at->diffInSeconds(now()), // Initial elapsed time
             'created' => $lastSync->total_created ?? 0,
             'updated' => $lastSync->total_updated ?? 0,
             'failed' => $lastSync->total_failed ?? 0,
