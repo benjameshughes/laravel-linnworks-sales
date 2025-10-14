@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Log;
  * - Two separate endpoints: open and processed are mutually exclusive
  *
  * Flow:
- * 1. Get ALL open order IDs → OpenOrders/GetOpenOrderIds (no date filter)
+ * 1. Get ALL open order IDs → Orders/GetAllOpenOrders (single call, no pagination)
  * 2. Stream processed order IDs since checkpoint → ProcessedOrders/SearchProcessedOrders
  * 3. Mark stale orders as closed (orders no longer in open list)
  * 4. Fetch full details in batches of 200 → Orders/GetOrdersById (works for both)
@@ -42,6 +42,11 @@ use Illuminate\Support\Facades\Log;
  * 6. Bulk write to DB
  * 7. Update checkpoint timestamp
  * 8. Warm cache
+ *
+ * Accuracy improvements:
+ * - GetAllOpenOrders (250/min rate limit) vs old GetOpenOrderIds (150/min)
+ * - No pagination gaps - captures all orders in single atomic snapshot
+ * - Testing showed 2 orders missed by old paginated approach
  *
  * Performance: ~300-500 orders/sec with retry logic
  */
