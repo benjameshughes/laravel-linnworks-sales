@@ -25,18 +25,16 @@ return [
     'fulfilment_center' => env('LINNWORKS_FULFILMENT_CENTER', '00000000-0000-0000-0000-000000000000'),
 
     'open_orders' => [
-        'view_id' => env('LINNWORKS_OPEN_ORDERS_VIEW_ID', 0),
-        'location_id' => env(
-            'LINNWORKS_OPEN_ORDERS_LOCATION_ID',
-            env('LINNWORKS_FULFILMENT_CENTER', '00000000-0000-0000-0000-000000000000')
-        ),
-        'entries_per_page' => env('LINNWORKS_OPEN_ORDERS_PAGE_SIZE', 200),
-        'auto_detect' => (bool) env('LINNWORKS_OPEN_ORDERS_AUTO_DETECT', true),
+        // ViewId 4 is the standard "All Open Orders" view in Linnworks
+        'view_id' => (int) env('LINNWORKS_OPEN_ORDERS_VIEW_ID', 4),
+        // Default location (all-zeros UUID is the Linnworks default location)
+        'location_id' => env('LINNWORKS_OPEN_ORDERS_LOCATION_ID', '00000000-0000-0000-0000-000000000000'),
+        'entries_per_page' => (int) env('LINNWORKS_OPEN_ORDERS_PAGE_SIZE', 200),
     ],
 
     'defaults' => [
         'location_fallback' => '00000000-0000-0000-0000-000000000000',
-        'view_id' => 0,
+        'view_id' => 4,
     ],
 
     /*

@@ -310,6 +310,9 @@ class OpenOrdersService
     /**
      * Retrieve paginated open order identifiers.
      *
+     * Simple config-driven approach - no database preferences, no auto-detection.
+     * ViewId 4 is the standard "All Open Orders" view in Linnworks.
+     *
      * No artificial limits - fetches ALL open order IDs.
      * Memory is controlled by pagination (200 IDs per page).
      */
@@ -327,74 +330,10 @@ class OpenOrdersService
             return collect();
         }
 
-        $config = config('linnworks.open_orders', []);
-        $connection = LinnworksConnection::query()->active()->forUser($userId)->first();
-
-        $viewId ??= $connection?->preferred_open_orders_view_id;
-        $locationId ??= $connection?->preferred_open_orders_location_id;
-
-        $viewId ??= (int) data_get($config, 'view_id', config('linnworks.defaults.view_id', 0));
-        $locationId ??= (string) data_get(
-            $config,
-            'location_id',
-            config('linnworks.fulfilment_center', config('linnworks.defaults.location_fallback'))
-        );
-        $configuredPageSize = (int) data_get($config, 'entries_per_page', 200);
-        $entriesPerPage = $entriesPerPage > 0 ? $entriesPerPage : $configuredPageSize;
-        $autoDetect = (bool) data_get($config, 'auto_detect', true);
-
-        if ($autoDetect) {
-            if ($viewId === 0) {
-                $views = $this->views->getOpenOrderViews($userId);
-                $detectedView = $views
-                    ->first(fn ($view) => ($view['IsDefault'] ?? false) === true)
-                    ?? $views->first();
-
-                if ($detectedView) {
-                    $viewId = (int) ($detectedView['pkViewId'] ?? $detectedView['ViewId'] ?? $detectedView['Id'] ?? $viewId);
-
-                    Log::info('Auto-detected Linnworks open order view', [
-                        'user_id' => $userId,
-                        'view_id' => $viewId,
-                        'view_name' => $detectedView['ViewName'] ?? $detectedView['Name'] ?? null,
-                    ]);
-                }
-            }
-
-            $fallbackLocation = config('linnworks.defaults.location_fallback', '00000000-0000-0000-0000-000000000000');
-
-            if (empty($locationId) || $locationId === $fallbackLocation) {
-                $locations = $this->locations->getLocations($userId);
-                $detectedLocation = $locations->first();
-
-                if ($detectedLocation) {
-                    $locationId = (string) ($detectedLocation['StockLocationId']
-                        ?? $detectedLocation['LocationId']
-                        ?? $detectedLocation['Id']
-                        ?? $locationId);
-
-                    Log::info('Auto-detected Linnworks location', [
-                        'user_id' => $userId,
-                        'location_id' => $locationId,
-                        'location_name' => $detectedLocation['LocationName'] ?? $detectedLocation['Name'] ?? null,
-                    ]);
-                }
-            }
-
-            if ($viewId === 0) {
-                Log::warning('Linnworks open order view fallback in use', [
-                    'user_id' => $userId,
-                    'hint' => 'Set LINNWORKS_OPEN_ORDERS_VIEW_ID or choose a view in settings.',
-                ]);
-            }
-
-            if (empty($locationId) || $locationId === $fallbackLocation) {
-                Log::warning('Linnworks open order location fallback in use', [
-                    'user_id' => $userId,
-                    'hint' => 'Set LINNWORKS_OPEN_ORDERS_LOCATION_ID or choose a location in settings.',
-                ]);
-            }
-        }
+        // Use config values with sensible defaults
+        $viewId ??= config('linnworks.open_orders.view_id', 4);
+        $locationId ??= config('linnworks.open_orders.location_id', '00000000-0000-0000-0000-000000000000');
+        $entriesPerPage = $entriesPerPage > 0 ? $entriesPerPage : config('linnworks.open_orders.entries_per_page', 200);
 
         $ids = collect();
         $page = 1;

@@ -29,18 +29,19 @@ use Illuminate\Support\Facades\Log;
  * Sync recent orders - fast and incremental
  *
  * Uses checkpoints for efficient incremental syncing:
- * - Syncs ALL open orders (no limit)
+ * - Syncs ALL open orders (no limit, no date filter)
  * - Syncs processed orders from last checkpoint (or last 7 days if first run)
- * - No artificial limits - gets everything since last sync
+ * - Two separate endpoints: open and processed are mutually exclusive
  *
  * Flow:
- * 1. Get ALL open order IDs (no date filter, no limit)
- * 2. Get processed order IDs since last checkpoint (no limit)
- * 3. Fetch full details in batches of 200
- * 4. Bulk write to DB
- * 5. Update open/closed status
- * 6. Update checkpoint timestamp
- * 7. Warm cache
+ * 1. Get ALL open order IDs → OpenOrders/GetOpenOrderIds (no date filter)
+ * 2. Stream processed order IDs since checkpoint → ProcessedOrders/SearchProcessedOrders
+ * 3. Mark stale orders as closed (orders no longer in open list)
+ * 4. Fetch full details in batches of 200 → Orders/GetOrdersById (works for both)
+ * 5. OrderImportDTO checks processedDate to set is_open (null = open, date = processed)
+ * 6. Bulk write to DB
+ * 7. Update checkpoint timestamp
+ * 8. Warm cache
  *
  * Performance: ~300-500 orders/sec with retry logic
  */
@@ -109,19 +110,24 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             $totalProcessed = 0;
             $totalFailed = 0;
 
-            // Step 1: Get ALL open order IDs (no limit)
-            $syncLog->updateProgress('fetching_open_ids', 0, 4, ['message' => 'Checking open orders...']);
-            event(new SyncProgressUpdated('fetching-open-ids', 'Checking open orders...'));
-            Log::info('Fetching open order UUIDs from Linnworks...');
+            // Step 1: Get ALL open order IDs (no date filter - always current)
+            $syncLog->updateProgress('fetching_open_ids', 0, 4, ['message' => 'Fetching all open orders...']);
+            event(new SyncProgressUpdated('fetching-open-ids', 'Fetching all open orders...'));
+            Log::info('Fetching open order IDs from Linnworks...');
 
             $openOrderIds = $api->getAllOpenOrderIds();
-            Log::info("Found {$openOrderIds->count()} open order UUIDs");
+            Log::info("Found {$openOrderIds->count()} open order IDs");
             $syncLog->updateProgress('fetching_open_ids', 1, 4, [
                 'message' => "Found {$openOrderIds->count()} open orders",
                 'open_count' => $openOrderIds->count(),
             ]);
 
-            // Step 2: Stream processed order IDs since last checkpoint (no limit)
+            // Mark orders that are no longer open as closed
+            if ($openOrderIds->isNotEmpty()) {
+                $this->markMissingOrdersAsClosed($openOrderIds);
+            }
+
+            // Step 2: Stream processed order IDs since last checkpoint (incremental)
             $syncLog->updateProgress('fetching_processed_ids', 1, 4, ['message' => 'Streaming processed orders (incremental)...']);
             event(new SyncProgressUpdated('fetching-processed-ids', 'Streaming processed orders (incremental)...'));
 
@@ -131,7 +137,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 'days_covered' => $processedFrom->diffInDays($processedTo),
             ]);
 
-            // Stream processed orders - NO maxOrders parameter
+            // Stream processed orders - gets IDs only, then we fetch details
             $processedOrderIdsStream = $api->streamProcessedOrderIds(
                 from: $processedFrom,
                 to: $processedTo,
@@ -157,27 +163,8 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             $daysCovered = (int) $processedFrom->diffInDays($processedTo);
             event(new SyncStarted(0, $daysCovered));
 
-            // Step 3: Mark existing open orders
-            if ($openOrderIds->isNotEmpty()) {
-                $existingOrderIds = Order::whereIn('linnworks_order_id', $openOrderIds->toArray())
-                    ->pluck('linnworks_order_id')
-                    ->toArray();
-
-                if (! empty($existingOrderIds)) {
-                    Order::whereIn('linnworks_order_id', $existingOrderIds)
-                        ->update([
-                            'is_open' => true,
-                            'last_synced_at' => now(),
-                        ]);
-                    Log::info('Marked '.count($existingOrderIds).' existing orders as open');
-                }
-
-                // Mark orders not in current sync as closed
-                $this->markMissingOrdersAsClosed($openOrderIds);
-            }
-
-            // Step 4: STREAMING MICRO-BATCH PROCESSING (Memory-efficient!)
-            $syncLog->updateProgress('importing', 2, 3, [
+            // Step 3: STREAMING MICRO-BATCH PROCESSING (Memory-efficient!)
+            $syncLog->updateProgress('importing', 2, 4, [
                 'message' => 'Starting streaming import...',
             ]);
 
@@ -196,6 +183,8 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             }
 
             // Then stream and process processed orders page by page
+            // getOrdersByIds returns full details with processedDate field
+            // OrderImportDTO checks processedDate to determine is_open
             foreach ($processedOrderIdsStream as $pageOrderIds) {
                 $currentBatch++;
                 $this->processBatch($api, $importer, $progressTracker, $pageOrderIds, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
@@ -226,7 +215,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 failed: $totalFailed
             );
 
-            // Update checkpoint for next incremental sync
+            // Step 4: Update checkpoint for next incremental sync
             $checkpoint->completeSync(
                 synced: $totalProcessed,
                 created: $totalCreated,
@@ -239,7 +228,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 ]
             );
 
-            // Step 6: Broadcast completion
+            // Step 5: Broadcast completion
             $success = $totalFailed === 0 && $totalProcessed > 0;
             event(new SyncCompleted(
                 processed: $totalProcessed,
@@ -249,7 +238,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 success: $success,
             ));
 
-            // Step 7: Always warm cache on success
+            // Step 6: Always warm cache on success
             if ($success && $totalProcessed > 0) {
                 Log::info('Triggering cache warming after successful sync', [
                     'orders_processed' => $totalProcessed,
