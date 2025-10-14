@@ -30,11 +30,16 @@ use Illuminate\Support\Facades\Log;
  * Shows progress, persists state for UI.
  *
  * Flow:
- * 1. Get ALL processed order IDs in date range (no limit)
- * 2. Fetch full details in batches of 200
+ * 1. Get ALL processed order IDs in date range (no limit) [0-10% progress]
+ * 2. Fetch full details in batches of 200 [10-100% progress]
  * 3. Bulk write to DB
- * 4. Persist progress every 10 batches
+ * 4. Persist progress every batch for responsive UI
  * 5. Conditional cache warming (only if affects dashboard periods)
+ *
+ * Progress Tracking:
+ * - Stage 1 (ID streaming): 0-10% of progress bar (fast, ~10% of time)
+ * - Stage 2 (importing): 10-100% of progress bar (slow, ~90% of time)
+ * - Uses single 'historical_import' key for smooth, non-resetting progress bar
  *
  * Performance: ~300-500 orders/sec with retry logic
  */
@@ -106,22 +111,33 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
             ]);
 
             // Stream ALL processed order IDs in date range (no limit)
-            $syncLog->updateProgress('fetching_processed_ids', 0, 3, ['message' => 'Streaming historical orders...']);
-            event(new SyncProgressUpdated('fetching-processed-ids', 'Streaming historical orders...'));
+            // Stage 1: ID streaming (0-10% of progress bar)
+            $syncLog->updateProgress('historical_import', 0, 100, ['message' => 'Streaming historical orders...', 'stage' => 1]);
+            event(new SyncProgressUpdated('historical-import', 'Streaming historical orders...'));
 
             // Use 'processed' date field for historical imports
+            $totalOrdersExpected = null;
             $processedOrderIdsStream = $api->streamProcessedOrderIds(
                 from: $this->fromDate,
                 to: $this->toDate,
                 filters: ProcessedOrderFilters::forHistoricalImport()->toArray(),
                 userId: null,
-                progressCallback: function ($page, $totalPages, $fetchedCount, $totalResults) use ($syncLog) {
-                    $message = "Streaming historical orders: page {$page}/".($totalPages ?: '?')." ({$fetchedCount} fetched)";
-                    event(new SyncProgressUpdated('fetching-processed-ids', $message, $fetchedCount));
+                progressCallback: function ($page, $totalPages, $fetchedCount, $totalResults) use ($syncLog, &$totalOrdersExpected) {
+                    // Capture total from first page for progress bar
+                    if ($page === 1 && $totalResults > 0) {
+                        $totalOrdersExpected = $totalResults;
+                    }
+
+                    // Calculate weighted progress: Stage 1 = 0-10% of total progress
+                    $stageProgress = $totalPages > 0 ? (int) (($page / $totalPages) * 10) : 0;
+                    $message = "Streaming order IDs: page {$page}/".($totalPages ?: '?')." ({$fetchedCount} fetched)";
+
+                    event(new SyncProgressUpdated('historical-import', $message, $stageProgress));
 
                     if ($page % 10 === 0 || $page === $totalPages) {
-                        $syncLog->updateProgress('fetching_processed_ids', $page, max($totalPages, $page), [
+                        $syncLog->updateProgress('historical_import', $stageProgress, 100, [
                             'message' => $message,
+                            'stage' => 1,
                             'current_page' => $page,
                             'total_pages' => $totalPages,
                             'fetched_count' => $fetchedCount,
@@ -138,8 +154,10 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
             // Skip open/closed status updates (not relevant for historical)
 
             // STREAMING MICRO-BATCH PROCESSING
-            $syncLog->updateProgress('importing', 1, 3, [
+            // Stage 2: Importing full order details (10-100% of progress bar)
+            $syncLog->updateProgress('historical_import', 10, 100, [
                 'message' => 'Starting historical import...',
+                'stage' => 2,
             ]);
 
             $currentBatch = 0;
@@ -151,10 +169,8 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
                 $this->processBatch($api, $importer, $progressTracker, $pageOrderIds, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
                 $totalOrdersFetched += $pageOrderIds->count();
 
-                // Persist progress every 10 batches (for UI display)
-                if ($currentBatch % 10 === 0) {
-                    $this->persistProgress($syncLog, $currentBatch, $totalProcessed, $totalCreated, $totalUpdated, $totalFailed);
-                }
+                // Persist progress EVERY batch (not every 10) for responsive UI
+                $this->persistProgress($syncLog, $currentBatch, $totalProcessed, $totalCreated, $totalUpdated, $totalFailed, $totalOrdersExpected);
 
                 unset($pageOrderIds);
 
@@ -264,6 +280,9 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
 
     /**
      * Persist progress to database for UI display
+     *
+     * Stage 2 (importing): 10-100% of progress bar
+     * Weighted calculation: 10 + ((processed / total) * 90)
      */
     private function persistProgress(
         SyncLog $syncLog,
@@ -271,15 +290,31 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
         int $totalProcessed,
         int $totalCreated,
         int $totalUpdated,
-        int $totalFailed
+        int $totalFailed,
+        ?int $totalOrdersExpected
     ): void {
-        $syncLog->updateProgress('importing', $currentBatch, 0, [
+        // Calculate weighted progress: Stage 2 = 10-100% of total progress
+        $stageProgress = 10; // Start at 10% (stage 1 complete)
+
+        if ($totalOrdersExpected > 0 && $totalProcessed > 0) {
+            // Calculate percentage through stage 2 (0-90%) and add to base 10%
+            $stageProgress = 10 + (int) (($totalProcessed / $totalOrdersExpected) * 90);
+            $stageProgress = min($stageProgress, 100); // Cap at 100%
+        }
+
+        $message = $totalOrdersExpected
+            ? "Importing orders: {$totalProcessed}/{$totalOrdersExpected}"
+            : "Importing orders: {$totalProcessed} processed ({$currentBatch} batches)";
+
+        $syncLog->updateProgress('historical_import', $stageProgress, 100, [
+            'message' => $message,
+            'stage' => 2,
             'total_processed' => $totalProcessed,
+            'total_expected' => $totalOrdersExpected ?? 0,
             'created' => $totalCreated,
             'updated' => $totalUpdated,
             'failed' => $totalFailed,
             'current_batch' => $currentBatch,
-            'message' => "Processed {$totalProcessed} orders in {$currentBatch} batches",
         ]);
     }
 
