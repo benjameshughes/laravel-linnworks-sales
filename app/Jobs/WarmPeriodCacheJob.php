@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Events\CachePeriodWarmed;
 use App\Events\CachePeriodWarmingStarted;
 use App\Services\Dashboard\DashboardDataService;
+use App\Services\Metrics\ChunkedMetricsCalculator;
 use App\Services\Metrics\SalesMetrics;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
@@ -129,15 +130,32 @@ final class WarmPeriodCacheJob implements ShouldQueue
     }
 
     /**
-     * Calculate all metrics for this period/channel using STREAMING aggregation
+     * Calculate all metrics for this period/channel
      *
-     * Memory optimization: Process orders in chunks using lazy(),
-     * aggregate metrics without loading all orders into memory at once
+     * Memory optimization strategy:
+     * - Small periods (≤180d): Use in-memory collection-based approach (fast, proven)
+     * - Large periods (365d, 730d): Use database aggregation (memory-efficient)
      */
     private function calculateMetrics(): array
     {
-        // For now, fall back to regular collection-based approach
-        // Will implement streaming aggregation in next iteration
+        // For large periods, use chunked calculator to avoid OOM
+        if ($this->shouldUseChunkedCalculation()) {
+            Log::debug('Using chunked calculation for large period', [
+                'period' => $this->period,
+                'channel' => $this->channel,
+            ]);
+
+            $calculator = new ChunkedMetricsCalculator($this->period, $this->channel);
+
+            return $calculator->calculate();
+        }
+
+        // For smaller periods, use existing optimized in-memory approach
+        Log::debug('Using in-memory calculation for small period', [
+            'period' => $this->period,
+            'channel' => $this->channel,
+        ]);
+
         $service = app(DashboardDataService::class);
         $orders = $service->getOrders($this->period, $this->channel);
         $metrics = new SalesMetrics($orders);
@@ -165,6 +183,20 @@ final class WarmPeriodCacheJob implements ShouldQueue
             'best_day' => $metrics->bestPerformingDay($startDate, $endDate),
             'warmed_at' => now()->toISOString(),
         ];
+    }
+
+    /**
+     * Determine if we should use chunked calculation
+     *
+     * Compares period days against configured threshold.
+     * Periods >= threshold use database aggregation for memory efficiency.
+     */
+    private function shouldUseChunkedCalculation(): bool
+    {
+        $periodDays = (int) $this->period;
+        $threshold = config('dashboard.chunked_calculation_threshold', 365);
+
+        return $periodDays >= $threshold;
     }
 
     /**
