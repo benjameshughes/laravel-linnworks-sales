@@ -75,13 +75,13 @@ class SalesMetrics extends MetricBase
         $fromTable = \App\Models\OrderItem::whereIn('order_id', $orderIds)->sum('quantity');
 
         // If no items in table, use JSON column as fallback
-        if ($fromTable === 0) {
-            return $this->data->sum(function ($order) {
+        if ($fromTable == 0) {
+            return (int) $this->data->sum(function ($order) {
                 return collect($order->items ?? [])->sum('quantity');
             });
         }
 
-        return $fromTable;
+        return (int) $fromTable;
     }
 
     /**
@@ -156,6 +156,7 @@ class SalesMetrics extends MetricBase
 
         return $this->data
             ->groupBy(fn ($order) => $order->channel_name.'|'.($order->sub_source ?? ''))
+            /** @phpstan-ignore-next-line  Template covariance issue */
             ->map(function (Collection $channelOrders, string $groupKey) use ($totalRevenue) {
                 [$channel, $subsource] = explode('|', $groupKey, 2);
                 $channelRevenue = $channelOrders->sum(fn ($order) => $this->calculateOrderRevenue($order));
@@ -165,6 +166,7 @@ class SalesMetrics extends MetricBase
                     ? "{$subsource} ({$channel})"
                     : $channel;
 
+                /** @phpstan-ignore-next-line Template covariance issue */
                 return collect([
                     'name' => $displayName,
                     'channel' => $channel,
@@ -272,24 +274,22 @@ class SalesMetrics extends MetricBase
 
         // Fetch product titles from database
         $skus = array_keys($grouped);
-        if (! empty($skus)) {
-            $products = \App\Models\Product::whereIn('sku', $skus)
-                ->pluck('title', 'sku');
+        $products = \App\Models\Product::whereIn('sku', $skus)
+            ->pluck('title', 'sku');
 
-            $result = $result->map(function (Collection $product) use ($products) {
-                $sku = $product->get('sku');
+        $result = $result->map(function (Collection $product) use ($products) {
+            $sku = $product->get('sku');
 
-                if (! $product->get('title') && isset($products[$sku])) {
-                    $product->put('title', $products[$sku]);
-                }
+            if (! $product->get('title') && isset($products[$sku])) {
+                $product->put('title', $products[$sku]);
+            }
 
-                if (! $product->get('title')) {
-                    $product->put('title', 'Unknown Product');
-                }
+            if (! $product->get('title')) {
+                $product->put('title', 'Unknown Product');
+            }
 
-                return $product;
-            });
-        }
+            return $product;
+        });
 
         return $result
             ->sortByDesc('revenue')
@@ -850,16 +850,16 @@ class SalesMetrics extends MetricBase
         // Check if orderItems relationship is loaded (Eloquent only, not stdClass)
         if (method_exists($order, 'relationLoaded') && $order->relationLoaded('orderItems')) {
             $itemsTotal = $order->orderItems->sum(function ($item) {
-                $lineTotal = (float) $item->line_total;
+                $totalPrice = (float) $item->total_price;
 
-                if ($lineTotal > 0) {
-                    return $lineTotal;
+                if ($totalPrice > 0) {
+                    return $totalPrice;
                 }
 
-                $price = (float) $item->price_per_unit;
+                $unitPrice = (float) $item->unit_price;
                 $quantity = (int) $item->quantity;
 
-                return $price > 0 && $quantity > 0 ? $price * $quantity : 0.0;
+                return $unitPrice > 0 && $quantity > 0 ? $unitPrice * $quantity : 0.0;
             });
 
             if ($itemsTotal > 0) {

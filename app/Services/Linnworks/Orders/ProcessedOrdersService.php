@@ -161,6 +161,9 @@ class ProcessedOrdersService
      * Yields collections of order IDs without loading all orders into memory.
      * Inspired by Christoph Rumpel's "Refactoring to Collections" approach.
      *
+     * No artificial limits - streams all orders in the date range.
+     * Memory is controlled by batch size (200 orders per page).
+     *
      * @return \Generator<int, Collection> Yields Collection of order IDs per page
      */
     public function streamProcessedOrderIds(
@@ -168,7 +171,6 @@ class ProcessedOrdersService
         Carbon $from,
         Carbon $to,
         array $filters = [],
-        int $maxOrders = 10000,
         ?\Closure $progressCallback = null
     ): \Generator {
         $page = 1;
@@ -180,7 +182,6 @@ class ProcessedOrdersService
             'from' => $from->toISOString(),
             'to' => $to->toISOString(),
             'filters' => $filters,
-            'max_orders' => $maxOrders,
         ]);
 
         do {
@@ -228,16 +229,7 @@ class ProcessedOrdersService
 
             $page++;
 
-            // Safety checks
-            if ($totalFetched >= $maxOrders) {
-                Log::warning('Maximum processed orders limit reached', [
-                    'user_id' => $userId,
-                    'total_fetched' => $totalFetched,
-                    'max_orders' => $maxOrders,
-                ]);
-                break;
-            }
-
+            // Stop when we've fetched all pages
             if ($orders->count() < $entriesPerPage) {
                 Log::info('All processed order IDs streamed', [
                     'user_id' => $userId,

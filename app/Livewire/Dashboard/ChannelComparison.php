@@ -138,11 +138,11 @@ class ChannelComparison extends Component
         $orderIds = $channelOrders->pluck('id');
 
         // Get aggregated data first
-        $aggregatedData = OrderItem::whereIn('order_id', $orderIds)
+        $aggregatedData = \App\Models\OrderItem::whereIn('order_id', $orderIds)
             ->selectRaw('
                 sku,
                 SUM(quantity) as total_quantity,
-                SUM(line_total) as total_revenue,
+                SUM(total_price) as total_revenue,
                 COUNT(*) as order_count
             ')
             ->groupBy('sku')

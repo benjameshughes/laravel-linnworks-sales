@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Jobs\SyncOrdersJob;
+use App\Jobs\SyncRecentOrdersJob;
 use App\Models\Order;
 use App\Models\SyncLog;
 use Carbon\Carbon;
@@ -110,8 +110,8 @@ final class DashboardFilters extends Component
         $this->syncMessage = 'Sync job queued...';
 
         try {
-            // Dispatch unified sync job
-            SyncOrdersJob::dispatch(startedBy: 'user-'.auth()->id());
+            // Dispatch recent orders sync job
+            SyncRecentOrdersJob::dispatch(startedBy: 'user-'.auth()->id());
 
             $this->dispatch('notification', [
                 'message' => 'Sync started in background. Updates will appear automatically.',
@@ -178,6 +178,7 @@ final class DashboardFilters extends Component
         if (! $lastSync) {
             return collect([
                 'time_human' => 'Never synced',
+                'timestamp' => null,
                 'created' => 0,
                 'updated' => 0,
                 'status' => 'never',
@@ -186,6 +187,8 @@ final class DashboardFilters extends Component
 
         return collect([
             'time_human' => $lastSync->completed_at->diffForHumans(),
+            'timestamp' => $lastSync->completed_at->toIso8601String(), // For client-side calculation
+            'elapsed_seconds' => (int) $lastSync->completed_at->diffInSeconds(now()), // Initial elapsed time
             'created' => $lastSync->total_created ?? 0,
             'updated' => $lastSync->total_updated ?? 0,
             'failed' => $lastSync->total_failed ?? 0,

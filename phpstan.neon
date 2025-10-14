@@ -1,0 +1,16 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+
+    # Rule level (0-9, 9 is the strictest)
+    level: 5
+
+    ignoreErrors:
+        # Ignore dynamic property access on Livewire components
+        - '#Access to an undefined property Livewire\\Component::\$[a-zA-Z0-9_]+#'
+
+    excludePaths:
+        - app/Console/Commands/_archive/*

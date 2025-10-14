@@ -13,4 +13,19 @@ return [
     |
     */
     'default_period' => Period::SEVEN_DAYS,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cache Warming Strategy Threshold
+    |--------------------------------------------------------------------------
+    |
+    | Periods with this many days or more will use database aggregation
+    | for cache warming instead of loading all orders into memory.
+    |
+    | Recommended: 365 for typical datasets (50K-200K orders)
+    | If you have fewer orders: Can increase to 730
+    | If you have millions of orders: Decrease to 180 or lower
+    |
+    */
+    'chunked_calculation_threshold' => 365,
 ];

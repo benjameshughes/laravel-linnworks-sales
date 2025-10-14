@@ -274,7 +274,10 @@ class LinnworksApiService
      * Stream processed order IDs page by page (memory-efficient)
      *
      * Returns a Generator that yields Collections of order IDs.
-     * Use this for historical imports to avoid loading thousands of orders into memory.
+     * Use this for syncing to avoid loading thousands of orders into memory.
+     *
+     * No artificial limits - streams all orders in the date range.
+     * Memory is controlled by batch size (200 orders per page).
      *
      * @return \Generator<int, Collection> Yields Collection of order IDs per page
      */
@@ -282,7 +285,6 @@ class LinnworksApiService
         ?Carbon $from = null,
         ?Carbon $to = null,
         array $filters = [],
-        int $maxOrders = 10_000,
         ?int $userId = null,
         ?\Closure $progressCallback = null
     ): \Generator {
@@ -296,7 +298,6 @@ class LinnworksApiService
                 $from,
                 $to,
                 $filters,
-                $maxOrders,
                 $progressCallback
             );
         } catch (\Throwable $exception) {

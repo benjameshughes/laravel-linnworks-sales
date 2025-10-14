@@ -15,7 +15,7 @@
                 <span class="text-zinc-400">•</span>
                 <span class="flex items-center gap-1"
                       x-data="{
-                          elapsed: 0,
+                          elapsed: {{ $this->lastSyncInfo->get('elapsed_seconds', 0) }},
                           interval: null,
                           displayText: '{{ $this->lastSyncInfo->get('time_human') }}',
                           isSyncing: @entangle('isSyncing'),
@@ -32,25 +32,48 @@
                           },
                           startTimer() {
                               if (this.interval) clearInterval(this.interval);
-                              this.interval = setInterval(() => this.updateTime(), 1000);
+
+                              // If already past 60 seconds, use minute-based updates
+                              if (this.elapsed >= 60) {
+                                  this.updateMinuteDisplay();
+
+                                  // Calculate seconds until next minute boundary
+                                  const secondsIntoMinute = this.elapsed % 60;
+                                  const secondsUntilNextMinute = 60 - secondsIntoMinute;
+
+                                  // First tick at the minute boundary, then every 60s after
+                                  setTimeout(() => {
+                                      this.tickMinute();
+                                      this.interval = setInterval(() => this.tickMinute(), 60000);
+                                  }, secondsUntilNextMinute * 1000);
+                              } else {
+                                  // Use second-based updates
+                                  this.interval = setInterval(() => this.tickSecond(), 1000);
+                              }
                           },
-                          updateTime() {
-                              if (this.isSyncing) return; // Don't update while syncing
+                          tickSecond() {
+                              if (this.isSyncing) return;
 
                               this.elapsed++;
 
-                              // If less than 60 seconds, show seconds count
                               if (this.elapsed < 60) {
                                   this.displayText = this.elapsed + ' second' + (this.elapsed === 1 ? '' : 's') + ' ago';
-                              } else if (this.elapsed === 60) {
-                                  // At 60 seconds, switch to minute intervals and refresh from server
+                              } else {
+                                  // Hit 60 seconds, switch to minute-based updates
                                   clearInterval(this.interval);
-                                  this.interval = setInterval(() => {
-                                      $wire.$refresh();
-                                      this.displayText = $wire.lastSyncInfo?.time_human || this.displayText;
-                                  }, 60000);
-                                  this.displayText = '1 minute ago';
+                                  this.updateMinuteDisplay();
+                                  this.interval = setInterval(() => this.tickMinute(), 60000);
                               }
+                          },
+                          tickMinute() {
+                              if (this.isSyncing) return;
+
+                              this.elapsed += 60;
+                              this.updateMinuteDisplay();
+                          },
+                          updateMinuteDisplay() {
+                              const minutes = Math.floor(this.elapsed / 60);
+                              this.displayText = minutes + ' minute' + (minutes === 1 ? '' : 's') + ' ago';
                           }
                       }">
                     @if($isSyncing)

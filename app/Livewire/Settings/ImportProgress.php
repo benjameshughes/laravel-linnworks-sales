@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Settings;
 
-use App\Jobs\SyncOrdersJob;
+use App\Jobs\SyncHistoricalOrdersJob;
 use App\Models\SyncLog;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -79,7 +79,7 @@ class ImportProgress extends Component
      */
     public function loadPersistedState(): void
     {
-        $activeSync = SyncLog::getActiveSync(SyncLog::TYPE_OPEN_ORDERS);
+        $activeSync = SyncLog::getActiveSync(SyncLog::TYPE_HISTORICAL_ORDERS);
 
         if (! $activeSync) {
             return;
@@ -132,16 +132,14 @@ class ImportProgress extends Component
         $this->status = 'queued';
         $this->startedAt = now()->toISOString();
 
-        // Use the unified SyncOrdersJob in historical import mode
-        SyncOrdersJob::dispatch(
-            startedBy: auth()->user()?->name ?? 'UI Import',
-            dryRun: false,
-            historicalImport: true,
+        // Dispatch historical import job
+        SyncHistoricalOrdersJob::dispatch(
             fromDate: \Carbon\Carbon::parse($this->fromDate)->startOfDay(),
             toDate: \Carbon\Carbon::parse($this->toDate)->endOfDay(),
+            startedBy: auth()->user()?->name ?? 'UI Import',
         );
 
-        $this->message = 'Import queued. Waiting for background workers...';
+        $this->message = 'Historical import queued. Waiting for background workers...';
     }
 
     #[On('echo:sync-progress,SyncProgressUpdated')]

@@ -132,6 +132,24 @@ class LinnworksApiException extends Exception
         ]);
     }
 
+    /**
+     * Get user-friendly error message (no technical jargon)
+     */
+    public function getUserMessage(): string
+    {
+        return match (true) {
+            $this->isRateLimited() => 'Too many requests to Linnworks. Please wait a moment and try again.',
+            $this->isTimeout() => 'Linnworks is taking too long to respond. Please try again.',
+            $this->code === 503 => 'Linnworks is temporarily unavailable. Please try again in a few minutes.',
+            $this->code === 502 => 'Unable to connect to Linnworks. Please try again shortly.',
+            $this->isServerError() => 'Linnworks is experiencing technical difficulties. Please try again later.',
+            $this->code === 401 => 'Your Linnworks session has expired. Please reconnect your account.',
+            $this->code === 403 => 'You don\'t have permission to access this Linnworks resource.',
+            $this->code === 404 => 'The requested Linnworks resource was not found.',
+            default => 'An error occurred while communicating with Linnworks. Please try again.',
+        };
+    }
+
     public function report(): void
     {
         $level = match (true) {

@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SyncOrdersJob;
+use App\Jobs\SyncRecentOrdersJob;
 use Illuminate\Console\Command;
 
 class SyncOpenOrders extends Command
@@ -21,21 +21,21 @@ class SyncOpenOrders extends Command
      *
      * @var string
      */
-    protected $description = 'Sync all orders (open and processed) from Linnworks';
+    protected $description = 'Sync recent orders (open + processed from last 30 days) from Linnworks';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('Dispatching unified orders sync job...');
+        $this->info('Dispatching recent orders sync job...');
 
         try {
-            // Dispatch the unified sync job
-            SyncOrdersJob::dispatch(startedBy: 'command');
+            // Dispatch the recent orders sync job
+            SyncRecentOrdersJob::dispatch(startedBy: 'command');
 
             $this->info('Sync job dispatched successfully!');
-            $this->info('The job will sync all open and processed orders.');
+            $this->info('The job will sync all open orders + processed orders from last 30 days.');
             $this->info('Use "php artisan queue:work" to process the job.');
 
             return 0;

@@ -308,14 +308,17 @@ class OpenOrdersService
     }
 
     /**
-     * Retrieve paginated open order identifiers.
+     * Retrieve ALL open order identifiers in a single call (no pagination).
+     *
+     * Uses Orders/GetAllOpenOrders endpoint which returns all order IDs at once.
+     * More accurate than paginated approach - no orders slip through gaps.
+     * Higher rate limit: 250/min vs 150/min for GetOpenOrderIds.
+     *
+     * Simple config-driven approach - no database preferences, no auto-detection.
      */
     public function getOpenOrderIds(
         int $userId,
-        int $entriesPerPage = 200,
-        ?int $viewId = null,
-        ?string $locationId = null,
-        int $maxResults = 5000
+        ?string $locationId = null
     ): Collection {
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
 
@@ -325,74 +328,82 @@ class OpenOrdersService
             return collect();
         }
 
-        $config = config('linnworks.open_orders', []);
-        $connection = LinnworksConnection::query()->active()->forUser($userId)->first();
+        // Use config value with sensible default
+        $locationId ??= config('linnworks.open_orders.location_id', '00000000-0000-0000-0000-000000000000');
 
-        $viewId ??= $connection?->preferred_open_orders_view_id;
-        $locationId ??= $connection?->preferred_open_orders_location_id;
+        Log::info('Fetching ALL open order IDs (single call)', [
+            'user_id' => $userId,
+            'location_id' => $locationId,
+        ]);
 
-        $viewId ??= (int) data_get($config, 'view_id', config('linnworks.defaults.view_id', 0));
-        $locationId ??= (string) data_get(
-            $config,
-            'location_id',
-            config('linnworks.fulfilment_center', config('linnworks.defaults.location_fallback'))
-        );
-        $configuredPageSize = (int) data_get($config, 'entries_per_page', 200);
-        $entriesPerPage = $entriesPerPage > 0 ? $entriesPerPage : $configuredPageSize;
-        $autoDetect = (bool) data_get($config, 'auto_detect', true);
+        try {
+            $request = ApiRequest::post('Orders/GetAllOpenOrders', [
+                'fulfilmentCenter' => $locationId,
+            ]);
 
-        if ($autoDetect) {
-            if ($viewId === 0) {
-                $views = $this->views->getOpenOrderViews($userId);
-                $detectedView = $views
-                    ->first(fn ($view) => ($view['IsDefault'] ?? false) === true)
-                    ?? $views->first();
+            $response = $this->client->makeRequest($request, $sessionToken);
 
-                if ($detectedView) {
-                    $viewId = (int) ($detectedView['pkViewId'] ?? $detectedView['ViewId'] ?? $detectedView['Id'] ?? $viewId);
-
-                    Log::info('Auto-detected Linnworks open order view', [
-                        'user_id' => $userId,
-                        'view_id' => $viewId,
-                        'view_name' => $detectedView['ViewName'] ?? $detectedView['Name'] ?? null,
-                    ]);
-                }
-            }
-
-            $fallbackLocation = config('linnworks.defaults.location_fallback', '00000000-0000-0000-0000-000000000000');
-
-            if (empty($locationId) || $locationId === $fallbackLocation) {
-                $locations = $this->locations->getLocations($userId);
-                $detectedLocation = $locations->first();
-
-                if ($detectedLocation) {
-                    $locationId = (string) ($detectedLocation['StockLocationId']
-                        ?? $detectedLocation['LocationId']
-                        ?? $detectedLocation['Id']
-                        ?? $locationId);
-
-                    Log::info('Auto-detected Linnworks location', [
-                        'user_id' => $userId,
-                        'location_id' => $locationId,
-                        'location_name' => $detectedLocation['LocationName'] ?? $detectedLocation['Name'] ?? null,
-                    ]);
-                }
-            }
-
-            if ($viewId === 0) {
-                Log::warning('Linnworks open order view fallback in use', [
+            if ($response->isError()) {
+                Log::error('Failed to fetch all open order IDs', [
                     'user_id' => $userId,
-                    'hint' => 'Set LINNWORKS_OPEN_ORDERS_VIEW_ID or choose a view in settings.',
+                    'error' => $response->error,
+                    'status_code' => $response->statusCode,
                 ]);
+
+                return collect();
             }
 
-            if (empty($locationId) || $locationId === $fallbackLocation) {
-                Log::warning('Linnworks open order location fallback in use', [
-                    'user_id' => $userId,
-                    'hint' => 'Set LINNWORKS_OPEN_ORDERS_LOCATION_ID or choose a location in settings.',
-                ]);
-            }
+            $data = $response->getData();
+
+            // Response is a flat array of order ID strings
+            $ids = collect($data->toArray())
+                ->filter(fn ($id) => ! is_null($id))
+                ->map(fn ($id) => (string) $id)
+                ->unique()
+                ->values();
+
+            Log::info('Fetched all open order IDs', [
+                'user_id' => $userId,
+                'total_ids' => $ids->count(),
+            ]);
+
+            return $ids;
+        } catch (\Throwable $e) {
+            Log::error('Exception fetching all open order IDs', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
+            ]);
+
+            return collect();
         }
+    }
+
+    /**
+     * Retrieve paginated open order identifiers (LEGACY - prefer getOpenOrderIds).
+     *
+     * @deprecated Use getOpenOrderIds() instead - uses GetAllOpenOrders (no pagination, more accurate)
+     */
+    public function getOpenOrderIdsPaginated(
+        int $userId,
+        int $entriesPerPage = 200,
+        ?int $viewId = null,
+        ?string $locationId = null
+    ): Collection {
+        $sessionToken = $this->sessionManager->getValidSessionToken($userId);
+
+        if (! $sessionToken) {
+            Log::warning('DEPRECATED: getOpenOrderIdsPaginated() called - use getOpenOrderIds() instead', [
+                'user_id' => $userId,
+            ]);
+
+            return collect();
+        }
+
+        // Use config values with sensible defaults
+        $viewId ??= config('linnworks.open_orders.view_id', 4);
+        $locationId ??= config('linnworks.open_orders.location_id', '00000000-0000-0000-0000-000000000000');
+        $entriesPerPage = $entriesPerPage > 0 ? $entriesPerPage : config('linnworks.open_orders.entries_per_page', 200);
 
         $ids = collect();
         $page = 1;
@@ -403,7 +414,6 @@ class OpenOrdersService
             'view_id' => $viewId,
             'location_id' => $locationId,
             'entries_per_page' => $entriesPerPage,
-            'max_results' => $maxResults,
         ]);
 
         do {
@@ -462,18 +472,10 @@ class OpenOrdersService
 
             $page++;
 
-            if ($ids->count() >= $maxResults) {
-                Log::info('Reached max open order IDs limit', [
-                    'user_id' => $userId,
-                    'limit' => $maxResults,
-                ]);
-                break;
-            }
-
             $totalPages = (int) ($data->get('TotalPages') ?? $page - 1);
         } while ($pageIds->isNotEmpty() && $page <= max(1, $totalPages));
 
-        return $ids->take($maxResults)->values();
+        return $ids->values();
     }
 
     /**

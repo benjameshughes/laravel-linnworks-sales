@@ -69,7 +69,7 @@ class ProductDetail extends Component
                 })
                 ->selectRaw('
                     SUM(quantity) as total_quantity,
-                    SUM(line_total) as total_revenue,
+                    SUM(total_price) as total_revenue,
                     COUNT(DISTINCT order_id) as order_count
                 ')
                 ->first();
@@ -103,9 +103,9 @@ class ProductDetail extends Component
                 return [
                     'channel' => $channel ?? 'Unknown',
                     'quantity_sold' => $items->sum('quantity'),
-                    'revenue' => $items->sum('line_total'),
+                    'revenue' => $items->sum('total_price'),
                     'order_count' => $items->unique('order_id')->count(),
-                    'avg_order_value' => $items->count() > 0 ? $items->sum('line_total') / $items->unique('order_id')->count() : 0,
+                    'avg_order_value' => $items->count() > 0 ? $items->sum('total_price') / $items->unique('order_id')->count() : 0,
                 ];
             })
             ->sortByDesc('revenue')
@@ -136,8 +136,8 @@ class ProductDetail extends Component
                     'date' => $order->received_date->format('M j, Y'),
                     'channel' => $order->channel_name,
                     'quantity' => $item->quantity,
-                    'revenue' => $item->line_total,
-                    'price_per_unit' => $item->price_per_unit,
+                    'revenue' => $item->total_price,
+                    'price_per_unit' => $item->unit_price,
                 ];
             });
     }
@@ -154,9 +154,9 @@ class ProductDetail extends Component
             })
             ->get();
 
-        $totalRevenue = $items->sum('line_total');
+        $totalRevenue = $items->sum('total_price');
         $totalCost = $items->sum(function ($item) {
-            return $item->unit_cost * $item->quantity;
+            return $item->cost_price * $item->quantity;
         });
         $totalProfit = $totalRevenue - $totalCost;
         $profitMargin = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;

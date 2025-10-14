@@ -56,6 +56,9 @@ readonly class LinnworksOrder implements Arrayable
         $extendedProperties = collect($data['ExtendedProperties'] ?? []);
         $identifiers = collect($data['OrderIdentifiers'] ?? []);
 
+        // Parse paid date first so we can use it to determine isPaid
+        $paidDate = self::parseDate($data['PaidDateTime'] ?? $data['PaidDate'] ?? $data['dPaidDate'] ?? $data['paid_date'] ?? null);
+
         return new self(
             orderId: $data['OrderId'] ?? $data['pkOrderID'] ?? $data['order_id'] ?? null,
             orderNumber: isset($data['NumOrderId']) ? (int) $data['NumOrderId'] : (
@@ -76,8 +79,9 @@ readonly class LinnworksOrder implements Arrayable
             profitMargin: (float) ($totalsInfo['ProfitMargin'] ?? $data['ProfitMargin'] ?? $data['profit_margin'] ?? 0),
             orderStatus: (int) ($generalInfo['Status'] ?? $data['nStatus'] ?? $data['order_status'] ?? 0),
             locationId: $data['FulfilmentLocationId'] ?? $data['fkOrderLocationID'] ?? $data['location_id'] ?? null,
-            isPaid: ($generalInfo['Status'] ?? $data['nStatus'] ?? $data['order_status'] ?? 0) === 1,
-            paidDate: self::parseDate($data['PaidDateTime'] ?? $data['PaidDate'] ?? $data['dPaidDate'] ?? $data['paid_date'] ?? null),
+            // Check PaidDateTime first (source of truth), then fall back to nStatus === 1
+            isPaid: $paidDate !== null || ($generalInfo['Status'] ?? $data['nStatus'] ?? $data['order_status'] ?? 0) === 1,
+            paidDate: $paidDate,
             isCancelled: (bool) ($generalInfo['HoldOrCancel'] ?? $data['HoldOrCancel'] ?? $data['is_cancelled'] ?? false),
             channelReferenceNumber: $generalInfo['ReferenceNum'] ?? $generalInfo['ExternalReferenceNum'] ?? $data['channel_reference_number'] ?? null,
             items: $items,

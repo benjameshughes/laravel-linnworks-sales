@@ -12,7 +12,7 @@ readonly class ApiRequest implements JsonSerializable
         public string $method = 'GET',
         public Collection $parameters = new Collection,
         public Collection $headers = new Collection,
-        public int $timeout = 30,
+        public int $timeout = 120, // 2 minutes - Linnworks can be slow with large batches
         public bool $requiresAuth = true,
         public bool $asJson = false,
     ) {}
