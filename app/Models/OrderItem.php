@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property-read float $profit
+ */
 class OrderItem extends Model
 {
     use HasFactory;
@@ -16,26 +19,35 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'item_id',
+        'linnworks_item_id',
         'sku',
+        'title',
+        'description',
+        'category',
         'quantity',
-        'unit_cost',
-        'price_per_unit',
-        'line_total',
+        'unit_price',
+        'total_price',
+        'cost_price',
+        'profit_margin',
+        'tax_rate',
         'discount_amount',
-        'tax_amount',
-        'metadata',
+        'bin_rack',
+        'is_service',
+        'item_attributes',
     ];
 
     protected function casts(): array
     {
         return [
             'quantity' => 'integer',
-            'unit_cost' => 'decimal:4',
-            'price_per_unit' => 'decimal:4',
-            'line_total' => 'decimal:4',
+            'unit_price' => 'decimal:4',
+            'total_price' => 'decimal:4',
+            'cost_price' => 'decimal:4',
+            'profit_margin' => 'decimal:4',
+            'tax_rate' => 'decimal:4',
             'discount_amount' => 'decimal:4',
-            'tax_amount' => 'decimal:4',
-            'metadata' => 'array',
+            'is_service' => 'boolean',
+            'item_attributes' => 'array',
         ];
     }
 
@@ -61,7 +73,7 @@ class OrderItem extends Model
     protected function profit(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->line_total - ($this->unit_cost * $this->quantity)
+            get: fn () => $this->total_price - ($this->cost_price * $this->quantity)
         );
     }
 
@@ -71,27 +83,27 @@ class OrderItem extends Model
     protected function profitMargin(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->line_total == 0 ? 0 : ($this->profit / $this->line_total) * 100
+            get: fn () => $this->total_price == 0 ? 0 : ($this->profit / $this->total_price) * 100
         );
     }
 
     /**
-     * Get formatted line total (modern accessor)
+     * Get formatted total price (modern accessor)
      */
-    protected function formattedLineTotal(): Attribute
+    protected function formattedTotalPrice(): Attribute
     {
         return Attribute::make(
-            get: fn () => '£'.number_format($this->line_total, 2)
+            get: fn () => '£'.number_format($this->total_price, 2)
         );
     }
 
     /**
-     * Get formatted unit cost (modern accessor)
+     * Get formatted cost price (modern accessor)
      */
-    protected function formattedUnitCost(): Attribute
+    protected function formattedCostPrice(): Attribute
     {
         return Attribute::make(
-            get: fn () => '£'.number_format($this->unit_cost, 2)
+            get: fn () => '£'.number_format($this->cost_price, 2)
         );
     }
 
@@ -111,7 +123,7 @@ class OrderItem extends Model
     protected function productTitle(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->product?->title ?? 'Unknown Product'
+            get: fn () => $this->product->title ?? 'Unknown Product'
         );
     }
 
@@ -121,7 +133,7 @@ class OrderItem extends Model
     protected function productCategory(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->product?->category_name ?? 'Unknown Category'
+            get: fn () => $this->product->category_name ?? 'Unknown Category'
         );
     }
 
@@ -131,7 +143,7 @@ class OrderItem extends Model
     protected function productBrand(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->product?->brand ?? 'Unknown Brand'
+            get: fn () => $this->product->brand ?? 'Unknown Brand'
         );
     }
 
@@ -157,7 +169,7 @@ class OrderItem extends Model
 
     public function scopeProfitable(Builder $query): Builder
     {
-        return $query->whereRaw('line_total > (unit_cost * quantity)');
+        return $query->whereRaw('total_price > (cost_price * quantity)');
     }
 
     public function scopeHighVolume(Builder $query, int $threshold = 10): Builder

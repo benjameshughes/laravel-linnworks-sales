@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Settings;
 
+use App\Exceptions\Linnworks\AuthenticationException;
+use App\Exceptions\Linnworks\LinnworksApiException;
 use App\Models\LinnworksLocation;
 use App\Models\LinnworksView;
 use App\Services\Linnworks\Orders\LocationsService;
@@ -84,8 +86,15 @@ class LinnworksSettings extends Component
                 $status = $oauthService->getConnectionStatus(auth()->id());
                 session()->flash('error', 'Connection created but test failed: '.($status['message'] ?? 'Unknown error'));
             }
+        } catch (LinnworksApiException|AuthenticationException $e) {
+            session()->flash('error', $e->getUserMessage());
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to connect to Linnworks: '.$e->getMessage());
+            session()->flash('error', 'An unexpected error occurred. Please try again or contact support.');
+            \Log::error('Linnworks connection error', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
     }
 
@@ -246,9 +255,12 @@ class LinnworksSettings extends Component
             $this->loadPreferences();
 
             session()->flash('success', 'Synced Linnworks locations and views.');
+        } catch (LinnworksApiException|AuthenticationException $e) {
+            session()->flash('error', $e->getUserMessage());
+            report($e);
         } catch (Throwable $exception) {
+            session()->flash('error', 'An unexpected error occurred while refreshing. Please try again.');
             report($exception);
-            session()->flash('error', 'Failed to refresh Linnworks metadata: '.$exception->getMessage());
         } finally {
             $this->isRefreshingSources = false;
         }

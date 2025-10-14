@@ -234,7 +234,7 @@
                                 </div>
                                 <div class="text-right">
                                     <div class="font-bold text-zinc-900 dark:text-zinc-100">£{{ number_format($order['revenue'], 2) }}</div>
-                                    <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $order['quantity'] }} × £{{ number_format($order['price_per_unit'], 2) }}</div>
+                                    <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $order['quantity'] }} units</div>
                                 </div>
                             </div>
                         @endforeach

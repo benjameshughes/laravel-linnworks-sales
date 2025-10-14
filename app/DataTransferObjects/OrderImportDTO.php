@@ -54,8 +54,6 @@ readonly class OrderImportDTO
             'order_number' => $linnworks->orderNumber,
             'channel_name' => $channelName,
             'channel_reference_number' => $linnworks->channelReferenceNumber,
-            'source' => $linnworks->orderSource,
-            'sub_source' => $subSource,
             'received_date' => $linnworks->receivedDate?->toDateTimeString(),
             'processed_date' => $linnworks->processedDate?->toDateTimeString(),
             'currency' => $linnworks->currency,
@@ -82,20 +80,11 @@ readonly class OrderImportDTO
                 'order_status' => $linnworks->orderStatus,
                 'location_id' => $linnworks->locationId,
             ]),
-            'items' => json_encode($linnworks->items->map(fn ($item) => [
-                'item_id' => $item->itemId,
-                'sku' => $item->sku,
-                'quantity' => $item->quantity,
-                'unit_cost' => $item->unitCost,
-                'price_per_unit' => $item->pricePerUnit,
-                'line_total' => $item->lineTotal,
-                'item_title' => $item->itemTitle,
-                'category_name' => $item->categoryName,
-            ])->toArray()),
             // Extended order fields
             'marker' => $linnworks->marker,
             'is_parked' => $linnworks->isParked,
             'despatch_by_date' => $linnworks->despatchByDate?->toDateTimeString(),
+            'dispatched_at' => null, // Set when order is actually dispatched
             'num_items' => $linnworks->numItems,
             'payment_method' => $linnworks->paymentMethod,
             'created_at' => now()->toDateTimeString(),
@@ -104,16 +93,25 @@ readonly class OrderImportDTO
 
         // Order items (flat array for DB::insert)
         $itemsData = $linnworks->items->map(fn ($item) => [
-            'order_id' => null, // Will be set after order is inserted
+            'order_id' => null, // Will be set by OrderBulkWriter
             'item_id' => $item->itemId,
+            'linnworks_item_id' => $item->stockItemId ?? null,
             'sku' => $item->sku,
+            'title' => $item->itemTitle,
+            'description' => null,
+            'category' => $item->categoryName,
             'quantity' => $item->quantity,
-            'unit_cost' => $item->unitCost,
-            'price_per_unit' => $item->pricePerUnit,
-            'line_total' => $item->lineTotal,
-            'metadata' => json_encode([
-                'item_title' => $item->itemTitle,
-                'category_name' => $item->categoryName,
+            'unit_price' => $item->pricePerUnit,
+            'total_price' => $item->lineTotal,
+            'cost_price' => $item->unitCost,
+            'profit_margin' => null, // Calculated by SalesMetrics service
+            'tax_rate' => 0.00,
+            'discount_amount' => 0.00,
+            'bin_rack' => null,
+            'is_service' => false,
+            'item_attributes' => json_encode([
+                'original_title' => $item->itemTitle,
+                'original_category' => $item->categoryName,
             ]),
             'created_at' => now()->toDateTimeString(),
             'updated_at' => now()->toDateTimeString(),

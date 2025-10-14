@@ -34,7 +34,7 @@ class ProductMetrics extends MetricBase
      */
     public function totalProductRevenue(): float
     {
-        return (float) $this->data->sum('line_total');
+        return (float) $this->data->sum('total_price');
     }
 
     /**
@@ -42,7 +42,7 @@ class ProductMetrics extends MetricBase
      */
     public function averageProductPrice(): float
     {
-        return $this->data->count() > 0 ? $this->data->avg('price_per_unit') : 0;
+        return $this->data->count() > 0 ? $this->data->avg('unit_price') : 0;
     }
 
     /**
@@ -71,9 +71,9 @@ class ProductMetrics extends MetricBase
                     'title' => $product?->title ?? 'Unknown Product',
                     'category' => $product?->category_name ?? 'Unknown Category',
                     'quantity_sold' => $items->sum('quantity'),
-                    'revenue' => $items->sum('line_total'),
+                    'revenue' => $items->sum('total_price'),
                     'order_count' => $items->count(),
-                    'avg_price' => $items->avg('price_per_unit'),
+                    'avg_price' => $items->avg('unit_price'),
                     'stock_level' => $product?->stock_available ?? 0,
                     'profit_margin' => $product?->getProfitMargin() ?? 0,
                     'badges' => $badges,
@@ -103,9 +103,9 @@ class ProductMetrics extends MetricBase
                     'title' => $product?->title ?? 'Unknown Product',
                     'category' => $product?->category_name ?? 'Unknown Category',
                     'quantity_sold' => $items->sum('quantity'),
-                    'revenue' => $items->sum('line_total'),
+                    'revenue' => $items->sum('total_price'),
                     'order_count' => $items->count(),
-                    'avg_price' => $items->avg('price_per_unit'),
+                    'avg_price' => $items->avg('unit_price'),
                     'stock_level' => $product?->stock_available ?? 0,
                     'profit_margin' => $product?->getProfitMargin() ?? 0,
                     'badges' => $badges,
@@ -135,8 +135,8 @@ class ProductMetrics extends MetricBase
                     'category' => $category,
                     'product_count' => $items->pluck('sku')->unique()->count(),
                     'quantity_sold' => $items->sum('quantity'),
-                    'revenue' => $items->sum('line_total'),
-                    'avg_price' => $items->avg('price_per_unit'),
+                    'revenue' => $items->sum('total_price'),
+                    'avg_price' => $items->avg('unit_price'),
                 ]);
             })
             ->sortByDesc('revenue')
@@ -163,7 +163,7 @@ class ProductMetrics extends MetricBase
                     'stock_available' => $product->stock_available,
                     'stock_minimum' => $product->stock_minimum,
                     'quantity_sold' => $items->sum('quantity'),
-                    'revenue' => $items->sum('line_total'),
+                    'revenue' => $items->sum('total_price'),
                     'urgency_score' => $items->sum('quantity') / max($product->stock_available, 1),
                 ]);
             })
@@ -191,9 +191,9 @@ class ProductMetrics extends MetricBase
                     'date' => $date->format('M j'),
                     'day' => $date->format('D'),
                     'products_sold' => $dayItems->sum('quantity'),
-                    'revenue' => $dayItems->sum('line_total'),
+                    'revenue' => $dayItems->sum('total_price'),
                     'unique_products' => $dayItems->pluck('sku')->unique()->count(),
-                    'avg_price' => $dayItems->avg('price_per_unit') ?? 0,
+                    'avg_price' => $dayItems->avg('unit_price') ?? 0,
                 ]);
             });
     }

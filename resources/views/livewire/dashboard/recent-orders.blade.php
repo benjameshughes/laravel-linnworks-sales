@@ -36,9 +36,9 @@
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-600 text-zinc-800 dark:text-zinc-200">
                                         {{ $order->channel_name }}
                                     </span>
-                                    @if($order->sub_source)
+                                    @if($order->subsource)
                                         <span class="text-xs text-zinc-500 dark:text-zinc-400">
-                                            {{ $order->sub_source }}
+                                            {{ $order->subsource }}
                                         </span>
                                     @endif
                                 </div>

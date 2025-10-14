@@ -30,7 +30,7 @@ class OrderFactory extends Factory
             'profit_margin' => fake()->randomFloat(2, 0, 100),
             'currency' => fake()->randomElement(['GBP', 'USD', 'EUR']),
             'status' => fake()->randomElement(['pending', 'processed', 'cancelled']),
-            'addresses' => [
+            'addresses' => json_encode([
                 'billing' => [
                     'name' => fake()->name(),
                     'country' => fake()->country(),
@@ -39,20 +39,20 @@ class OrderFactory extends Factory
                     'name' => fake()->name(),
                     'country' => fake()->country(),
                 ],
-            ],
+            ]),
             'received_date' => fake()->dateTimeBetween('-30 days', 'now'),
             'processed_date' => fake()->optional()->dateTimeBetween('-25 days', 'now'),
             'dispatched_date' => fake()->optional()->dateTimeBetween('-20 days', 'now'),
             'is_resend' => fake()->boolean(10),
             'is_exchange' => fake()->boolean(5),
             'notes' => fake()->optional()->sentence(),
-            'raw_data' => [
+            'raw_data' => json_encode([
                 'linnworks_order_id' => Str::uuid(),
                 'order_number' => fake()->numberBetween(10000, 99999),
                 'order_status' => fake()->numberBetween(0, 2),
                 'location_id' => Str::uuid(),
-            ],
-            'items' => [
+            ]),
+            'items' => json_encode([
                 [
                     'item_id' => Str::uuid(),
                     'sku' => fake()->unique()->regexify('[A-Z]{3}[0-9]{3}'),
@@ -63,7 +63,7 @@ class OrderFactory extends Factory
                     'line_total' => fake()->randomFloat(2, 10, 200),
                     'category_name' => fake()->word(),
                 ],
-            ],
+            ]),
             'order_source' => fake()->randomElement(['Amazon', 'eBay', 'Website', 'Etsy']),
             'subsource' => fake()->optional()->randomElement(['Amazon UK', 'eBay UK', 'Amazon US']),
             'tax' => fake()->randomFloat(2, 0, 20),
@@ -73,7 +73,7 @@ class OrderFactory extends Factory
             'is_open' => true,
             'has_refund' => false,
             'sync_status' => 'synced',
-            'sync_metadata' => [],
+            'sync_metadata' => json_encode([]),
         ];
     }
 
@@ -117,10 +117,10 @@ class OrderFactory extends Factory
             'has_refund' => true,
             'status' => 'cancelled',
             'order_status' => 2,
-            'sync_metadata' => [
+            'sync_metadata' => json_encode([
                 'refund_detected_at' => Carbon::now()->toDateTimeString(),
                 'refund_amount' => fake()->randomFloat(2, 5, $attributes['total_charge']),
-            ],
+            ]),
         ]);
     }
 

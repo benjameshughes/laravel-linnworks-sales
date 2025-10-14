@@ -74,7 +74,7 @@ final class ProductRepository
         $orderCount = $items->pluck('order_id')->unique()->count();
         $totalSold = $items->sum('quantity');
         $totalRevenue = $items->sum(fn ($item) => $this->calculateItemRevenue($item));
-        $avgPrice = $items->filter(fn ($item) => (float) $item->price_per_unit > 0)->avg('price_per_unit');
+        $avgPrice = $items->filter(fn ($item) => (float) $item->unit_price > 0)->avg('unit_price');
         if (! $avgPrice && $totalSold > 0) {
             $avgPrice = $totalRevenue / $totalSold;
         }
@@ -102,7 +102,7 @@ final class ProductRepository
                 $orderIds = $channelItems->pluck('order_id')->unique();
                 $quantity = $channelItems->sum('quantity');
                 $revenue = $channelItems->sum(fn ($item) => $this->calculateItemRevenue($item));
-                $avgPrice = $channelItems->filter(fn ($item) => (float) $item->price_per_unit > 0)->avg('price_per_unit');
+                $avgPrice = $channelItems->filter(fn ($item) => (float) $item->unit_price > 0)->avg('unit_price');
                 if (! $avgPrice && $quantity > 0) {
                     $avgPrice = $revenue / $quantity;
                 }
@@ -129,7 +129,7 @@ final class ProductRepository
             ->select(
                 DB::raw('DATE(orders.received_date) as sale_date'),
                 DB::raw('SUM(order_items.quantity) as quantity'),
-                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as revenue')
+                DB::raw('SUM(CASE WHEN order_items.total_price > 0 THEN order_items.total_price ELSE order_items.quantity * order_items.unit_price END) as revenue')
             )
             ->groupBy('sale_date')
             ->get();
@@ -152,12 +152,12 @@ final class ProductRepository
             ->leftJoin('products', 'order_items.sku', '=', 'products.sku')
             ->whereNull('orders.deleted_at')
             ->select(
-                DB::raw('COALESCE(NULLIF(json_extract(order_items.metadata, "$.category_name"), ""), products.category_name, "Uncategorized") as category'),
+                DB::raw('COALESCE(NULLIF(json_extract(order_items.item_attributes, "$.original_category"), ""), products.category_name, "Uncategorized") as category'),
                 DB::raw('COUNT(DISTINCT order_items.sku) as product_count'),
                 DB::raw('SUM(order_items.quantity) as total_quantity'),
-                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue')
+                DB::raw('SUM(CASE WHEN order_items.total_price > 0 THEN order_items.total_price ELSE order_items.quantity * order_items.unit_price END) as total_revenue')
             )
-            ->groupBy('category')
+            ->groupByRaw('COALESCE(NULLIF(json_extract(order_items.item_attributes, "$.original_category"), ""), products.category_name, "Uncategorized")')
             ->orderByDesc('total_revenue')
             ->limit(10)
             ->get();
@@ -216,8 +216,8 @@ final class ProductRepository
             ->select(
                 'order_items.sku',
                 DB::raw('SUM(order_items.quantity) as total_sold'),
-                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue'),
-                DB::raw('AVG(NULLIF(order_items.price_per_unit, 0)) as avg_selling_price'),
+                DB::raw('SUM(CASE WHEN order_items.total_price > 0 THEN order_items.total_price ELSE order_items.quantity * order_items.unit_price END) as total_revenue'),
+                DB::raw('AVG(NULLIF(order_items.unit_price, 0)) as avg_selling_price'),
                 DB::raw('COUNT(DISTINCT order_items.order_id) as order_count')
             )
             ->groupBy('order_items.sku')
@@ -243,20 +243,20 @@ final class ProductRepository
 
     private function calculateItemRevenue(OrderItem $item): float
     {
-        $lineTotal = (float) $item->line_total;
-        if ($lineTotal > 0) {
-            return $lineTotal;
+        $totalPrice = (float) $item->total_price;
+        if ($totalPrice > 0) {
+            return $totalPrice;
         }
 
-        $price = (float) $item->price_per_unit;
+        $unitPrice = (float) $item->unit_price;
         $quantity = (int) $item->quantity;
 
-        if ($price > 0 && $quantity > 0) {
-            return $price * $quantity;
+        if ($unitPrice > 0 && $quantity > 0) {
+            return $unitPrice * $quantity;
         }
 
-        $metadata = $item->metadata ?? [];
-        $metaPrice = isset($metadata['price_per_unit']) ? (float) $metadata['price_per_unit'] : 0.0;
+        $attributes = $item->item_attributes ?? [];
+        $metaPrice = isset($attributes['unit_price']) ? (float) $attributes['unit_price'] : 0.0;
         if ($metaPrice > 0 && $quantity > 0) {
             return $metaPrice * $quantity;
         }

@@ -21,20 +21,11 @@ class LinnworksClient
 
     private const CACHE_TTL = 900; // 15 minutes
 
-    private readonly CircuitBreaker $circuitBreaker;
-
     public function __construct(
         private readonly RateLimiter $rateLimiter,
         private readonly int $timeout = 30,
         private readonly bool $enableCaching = true,
-    ) {
-        $this->circuitBreaker = new CircuitBreaker(
-            serviceName: 'linnworks_api',
-            failureThreshold: 5,
-            recoveryTimeout: 60,
-            successThreshold: 2
-        );
-    }
+    ) {}
 
     /**
      * Make an API request with rate limiting and error handling
@@ -43,22 +34,10 @@ class LinnworksClient
      */
     public function makeRequest(ApiRequest $request, ?SessionToken $sessionToken = null): ApiResponse
     {
-        // Check circuit breaker
-        if (! $this->circuitBreaker->canMakeRequest()) {
-            $stats = $this->circuitBreaker->getStats();
-            throw new LinnworksApiException(
-                message: 'Circuit breaker is open, too many recent failures',
-                context: $stats,
-                code: 503
-            );
-        }
-
         // Check cache first
         if ($this->enableCaching && $request->method === 'GET') {
             $cachedResponse = $this->getCachedResponse($request);
             if ($cachedResponse !== null) {
-                $this->circuitBreaker->recordSuccess();
-
                 return $cachedResponse;
             }
         }
@@ -96,29 +75,21 @@ class LinnworksClient
             // Log request details
             $this->logRequest($request, $apiResponse);
 
-            // Record success in circuit breaker
-            $this->circuitBreaker->recordSuccess();
-
             return $apiResponse;
 
         } catch (ConnectionException $e) {
-            $this->circuitBreaker->recordFailure();
             throw LinnworksApiException::timeout(
                 endpoint: $request->endpoint,
                 duration: $duration ?? 0
             );
         } catch (RequestException $e) {
-            $this->circuitBreaker->recordFailure();
             throw LinnworksApiException::fromResponse(
                 response: $e->response,
                 message: "Linnworks API request to {$request->endpoint} failed"
             );
         } catch (LinnworksApiException $e) {
-            $this->circuitBreaker->recordFailure();
             throw $e;
         } catch (\Throwable $e) {
-            $this->circuitBreaker->recordFailure();
-
             Log::error('Unexpected error during Linnworks API request', [
                 'endpoint' => $request->endpoint,
                 'error' => $e->getMessage(),
@@ -266,6 +237,14 @@ class LinnworksClient
             throw LinnworksApiException::rateLimited($response);
         }
 
+        // Check for authentication failures
+        if ($response->status() === 401) {
+            throw LinnworksApiException::fromResponse(
+                response: $response,
+                message: "Authentication failed for {$request->endpoint} - session may have expired"
+            );
+        }
+
         // Check for server errors (5xx)
         if ($response->serverError()) {
             throw LinnworksApiException::fromResponse(
@@ -274,7 +253,7 @@ class LinnworksClient
             );
         }
 
-        // Check for client errors (4xx)
+        // Check for client errors (4xx) - excluding 404 which might be expected
         if ($response->clientError() && $response->status() !== 404) {
             throw LinnworksApiException::fromResponse(
                 response: $response,
@@ -307,21 +286,12 @@ class LinnworksClient
     }
 
     /**
-     * Get circuit breaker instance
-     */
-    public function getCircuitBreaker(): CircuitBreaker
-    {
-        return $this->circuitBreaker;
-    }
-
-    /**
      * Get client statistics
      */
     public function getStats(): array
     {
         return [
             'rate_limiter' => $this->rateLimiter->getStats(),
-            'circuit_breaker' => $this->circuitBreaker->getStats(),
             'caching_enabled' => $this->enableCaching,
             'default_timeout' => $this->timeout,
         ];
