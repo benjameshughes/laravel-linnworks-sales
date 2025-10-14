@@ -23,7 +23,7 @@ class LinnworksClient
 
     public function __construct(
         private readonly RateLimiter $rateLimiter,
-        private readonly int $timeout = 30,
+        private readonly int $timeout = 120, // 2 minutes - Linnworks can be slow with large batches
         private readonly bool $enableCaching = true,
     ) {}
 

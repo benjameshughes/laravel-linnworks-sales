@@ -46,7 +46,7 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 600; // 10 minutes
+    public int $timeout = 1800; // 30 minutes - allows for retries with backoff on slow batches
 
     public function __construct(
         public ?string $startedBy = null,
@@ -341,6 +341,7 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
      * Process a single batch of order IDs (fetch full details + import)
      *
      * This method is called repeatedly for each micro-batch.
+     * Includes retry logic with exponential backoff for resilience.
      * Memory is freed after each call.
      */
     protected function processBatch(
@@ -354,56 +355,150 @@ final class SyncOrdersJob implements ShouldBeUnique, ShouldQueue
         int &$totalProcessed,
         int &$totalFailed
     ): void {
-        event(new SyncProgressUpdated(
-            'fetching-batch',
-            "Fetching batch {$currentBatch}...",
-            $totalProcessed
-        ));
+        $maxRetries = 3;
+        $baseBackoffSeconds = 5;
+        $attempt = 0;
+        $lastException = null;
 
-        // Fetch full order details for this batch
-        $orders = $api->getOrdersByIds($orderIds->toArray());
+        while ($attempt < $maxRetries) {
+            try {
+                $attempt++;
 
-        Log::info('Fetched order batch', [
-            'batch' => $currentBatch,
-            'orders_in_batch' => $orders->count(),
-        ]);
+                event(new SyncProgressUpdated(
+                    'fetching-batch',
+                    "Fetching batch {$currentBatch}...".($attempt > 1 ? " (attempt {$attempt}/{$maxRetries})" : ''),
+                    $totalProcessed
+                ));
 
-        event(new SyncProgressUpdated(
-            'importing-batch',
-            "Importing batch {$currentBatch}...",
-            $totalProcessed
-        ));
+                // Fetch full order details for this batch
+                $orders = $api->getOrdersByIds($orderIds->toArray());
 
-        // Import this batch
-        $result = $importer->import($orders);
+                Log::info('Fetched order batch', [
+                    'batch' => $currentBatch,
+                    'orders_in_batch' => $orders->count(),
+                    'attempt' => $attempt,
+                ]);
 
-        $totalCreated += $result->created;
-        $totalUpdated += $result->updated;
-        $totalProcessed += $result->processed;
-        $totalFailed += $result->failed;
+                event(new SyncProgressUpdated(
+                    'importing-batch',
+                    "Importing batch {$currentBatch}...",
+                    $totalProcessed
+                ));
 
-        Log::info('Imported order batch', [
-            'batch' => $currentBatch,
-            'processed' => $result->processed,
-            'created' => $result->created,
-            'updated' => $result->updated,
-            'failed' => $result->failed,
-        ]);
+                // Import this batch
+                $result = $importer->import($orders);
 
-        // Broadcast progress every 5 batches
-        if ($currentBatch % 5 === 0) {
-            $progressTracker->broadcastPerformanceUpdate(
-                totalProcessed: $totalProcessed,
-                created: $totalCreated,
-                updated: $totalUpdated,
-                failed: $totalFailed,
-                currentBatch: $currentBatch,
-                totalBatches: 0 // Unknown with streaming
-            );
+                $totalCreated += $result->created;
+                $totalUpdated += $result->updated;
+                $totalProcessed += $result->processed;
+                $totalFailed += $result->failed;
+
+                Log::info('Imported order batch', [
+                    'batch' => $currentBatch,
+                    'processed' => $result->processed,
+                    'created' => $result->created,
+                    'updated' => $result->updated,
+                    'failed' => $result->failed,
+                    'attempt' => $attempt,
+                ]);
+
+                // Broadcast progress every 5 batches
+                if ($currentBatch % 5 === 0) {
+                    $progressTracker->broadcastPerformanceUpdate(
+                        totalProcessed: $totalProcessed,
+                        created: $totalCreated,
+                        updated: $totalUpdated,
+                        failed: $totalFailed,
+                        currentBatch: $currentBatch,
+                        totalBatches: 0 // Unknown with streaming
+                    );
+                }
+
+                // Success! Free memory and return
+                unset($orders, $result);
+
+                return;
+
+            } catch (\App\Exceptions\Linnworks\LinnworksApiException $e) {
+                $lastException = $e;
+
+                // Check if this is a retryable error
+                if (! $e->isRetryable()) {
+                    Log::error('Non-retryable Linnworks API error on batch', [
+                        'batch' => $currentBatch,
+                        'attempt' => $attempt,
+                        'error' => $e->getUserMessage(),
+                        'status_code' => $e->getCode(),
+                    ]);
+
+                    // Don't retry auth failures, rate limits with no retry-after, etc.
+                    throw $e;
+                }
+
+                // Log retryable error
+                Log::warning('Linnworks API error on batch, will retry', [
+                    'batch' => $currentBatch,
+                    'attempt' => $attempt,
+                    'max_retries' => $maxRetries,
+                    'error' => $e->getUserMessage(),
+                    'status_code' => $e->getCode(),
+                    'is_timeout' => $e->isTimeout(),
+                    'is_rate_limited' => $e->isRateLimited(),
+                ]);
+
+                // Calculate backoff with exponential increase
+                $backoffSeconds = $baseBackoffSeconds * (2 ** ($attempt - 1)); // 5s, 10s, 20s
+
+                // Special handling for rate limits
+                if ($e->isRateLimited() && $e->getRetryAfter()) {
+                    $backoffSeconds = $e->getRetryAfter();
+                    Log::info('Rate limited, using Retry-After header', [
+                        'batch' => $currentBatch,
+                        'retry_after_seconds' => $backoffSeconds,
+                    ]);
+                }
+
+                // If this was our last attempt, throw the exception
+                if ($attempt >= $maxRetries) {
+                    Log::error('Batch failed after all retry attempts', [
+                        'batch' => $currentBatch,
+                        'total_attempts' => $attempt,
+                        'order_ids_count' => $orderIds->count(),
+                        'final_error' => $e->getUserMessage(),
+                    ]);
+
+                    throw $e;
+                }
+
+                // Wait before retrying
+                Log::info('Waiting before retry', [
+                    'batch' => $currentBatch,
+                    'attempt' => $attempt,
+                    'backoff_seconds' => $backoffSeconds,
+                    'next_attempt' => $attempt + 1,
+                ]);
+
+                sleep($backoffSeconds);
+
+            } catch (\Throwable $e) {
+                $lastException = $e;
+
+                Log::error('Unexpected error processing batch', [
+                    'batch' => $currentBatch,
+                    'attempt' => $attempt,
+                    'error' => $e->getMessage(),
+                    'exception_class' => get_class($e),
+                ]);
+
+                // Don't retry unexpected errors
+                throw $e;
+            }
         }
 
-        // Free memory
-        unset($orders, $result);
+        // Should never reach here, but if we do, throw the last exception
+        if ($lastException) {
+            throw $lastException;
+        }
     }
 
     /**
