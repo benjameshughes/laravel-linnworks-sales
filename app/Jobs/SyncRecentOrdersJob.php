@@ -36,7 +36,9 @@ use Illuminate\Support\Facades\Log;
  * Flow:
  * 1. Get ALL open order IDs → Orders/GetAllOpenOrders (single call, no pagination)
  * 2. Stream processed order IDs since checkpoint → ProcessedOrders/SearchProcessedOrders
- * 3. Mark stale orders as closed (orders no longer in open list)
+ * 3. Fetch & update missing orders (orders no longer in open list)
+ *    - Fetches full details to capture processed_date, status, shipping, etc.
+ *    - Handles orders processed OUTSIDE checkpoint window (architectural gap fix)
  * 4. Deduplicate IDs (orders processed between open/processed API calls)
  * 5. Fetch full details in batches of 200 → Orders/GetOrdersById (works for both)
  * 6. OrderImportDTO checks processedDate to set is_open (null = open, date = processed)
@@ -49,6 +51,7 @@ use Illuminate\Support\Facades\Log;
  * - No pagination gaps - captures all orders in single atomic snapshot
  * - Testing showed 2 orders missed by old paginated approach
  * - Deduplication prevents fetching same order twice if processed during sync
+ * - Missing orders get full processed data, not just is_open flag
  *
  * Performance: ~300-500 orders/sec with retry logic
  */
@@ -129,9 +132,9 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 'open_count' => $openOrderIds->count(),
             ]);
 
-            // Mark orders that are no longer open as closed
+            // Mark orders that are no longer open as closed (fetch full details)
             if ($openOrderIds->isNotEmpty()) {
-                $this->markMissingOrdersAsClosed($openOrderIds);
+                $this->markMissingOrdersAsClosed($openOrderIds, $api, $importer);
             }
 
             // Step 2: Stream processed order IDs since last checkpoint (incremental)
@@ -472,20 +475,81 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
 
     /**
      * Mark orders that are no longer open as closed
+     *
+     * Fetches full order details before updating to capture processed data
+     * (processed_date, status, shipping info, etc.) for orders processed
+     * outside the checkpoint window.
      */
-    protected function markMissingOrdersAsClosed(\Illuminate\Support\Collection $currentOpenOrderIds): void
-    {
-        $closedCount = Order::where('is_open', true)
+    protected function markMissingOrdersAsClosed(
+        \Illuminate\Support\Collection $currentOpenOrderIds,
+        LinnworksApiService $api,
+        ImportInBulk $importer
+    ): void {
+        // Find orders in DB that are no longer in the open list
+        $missingOrderIds = Order::where('is_open', true)
             ->whereNotIn('linnworks_order_id', $currentOpenOrderIds->toArray())
             ->where('last_synced_at', '<', now()->subMinutes(30))
+            ->pluck('linnworks_order_id');
+
+        if ($missingOrderIds->isEmpty()) {
+            return;
+        }
+
+        Log::info('Found orders no longer in open list', [
+            'count' => $missingOrderIds->count(),
+            'strategy' => 'fetch_full_details',
+        ]);
+
+        try {
+            // Fetch full order details from Linnworks
+            // This gives us the complete processed data (processed_date, status, shipping, etc.)
+            $orders = $api->getOrdersByIds($missingOrderIds->toArray());
+
+            if ($orders->isEmpty()) {
+                Log::warning('No order details returned for missing orders', [
+                    'missing_count' => $missingOrderIds->count(),
+                ]);
+
+                // Fall back to simple is_open update
+                $this->markOrdersAsClosedSimple($missingOrderIds);
+
+                return;
+            }
+
+            // Import with full details (will update processed_date, status, etc.)
+            $result = $importer->import($orders);
+
+            Log::info('Updated missing orders with full processed data', [
+                'fetched' => $orders->count(),
+                'updated' => $result->updated,
+                'failed' => $result->failed,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('Failed to fetch details for missing orders', [
+                'error' => $e->getMessage(),
+                'missing_count' => $missingOrderIds->count(),
+            ]);
+
+            // Fall back to simple is_open update
+            $this->markOrdersAsClosedSimple($missingOrderIds);
+        }
+    }
+
+    /**
+     * Fallback: Mark orders as closed without fetching details
+     *
+     * Only used if fetching full details fails.
+     */
+    protected function markOrdersAsClosedSimple(\Illuminate\Support\Collection $orderIds): void
+    {
+        $closedCount = Order::whereIn('linnworks_order_id', $orderIds->toArray())
             ->update([
                 'is_open' => false,
                 'sync_metadata' => \DB::raw("JSON_SET(COALESCE(sync_metadata, '{}'), '$.marked_closed_at', '".now()->toDateTimeString()."')"),
             ]);
 
-        if ($closedCount > 0) {
-            Log::info("Marked {$closedCount} missing orders as closed");
-        }
+        Log::info("Marked {$closedCount} orders as closed (fallback - no full details)");
     }
 
     public function failed(\Throwable $exception): void
