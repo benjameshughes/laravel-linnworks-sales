@@ -15,7 +15,7 @@
                 <span class="text-zinc-400">•</span>
                 <span class="flex items-center gap-1"
                       x-data="{
-                          elapsed: 0,
+                          elapsed: {{ $this->lastSyncInfo->get('elapsed_seconds', 0) }},
                           interval: null,
                           displayText: '{{ $this->lastSyncInfo->get('time_human') }}',
                           isSyncing: @entangle('isSyncing'),
@@ -32,7 +32,19 @@
                           },
                           startTimer() {
                               if (this.interval) clearInterval(this.interval);
-                              this.interval = setInterval(() => this.updateTime(), 1000);
+
+                              // If already past 60 seconds, use minute-based updates
+                              if (this.elapsed >= 60) {
+                                  this.displayText = $wire.lastSyncInfo?.time_human || this.displayText;
+                                  this.interval = setInterval(() => {
+                                      this.elapsed += 60;
+                                      $wire.$refresh();
+                                      this.displayText = $wire.lastSyncInfo?.time_human || this.displayText;
+                                  }, 60000);
+                              } else {
+                                  // Use second-based updates
+                                  this.interval = setInterval(() => this.updateTime(), 1000);
+                              }
                           },
                           updateTime() {
                               if (this.isSyncing) return; // Don't update while syncing
@@ -46,6 +58,7 @@
                                   // At 60 seconds, switch to minute intervals and refresh from server
                                   clearInterval(this.interval);
                                   this.interval = setInterval(() => {
+                                      this.elapsed += 60;
                                       $wire.$refresh();
                                       this.displayText = $wire.lastSyncInfo?.time_human || this.displayText;
                                   }, 60000);
