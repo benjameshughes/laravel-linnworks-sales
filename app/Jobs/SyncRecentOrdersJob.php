@@ -37,16 +37,18 @@ use Illuminate\Support\Facades\Log;
  * 1. Get ALL open order IDs → Orders/GetAllOpenOrders (single call, no pagination)
  * 2. Stream processed order IDs since checkpoint → ProcessedOrders/SearchProcessedOrders
  * 3. Mark stale orders as closed (orders no longer in open list)
- * 4. Fetch full details in batches of 200 → Orders/GetOrdersById (works for both)
- * 5. OrderImportDTO checks processedDate to set is_open (null = open, date = processed)
- * 6. Bulk write to DB
- * 7. Update checkpoint timestamp
- * 8. Warm cache
+ * 4. Deduplicate IDs (orders processed between open/processed API calls)
+ * 5. Fetch full details in batches of 200 → Orders/GetOrdersById (works for both)
+ * 6. OrderImportDTO checks processedDate to set is_open (null = open, date = processed)
+ * 7. Bulk write to DB (upserts handle any remaining duplicates)
+ * 8. Update checkpoint timestamp
+ * 9. Warm cache
  *
  * Accuracy improvements:
  * - GetAllOpenOrders (250/min rate limit) vs old GetOpenOrderIds (150/min)
  * - No pagination gaps - captures all orders in single atomic snapshot
  * - Testing showed 2 orders missed by old paginated approach
+ * - Deduplication prevents fetching same order twice if processed during sync
  *
  * Performance: ~300-500 orders/sec with retry logic
  */
@@ -175,6 +177,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
 
             $currentBatch = 0;
             $totalOrdersFetched = 0;
+            $alreadyProcessedIds = collect(); // Track IDs to avoid duplicates
 
             // Process open orders first
             if ($openOrderIds->isNotEmpty()) {
@@ -183,6 +186,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                     $currentBatch++;
                     $this->processBatch($api, $importer, $progressTracker, $chunk, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
                     $totalOrdersFetched += $chunk->count();
+                    $alreadyProcessedIds = $alreadyProcessedIds->merge($chunk); // Track these IDs
                     unset($chunk);
                 }
             }
@@ -191,10 +195,30 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             // getOrdersByIds returns full details with processedDate field
             // OrderImportDTO checks processedDate to determine is_open
             foreach ($processedOrderIdsStream as $pageOrderIds) {
+                // Deduplicate: remove any IDs we already processed from open orders
+                $uniqueIds = $pageOrderIds->diff($alreadyProcessedIds);
+
+                if ($uniqueIds->isEmpty()) {
+                    Log::info('Skipped batch - all orders already processed', [
+                        'batch_size' => $pageOrderIds->count(),
+                        'duplicates_skipped' => $pageOrderIds->count(),
+                    ]);
+                    continue; // Skip this batch entirely
+                }
+
+                if ($uniqueIds->count() < $pageOrderIds->count()) {
+                    Log::info('Deduplication removed already-processed orders', [
+                        'original_count' => $pageOrderIds->count(),
+                        'unique_count' => $uniqueIds->count(),
+                        'duplicates_removed' => $pageOrderIds->count() - $uniqueIds->count(),
+                    ]);
+                }
+
                 $currentBatch++;
-                $this->processBatch($api, $importer, $progressTracker, $pageOrderIds, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
-                $totalOrdersFetched += $pageOrderIds->count();
-                unset($pageOrderIds);
+                $this->processBatch($api, $importer, $progressTracker, $uniqueIds, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
+                $totalOrdersFetched += $uniqueIds->count();
+                $alreadyProcessedIds = $alreadyProcessedIds->merge($uniqueIds); // Track these too
+                unset($pageOrderIds, $uniqueIds);
 
                 // Explicit garbage collection hint every 10 batches
                 if ($currentBatch % 10 === 0 && function_exists('gc_collect_cycles')) {
