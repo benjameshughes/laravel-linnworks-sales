@@ -188,7 +188,7 @@ class CircuitBreaker
     private function incrementFailureCount(): int
     {
         $key = $this->getFailureCountKey();
-        $count = Cache::get($key, 0) + 1;
+        $count = (int) Cache::get($key, 0) + 1;
         Cache::put($key, $count, now()->addHours(24));
         Cache::put($this->getLastFailureKey(), now(), now()->addHours(24));
 
@@ -201,7 +201,7 @@ class CircuitBreaker
     private function incrementSuccessCount(): int
     {
         $key = $this->getSuccessCountKey();
-        $count = Cache::get($key, 0) + 1;
+        $count = (int) Cache::get($key, 0) + 1;
         Cache::put($key, $count, now()->addHours(24));
 
         return $count;
@@ -228,7 +228,7 @@ class CircuitBreaker
      */
     private function getFailureCount(): int
     {
-        return Cache::get($this->getFailureCountKey(), 0);
+        return (int) Cache::get($this->getFailureCountKey(), 0);
     }
 
     /**
@@ -236,7 +236,7 @@ class CircuitBreaker
      */
     private function getSuccessCount(): int
     {
-        return Cache::get($this->getSuccessCountKey(), 0);
+        return (int) Cache::get($this->getSuccessCountKey(), 0);
     }
 
     private function getStateKey(): string
