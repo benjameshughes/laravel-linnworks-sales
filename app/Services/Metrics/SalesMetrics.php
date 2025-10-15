@@ -155,7 +155,7 @@ class SalesMetrics extends MetricBase
         $totalRevenue = $this->totalRevenue();
 
         return $this->data
-            ->groupBy(fn ($order) => $order->channel_name.'|'.($order->sub_source ?? ''))
+            ->groupBy(fn ($order) => $order->channel_name.'|'.($order->subsource ?? $order->sub_source ?? ''))
             /** @phpstan-ignore-next-line  Template covariance issue */
             ->map(function (Collection $channelOrders, string $groupKey) use ($totalRevenue) {
                 [$channel, $subsource] = explode('|', $groupKey, 2);
