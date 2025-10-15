@@ -26,6 +26,8 @@ return [
     | If you have fewer orders: Can increase to 730
     | If you have millions of orders: Decrease to 180 or lower
     |
+    | With 253K orders, using 30 days for ultra-safe memory efficiency
+    |
     */
-    'chunked_calculation_threshold' => 365,
+    'chunked_calculation_threshold' => 30,
 ];
