@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Dashboard;
 
 use App\Services\Dashboard\DashboardDataService;
-use App\Services\Metrics\SalesMetrics;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -46,37 +45,20 @@ final class TopProducts extends Component
     }
 
     #[Computed]
-    public function orders(): Collection
-    {
-        return app(DashboardDataService::class)->getOrders(
-            period: $this->period,
-            channel: $this->channel,
-            status: $this->status,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
-    }
-
-    #[Computed]
-    public function salesMetrics(): SalesMetrics
-    {
-        return new SalesMetrics($this->orders);
-    }
-
-    #[Computed]
     public function topProducts(): Collection
     {
-        // Try to use pre-warmed cache first (instant response)
+        // CACHE-ONLY MODE: No fallback to prevent OOM on large periods
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
             $cached = $service->getCachedMetrics($this->period, $this->channel);
             if ($cached && isset($cached['top_products'])) {
-                return collect($cached['top_products']);
+                // Cache returns arrays - wrap each product in collect() for blade compatibility
+                return collect($cached['top_products'])->map(fn ($item) => collect($item));
             }
         }
 
-        // Fallback to live calculation
-        return $this->salesMetrics->topProducts(5);
+        // Return empty collection if cache unavailable (prevents OOM on large datasets)
+        return collect();
     }
 
     public function render()

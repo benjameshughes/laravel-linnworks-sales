@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Dashboard;
 
 use App\Services\Dashboard\DashboardDataService;
-use App\Services\Metrics\SalesMetrics;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -49,27 +47,9 @@ final class SalesTrendChart extends Component
     }
 
     #[Computed]
-    public function orders(): Collection
-    {
-        return app(DashboardDataService::class)->getOrders(
-            period: $this->period,
-            channel: $this->channel,
-            status: $this->status,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
-    }
-
-    #[Computed]
-    public function salesMetrics(): SalesMetrics
-    {
-        return new SalesMetrics($this->orders);
-    }
-
-    #[Computed]
     public function chartData(): array
     {
-        // Try to use pre-warmed cache first (instant response)
+        // CACHE-ONLY MODE: No fallback to prevent OOM on large periods
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
             $cached = $service->getCachedMetrics($this->period, $this->channel);
@@ -83,12 +63,11 @@ final class SalesTrendChart extends Component
             }
         }
 
-        // Fallback to live calculation
-        if ($this->viewMode === 'orders') {
-            return $this->salesMetrics->getOrderCountChartData($this->period, $this->customFrom, $this->customTo);
-        }
-
-        return $this->salesMetrics->getLineChartData($this->period, $this->customFrom, $this->customTo);
+        // Return empty chart if cache unavailable (prevents OOM on large datasets)
+        return [
+            'labels' => [],
+            'datasets' => [],
+        ];
     }
 
     #[Computed]

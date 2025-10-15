@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Dashboard;
 
 use App\Services\Dashboard\DashboardDataService;
-use App\Services\Metrics\SalesMetrics;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -48,42 +46,23 @@ final class ChannelDistributionChart extends Component
     }
 
     #[Computed]
-    public function orders(): Collection
-    {
-        return app(DashboardDataService::class)->getOrders(
-            period: $this->period,
-            channel: $this->channel,
-            status: $this->status,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
-    }
-
-    #[Computed]
-    public function salesMetrics(): SalesMetrics
-    {
-        return new SalesMetrics($this->orders);
-    }
-
-    #[Computed]
     public function chartData(): array
     {
-        // Try to use pre-warmed cache first (instant response)
+        // CACHE-ONLY MODE: No fallback to prevent OOM on large periods
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
             $cached = $service->getCachedMetrics($this->period, $this->channel);
-            // Note: Cache only has 'detailed' view (chart_doughnut), not 'grouped'
-            if ($cached && $this->viewMode === 'detailed' && isset($cached['chart_doughnut'])) {
+            // Note: Cache only has 'detailed' view (chart_doughnut)
+            if ($cached && isset($cached['chart_doughnut'])) {
                 return $cached['chart_doughnut'];
             }
         }
 
-        // Fallback to live calculation
-        if ($this->viewMode === 'grouped') {
-            return $this->salesMetrics->getDoughnutChartDataGrouped();
-        }
-
-        return $this->salesMetrics->getDoughnutChartData();
+        // Return empty chart if cache unavailable (prevents OOM on large datasets)
+        return [
+            'labels' => [],
+            'datasets' => [],
+        ];
     }
 
     #[Computed]
