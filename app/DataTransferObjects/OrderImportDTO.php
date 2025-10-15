@@ -83,13 +83,19 @@ readonly class OrderImportDTO
             'order_number' => $linnworks->orderNumber,
             'channel_name' => $channelName,
             'channel_reference_number' => $linnworks->channelReferenceNumber,
+            'secondary_reference' => $linnworks->secondaryReference,
+            'external_reference' => $linnworks->externalReferenceNum,
             'received_date' => self::safeToDateTimeString($linnworks->receivedDate),
             'processed_date' => self::safeToDateTimeString($linnworks->processedDate),
             'currency' => $linnworks->currency,
             'total_charge' => $linnworks->totalCharge,
             'total_paid' => $linnworks->totalCharge, // Assume total charge = total paid
+            'total_discount' => $linnworks->totalDiscount,
             'postage_cost' => $linnworks->postageCost,
+            'postage_cost_ex_tax' => $linnworks->postageCostExTax,
             'tax' => $linnworks->tax,
+            'country_tax_rate' => $linnworks->countryTaxRate,
+            'conversion_rate' => $linnworks->conversionRate,
             'profit_margin' => $linnworks->profitMargin,
             'status' => self::mapOrderStatus($linnworks->orderStatus, $isProcessed),
             'order_source' => $linnworks->orderSource,
@@ -109,13 +115,23 @@ readonly class OrderImportDTO
                 'order_status' => $linnworks->orderStatus,
                 'location_id' => $linnworks->locationId,
             ]),
-            // Extended order fields
+            // Extended order fields - GeneralInfo
             'marker' => $linnworks->marker,
             'is_parked' => $linnworks->isParked,
+            'label_printed' => $linnworks->labelPrinted,
+            'label_error' => $linnworks->labelError,
+            'invoice_printed' => $linnworks->invoicePrinted,
+            'pick_list_printed' => $linnworks->pickListPrinted,
+            'is_rule_run' => $linnworks->isRuleRun,
+            'part_shipped' => $linnworks->partShipped,
+            'has_scheduled_delivery' => $linnworks->hasScheduledDelivery,
+            'pickwave_ids' => $linnworks->pickwaveIds ? json_encode($linnworks->pickwaveIds) : null,
             'despatch_by_date' => self::safeToDateTimeString($linnworks->despatchByDate),
             'dispatched_at' => null, // Set when order is actually dispatched
             'num_items' => $linnworks->numItems,
+            // Payment
             'payment_method' => $linnworks->paymentMethod,
+            'payment_method_id' => $linnworks->paymentMethodId,
             'created_at' => now()->toDateTimeString(),
             'updated_at' => now()->toDateTimeString(),
         ];
@@ -123,25 +139,73 @@ readonly class OrderImportDTO
         // Order items (flat array for DB::insert)
         $itemsData = $linnworks->items->map(fn ($item) => [
             'order_id' => null, // Will be set by OrderBulkWriter
+            // Identification
             'item_id' => $item->itemId,
-            'linnworks_item_id' => $item->stockItemId ?? null,
+            'linnworks_item_id' => $item->stockItemId,
+            'stock_item_int_id' => $item->stockItemIntId,
+            'row_id' => $item->rowId,
+            'item_number' => $item->itemNumber,
+            // SKU & Titles
             'sku' => $item->sku,
-            'title' => $item->itemTitle,
+            'title' => $item->itemTitle ?? $item->sku ?? 'Unknown Item', // Fallback for null titles
+            'item_source' => $item->itemSource,
+            'channel_sku' => $item->channelSku,
+            'channel_title' => $item->channelTitle,
+            'barcode_number' => $item->barcodeNumber,
             'description' => null,
             'category' => $item->categoryName,
+            // Quantity
             'quantity' => $item->quantity,
+            'part_shipped_qty' => $item->partShippedQty,
+            // Pricing
             'unit_price' => $item->pricePerUnit,
             'total_price' => $item->lineTotal,
             'cost_price' => $item->unitCost,
+            'cost' => $item->cost,
+            'cost_inc_tax' => $item->costIncTax,
+            'despatch_stock_unit_cost' => $item->despatchStockUnitCost,
+            'discount' => $item->discount,
+            'discount_amount' => $item->discountValue,
             'profit_margin' => null, // Calculated by SalesMetrics service
-            'tax_rate' => 0.00,
-            'discount_amount' => 0.00,
-            'bin_rack' => null,
-            'is_service' => false,
+            'shipping_cost' => $item->shippingCost,
+            // Tax
+            'tax_rate' => $item->taxRate,
+            'item_tax' => $item->tax,
+            'sales_tax' => $item->salesTax,
+            'tax_cost_inclusive' => $item->taxCostInclusive,
+            // Stock & Inventory
+            'stock_levels_specified' => $item->stockLevelsSpecified,
+            'stock_level' => $item->stockLevel,
+            'available_stock' => $item->availableStock,
+            'on_order' => $item->onOrder,
+            'stock_level_indicator' => $item->stockLevelIndicator,
+            'inventory_tracking_type' => $item->inventoryTrackingType,
+            'is_batched_stock_item' => $item->isBatchedStockItem,
+            'is_warehouse_managed' => $item->isWarehouseManaged,
+            'is_unlinked' => $item->isUnlinked,
+            'batch_number_scan_required' => $item->batchNumberScanRequired,
+            'serial_number_scan_required' => $item->serialNumberScanRequired,
+            // Shipping & Physical
+            'part_shipped' => $item->partShipped,
+            'weight' => $item->weight,
+            'bin_rack' => $item->binRack,
+            'bin_racks' => $item->binRacks ? json_encode($item->binRacks) : null,
+            // Product attributes
+            'is_service' => $item->isService,
+            'has_image' => $item->hasImage,
+            'image_id' => $item->imageId,
+            'market' => $item->market,
+            // Composite & Additional data
+            'composite_sub_items' => $item->compositeSubItems ? json_encode($item->compositeSubItems) : null,
+            'additional_info' => $item->additionalInfo ? json_encode($item->additionalInfo) : null,
             'item_attributes' => json_encode([
                 'original_title' => $item->itemTitle,
                 'original_category' => $item->categoryName,
+                'channel_title' => $item->channelTitle,
+                'channel_sku' => $item->channelSku,
             ]),
+            // Metadata
+            'added_date' => $item->addedDate,
             'created_at' => now()->toDateTimeString(),
             'updated_at' => now()->toDateTimeString(),
         ])->toArray();
