@@ -354,7 +354,7 @@ class SalesMetrics extends MetricBase
             // Pad with empty data points to center the single day in the chart
             return collect([
                 collect([
-                    'date' => $date->copy()->subDay()->format('M j'),
+                    'date' => $date->copy()->subDay()->format('M j, Y'),
                     'iso_date' => $date->copy()->subDay()->format('Y-m-d'),
                     'day' => $date->copy()->subDay()->format('D'),
                     'revenue' => 0,
@@ -367,7 +367,7 @@ class SalesMetrics extends MetricBase
                     'processed_revenue' => 0,
                 ]),
                 collect([
-                    'date' => $date->format('M j'),
+                    'date' => $date->format('M j, Y'),
                     'iso_date' => $date->format('Y-m-d'),
                     'day' => $date->format('D'),
                     'revenue' => $revenue,
@@ -380,7 +380,7 @@ class SalesMetrics extends MetricBase
                     'processed_revenue' => $processedRevenue,
                 ]),
                 collect([
-                    'date' => $date->copy()->addDay()->format('M j'),
+                    'date' => $date->copy()->addDay()->format('M j, Y'),
                     'iso_date' => $date->copy()->addDay()->format('Y-m-d'),
                     'day' => $date->copy()->addDay()->format('D'),
                     'revenue' => 0,
@@ -417,7 +417,7 @@ class SalesMetrics extends MetricBase
 
         foreach ($dates as $date) {
             $dailyData[$date->format('Y-m-d')] = [
-                'date' => $date->format('M j'),
+                'date' => $date->format('M j, Y'),
                 'iso_date' => $date->format('Y-m-d'),
                 'day' => $date->format('D'),
                 'revenue' => 0.0,
@@ -497,7 +497,7 @@ class SalesMetrics extends MetricBase
         });
 
         return collect([
-            'date' => $date->format('M j'),
+            'date' => $date->format('M j, Y'),
             'iso_date' => $date->format('Y-m-d'),
             'day' => $date->format('D'),
             'revenue' => $revenue,

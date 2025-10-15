@@ -124,7 +124,7 @@ final readonly class ChunkedMetricsCalculator
         $dates = collect(CarbonPeriod::create($start, '1 day', $end))
             ->mapWithKeys(fn (Carbon $date) => [
                 $date->format('Y-m-d') => [
-                    'date' => $date->format('M j'),
+                    'date' => $date->format('M j, Y'),
                     'iso_date' => $date->format('Y-m-d'),
                     'day' => $date->format('D'),
                     'revenue' => 0.0,

@@ -188,7 +188,7 @@ class ProductMetrics extends MetricBase
                 });
 
                 return collect([
-                    'date' => $date->format('M j'),
+                    'date' => $date->format('M j, Y'),
                     'day' => $date->format('D'),
                     'products_sold' => $dayItems->sum('quantity'),
                     'revenue' => $dayItems->sum('total_price'),
