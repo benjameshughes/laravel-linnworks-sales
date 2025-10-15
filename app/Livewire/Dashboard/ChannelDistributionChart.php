@@ -52,9 +52,15 @@ final class ChannelDistributionChart extends Component
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
             $cached = $service->getCachedMetrics($this->period, $this->channel);
-            // Note: Cache only has 'detailed' view (chart_doughnut)
             if ($cached && isset($cached['chart_doughnut'])) {
-                return $cached['chart_doughnut'];
+                $detailedData = $cached['chart_doughnut'];
+
+                // If grouped view requested, transform detailed data (memory efficient)
+                if ($this->viewMode === 'grouped') {
+                    return $this->transformToGroupedView($detailedData);
+                }
+
+                return $detailedData;
             }
         }
 
@@ -62,6 +68,54 @@ final class ChannelDistributionChart extends Component
         return [
             'labels' => [],
             'datasets' => [],
+        ];
+    }
+
+    /**
+     * Transform detailed view (with subsources) into grouped view (channel-only)
+     *
+     * Aggregates subsources into their parent channels
+     * Example: "FBA (AMAZON)" + "FBM (AMAZON)" → "AMAZON"
+     */
+    private function transformToGroupedView(array $detailedData): array
+    {
+        if (empty($detailedData['labels']) || empty($detailedData['datasets'][0]['data'])) {
+            return $detailedData;
+        }
+
+        $labels = $detailedData['labels'];
+        $data = $detailedData['datasets'][0]['data'];
+        $colors = $detailedData['datasets'][0]['backgroundColor'] ?? [];
+
+        // Group by extracting channel from "Subsource (CHANNEL)" format
+        $grouped = [];
+        foreach ($labels as $index => $label) {
+            // Extract channel from parentheses, or use full label if no parentheses
+            if (preg_match('/\(([^)]+)\)$/', $label, $matches)) {
+                $channel = $matches[1]; // Extract "AMAZON" from "FBA (AMAZON)"
+            } else {
+                $channel = $label; // No parentheses, use as-is
+            }
+
+            if (!isset($grouped[$channel])) {
+                $grouped[$channel] = [
+                    'value' => 0,
+                    'color' => $colors[$index] ?? '#3B82F6',
+                ];
+            }
+
+            $grouped[$channel]['value'] += $data[$index];
+        }
+
+        // Rebuild chart data structure
+        return [
+            'labels' => array_keys($grouped),
+            'datasets' => [[
+                'label' => 'Revenue by Channel',
+                'data' => array_column($grouped, 'value'),
+                'backgroundColor' => array_column($grouped, 'color'),
+                'borderWidth' => 2,
+            ]],
         ];
     }
 
