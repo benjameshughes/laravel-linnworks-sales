@@ -479,6 +479,13 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
         }
     }
 
+    /**
+     * Handle job failure
+     *
+     * This is called by Laravel's queue system when the job fails.
+     * It's the LAST RESORT to ensure UI gets notified, even if the
+     * exception happened before our try-catch in handle().
+     */
     public function failed(\Throwable $exception): void
     {
         Log::error('SyncHistoricalOrdersJob failed', [
@@ -488,5 +495,43 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString(),
         ]);
+
+        // Try to load the sync log and mark it as failed
+        try {
+            $syncLog = SyncLog::where('sync_type', SyncLog::TYPE_HISTORICAL_ORDERS)
+                ->where('status', SyncLog::STATUS_STARTED)
+                ->latest('started_at')
+                ->first();
+
+            if ($syncLog) {
+                // Mark as failed if not already
+                if ($syncLog->status === SyncLog::STATUS_STARTED) {
+                    $syncLog->fail($exception->getMessage());
+                }
+
+                // Broadcast failure to UI with whatever progress we have
+                event(new SyncCompleted(
+                    processed: $syncLog->progress_data['total_processed'] ?? 0,
+                    created: $syncLog->progress_data['created'] ?? 0,
+                    updated: $syncLog->progress_data['updated'] ?? 0,
+                    failed: $syncLog->progress_data['failed'] ?? 0,
+                    success: false,
+                ));
+            } else {
+                // No sync log found, broadcast generic failure
+                event(new SyncCompleted(
+                    processed: 0,
+                    created: 0,
+                    updated: 0,
+                    failed: 0,
+                    success: false,
+                ));
+            }
+        } catch (\Throwable $e) {
+            // If even the failure handler fails, just log it
+            Log::error('Failed to broadcast job failure event', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

@@ -152,6 +152,23 @@ class ImportProgress extends Component
         $this->loadPersistedState();
     }
 
+    #[On('echo:sync-progress,SyncCompleted')]
+    public function handleSyncCompleted(array $data): void
+    {
+        $this->isImporting = false;
+        $this->isCompleted = true;
+        $this->success = $data['success'];
+        $this->totalProcessed = $data['processed'];
+        $this->created = $data['created'];
+        $this->updated = $data['updated'];
+        $this->totalErrors = $data['failed'];
+        $this->percentage = $data['success'] ? 100 : $this->percentage;
+        $this->status = $data['success'] ? 'completed' : 'failed';
+        $this->message = $data['success']
+            ? "Import completed! Processed {$data['processed']} orders."
+            : "Import failed after processing {$data['processed']} orders. Check logs for details.";
+    }
+
     #[On('echo:import-progress,ImportStarted')]
     public function handleImportStarted(array $data): void
     {
