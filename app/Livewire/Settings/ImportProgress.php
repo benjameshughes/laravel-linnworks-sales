@@ -167,22 +167,21 @@ class ImportProgress extends Component
     {
         $this->isImporting = true;
 
-        // Only reload state for Stage 1 streaming events
-        // Stage 2 "fetching-batch" and "importing-batch" events are just status updates
-        // and shouldn't trigger a full database reload (causes UI flicker due to race conditions)
+        // Only handle Stage 1 streaming events
+        // Stage 2 "fetching-batch" and "importing-batch" events are intermediate status updates
+        // that happen BEFORE database is updated, causing race conditions
+        // Polling (every 3s) handles Stage 2 updates from database
         $stage = $data['stage'] ?? null;
 
         if ($stage === 'historical-import') {
             // Stage 1: Streaming order IDs - reload from database
-            $this->message = $data['message'] ?? 'Streaming orders...';
             $this->loadPersistedState();
         } elseif ($stage === 'fetching-batch' || $stage === 'importing-batch') {
-            // Stage 2: Just update the message, don't reload state
-            // Database will be updated after batch completes
-            $this->message = $data['message'] ?? 'Processing...';
+            // Stage 2: Ignore these intermediate events
+            // Polling will update from database after batch completes
+            return;
         } else {
             // Fallback: reload state for unknown events
-            $this->message = $data['message'] ?? 'Syncing...';
             $this->loadPersistedState();
         }
     }
