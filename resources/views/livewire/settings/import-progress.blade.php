@@ -96,66 +96,21 @@
                         @endif
                     </div>
 
-                    {{-- Stage Indicator --}}
-                    @if ($isImporting)
-                        <div class="flex items-center gap-3 pb-4">
-                            @if ($currentStage === 1)
-                                {{-- Stage 1: Streaming --}}
-                                <div class="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex-1">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <div class="flex size-6 items-center justify-center rounded-full bg-blue-500 text-white text-xs font-bold animate-pulse">1</div>
-                                        <div class="flex-1">
-                                            <div class="text-xs font-medium text-blue-900 dark:text-blue-100">Streaming Order IDs</div>
-                                            <div class="text-xs text-blue-600 dark:text-blue-400">
-                                                @if($streamingTotalPages > 0)
-                                                    Page {{ number_format($streamingPage) }}/{{ number_format($streamingTotalPages) }}
-                                                @endif
-                                                @if($streamingFetched > 0)
-                                                    • {{ number_format($streamingFetched) }} found
-                                                @endif
-                                            </div>
-                                        </div>
+                    {{-- Current Status --}}
+                    @if ($isImporting && $message)
+                        <div class="flex items-center gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <flux:icon.arrow-path class="size-4 text-blue-500 animate-spin flex-shrink-0" />
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-blue-900 dark:text-blue-100">{{ $message }}</div>
+                                @if($totalOrders > 0)
+                                    <div class="text-xs text-blue-600 dark:text-blue-400">
+                                        {{ number_format($totalProcessed) }}/{{ number_format($totalOrders) }} orders
+                                        @if($batchNumber > 0)
+                                            • Batch {{ number_format($batchNumber) }}
+                                        @endif
                                     </div>
-                                </div>
-
-                                {{-- Stage 2: Waiting --}}
-                                <div class="flex items-center gap-2 px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg flex-1 opacity-50">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <div class="flex size-6 items-center justify-center rounded-full bg-zinc-300 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400 text-xs font-bold">2</div>
-                                        <div class="flex-1">
-                                            <div class="text-xs font-medium text-zinc-600 dark:text-zinc-400">Importing Orders</div>
-                                            <div class="text-xs text-zinc-500 dark:text-zinc-500">Waiting...</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @else
-                                {{-- Stage 1: Completed --}}
-                                <div class="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex-1">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <div class="flex size-6 items-center justify-center rounded-full bg-green-500 text-white text-xs font-bold">✓</div>
-                                        <div class="flex-1">
-                                            <div class="text-xs font-medium text-green-900 dark:text-green-100">Streaming Complete</div>
-                                            <div class="text-xs text-green-600 dark:text-green-400">{{ number_format($totalOrders) }} orders found</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- Stage 2: Active --}}
-                                <div class="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex-1">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <div class="flex size-6 items-center justify-center rounded-full bg-blue-500 text-white text-xs font-bold animate-pulse">2</div>
-                                        <div class="flex-1">
-                                            <div class="text-xs font-medium text-blue-900 dark:text-blue-100">Importing Orders</div>
-                                            <div class="text-xs text-blue-600 dark:text-blue-400">
-                                                {{ number_format($totalProcessed) }}/{{ number_format($totalOrders) }}
-                                                @if($batchNumber > 0)
-                                                    • Batch {{ number_format($batchNumber) }}
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
+                                @endif
+                            </div>
                         </div>
                     @endif
 

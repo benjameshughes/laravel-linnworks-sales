@@ -64,11 +64,7 @@ class ImportProgress extends Component
 
     public ?string $startedAt = null;
 
-    // Stage indicators
     public int $currentStage = 1;
-    public int $streamingPage = 0;
-    public int $streamingTotalPages = 0;
-    public int $streamingFetched = 0;
 
     public function mount(): void
     {
@@ -94,7 +90,6 @@ class ImportProgress extends Component
         $this->isImporting = true;
         $this->isCompleted = false;
         $this->startedAt = $activeSync->started_at->toISOString();
-        $this->message = $activeSync->progress_data['message'] ?? 'Syncing orders...';
         $this->percentage = $activeSync->progress_percentage;
 
         // Load progress data if available
@@ -104,14 +99,15 @@ class ImportProgress extends Component
             // Determine current stage (cast to int for strict comparison)
             $this->currentStage = (int) ($data['stage'] ?? 1);
 
+            // Only show UI when Stage 2 starts (importing)
+            // Stage 1 (streaming IDs) is internal detail - don't show to user
             if ($this->currentStage === 1) {
-                // Stage 1: Streaming order IDs
-                $this->streamingPage = $data['current_page'] ?? 0;
-                $this->streamingTotalPages = $data['total_pages'] ?? 0;
-                $this->streamingFetched = $data['fetched_count'] ?? 0;
+                // Stage 1: Just show "Preparing import..."
+                $this->message = 'Preparing import...';
                 $this->totalOrders = $data['total_results'] ?? 0;
             } else {
-                // Stage 2: Importing orders
+                // Stage 2: Show actual import progress
+                $this->message = $data['message'] ?? 'Importing orders...';
                 $this->totalProcessed = $data['total_processed'] ?? 0;
                 $this->created = $data['created'] ?? 0;
                 $this->updated = $data['updated'] ?? 0;
@@ -162,29 +158,9 @@ class ImportProgress extends Component
         $this->message = 'Historical import queued. Waiting for background workers...';
     }
 
-    #[On('echo:sync-progress,SyncProgressUpdated')]
-    public function handleSyncProgress(array $data): void
-    {
-        $this->isImporting = true;
-
-        // Only handle Stage 1 streaming events
-        // Stage 2 "fetching-batch" and "importing-batch" events are intermediate status updates
-        // that happen BEFORE database is updated, causing race conditions
-        // Polling (every 3s) handles Stage 2 updates from database
-        $stage = $data['stage'] ?? null;
-
-        if ($stage === 'historical-import') {
-            // Stage 1: Streaming order IDs - reload from database
-            $this->loadPersistedState();
-        } elseif ($stage === 'fetching-batch' || $stage === 'importing-batch') {
-            // Stage 2: Ignore these intermediate events
-            // Polling will update from database after batch completes
-            return;
-        } else {
-            // Fallback: reload state for unknown events
-            $this->loadPersistedState();
-        }
-    }
+    // Note: SyncProgressUpdated events are ignored - we only use polling
+    // Stage 1 (streaming IDs) is an internal detail users don't need to see
+    // Stage 2 (importing) updates come from database polling every 3s
 
     #[On('echo:sync-progress,SyncCompleted')]
     public function handleSyncCompleted(array $data): void
