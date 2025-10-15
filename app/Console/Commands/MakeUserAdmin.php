@@ -28,6 +28,12 @@ class MakeUserAdmin extends Command
     {
         $email = $this->argument('email');
 
+        // Validate email format
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->error("Invalid email format: '{$email}'");
+            return Command::FAILURE;
+        }
+
         // Find the user by email
         $user = User::where('email', $email)->first();
 

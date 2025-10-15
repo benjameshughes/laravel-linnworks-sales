@@ -31,9 +31,15 @@ class SecuritySettings extends Component
     public function addDomain(SettingsService $settings): void
     {
         $this->validate([
-            'newDomain' => ['required', 'string', 'regex:/^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/'],
-        ], [
-            'newDomain.regex' => 'Please enter a valid domain (e.g., example.com)',
+            'newDomain' => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) {
+                    if (! filter_var($value, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+                        $fail('Please enter a valid domain (e.g., example.com or subdomain.example.com)');
+                    }
+                },
+            ],
         ]);
 
         $domain = strtolower(trim($this->newDomain));
