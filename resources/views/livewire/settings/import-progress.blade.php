@@ -1,4 +1,4 @@
-<section class="w-full">
+<section class="w-full" @if($isImporting) wire:poll.3s="loadPersistedState" @endif>
     @include('partials.settings-heading')
 
     <x-settings.layout :heading="__('Import Orders')" :subheading="__('Import historical orders from Linnworks with real-time progress tracking')">

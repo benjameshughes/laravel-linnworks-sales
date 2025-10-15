@@ -166,10 +166,25 @@ class ImportProgress extends Component
     public function handleSyncProgress(array $data): void
     {
         $this->isImporting = true;
-        $this->message = $data['message'] ?? 'Syncing...';
 
-        // Reload persisted state to get latest metrics
-        $this->loadPersistedState();
+        // Only reload state for Stage 1 streaming events
+        // Stage 2 "fetching-batch" and "importing-batch" events are just status updates
+        // and shouldn't trigger a full database reload (causes UI flicker due to race conditions)
+        $stage = $data['stage'] ?? null;
+
+        if ($stage === 'historical-import') {
+            // Stage 1: Streaming order IDs - reload from database
+            $this->message = $data['message'] ?? 'Streaming orders...';
+            $this->loadPersistedState();
+        } elseif ($stage === 'fetching-batch' || $stage === 'importing-batch') {
+            // Stage 2: Just update the message, don't reload state
+            // Database will be updated after batch completes
+            $this->message = $data['message'] ?? 'Processing...';
+        } else {
+            // Fallback: reload state for unknown events
+            $this->message = $data['message'] ?? 'Syncing...';
+            $this->loadPersistedState();
+        }
     }
 
     #[On('echo:sync-progress,SyncCompleted')]
