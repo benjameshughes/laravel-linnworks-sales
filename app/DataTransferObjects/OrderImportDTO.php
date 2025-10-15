@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects;
 
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -33,6 +34,43 @@ readonly class OrderImportDTO
     ) {}
 
     /**
+     * Safely convert Carbon date to datetime string, handling DST transitions
+     *
+     * During DST spring-forward, times in the "missing hour" don't exist.
+     * Example: UK spring 2025 - March 30 at 01:00 jumps to 02:00
+     * A timestamp like "2025-03-30 01:30:00" is invalid.
+     *
+     * This method detects such cases and adjusts the time forward.
+     */
+    private static function safeToDateTimeString(?Carbon $date): ?string
+    {
+        if (!$date) {
+            return null;
+        }
+
+        // Filter out Unix epoch dates (1970-01-01)
+        if ($date->year <= 1970) {
+            return null;
+        }
+
+        // Check if this timestamp exists in the timezone
+        // During DST spring-forward, some timestamps don't exist
+        try {
+            // Force conversion to ensure timestamp is valid
+            $timestamp = $date->timestamp;
+
+            // Recreate from timestamp to get the actual valid time
+            // If original was in a DST gap, this will adjust it forward
+            $validDate = Carbon::createFromTimestamp($timestamp, $date->timezone);
+
+            return $validDate->toDateTimeString();
+        } catch (\Exception $e) {
+            // If anything goes wrong, return null
+            return null;
+        }
+    }
+
+    /**
      * Convert LinnworksOrder DTO to OrderImportDTO (MEGA data format)
      *
      * This method does ALL the heavy lifting upfront:
@@ -54,8 +92,8 @@ readonly class OrderImportDTO
             'order_number' => $linnworks->orderNumber,
             'channel_name' => $channelName,
             'channel_reference_number' => $linnworks->channelReferenceNumber,
-            'received_date' => $linnworks->receivedDate?->toDateTimeString(),
-            'processed_date' => $linnworks->processedDate?->toDateTimeString(),
+            'received_date' => self::safeToDateTimeString($linnworks->receivedDate),
+            'processed_date' => self::safeToDateTimeString($linnworks->processedDate),
             'currency' => $linnworks->currency,
             'total_charge' => $linnworks->totalCharge,
             'total_paid' => $linnworks->totalCharge, // Assume total charge = total paid
@@ -69,7 +107,7 @@ readonly class OrderImportDTO
             'location_id' => $linnworks->locationId,
             'is_open' => ! $isProcessed,
             'is_paid' => $linnworks->isPaid,
-            'paid_date' => $linnworks->paidDate?->toDateTimeString(),
+            'paid_date' => self::safeToDateTimeString($linnworks->paidDate),
             'is_cancelled' => $linnworks->isCancelled,
             'is_processed' => $isProcessed,
             'last_synced_at' => now()->toDateTimeString(),
@@ -83,9 +121,7 @@ readonly class OrderImportDTO
             // Extended order fields
             'marker' => $linnworks->marker,
             'is_parked' => $linnworks->isParked,
-            'despatch_by_date' => $linnworks->despatchByDate && $linnworks->despatchByDate->year > 1970
-                ? $linnworks->despatchByDate->toDateTimeString()
-                : null,
+            'despatch_by_date' => self::safeToDateTimeString($linnworks->despatchByDate),
             'dispatched_at' => null, // Set when order is actually dispatched
             'num_items' => $linnworks->numItems,
             'payment_method' => $linnworks->paymentMethod,
@@ -147,7 +183,7 @@ readonly class OrderImportDTO
             'order_id' => null, // Will be set after order is inserted
             'linnworks_note_id' => $note['NoteId'] ?? $note['note_id'] ?? null,
             'note_date' => isset($note['NoteDate']) || isset($note['note_date'])
-                ? \Carbon\Carbon::parse($note['NoteDate'] ?? $note['note_date'])->toDateTimeString()
+                ? self::safeToDateTimeString(Carbon::parse($note['NoteDate'] ?? $note['note_date']))
                 : null,
             'is_internal' => (bool) ($note['IsInternal'] ?? $note['is_internal'] ?? false),
             'note_text' => $note['Note'] ?? $note['note_text'] ?? '',
