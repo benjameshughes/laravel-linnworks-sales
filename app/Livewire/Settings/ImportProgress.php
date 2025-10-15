@@ -87,11 +87,6 @@ class ImportProgress extends Component
             return;
         }
 
-        $this->isImporting = true;
-        $this->isCompleted = false;
-        $this->startedAt = $activeSync->started_at->toISOString();
-        $this->percentage = $activeSync->progress_percentage;
-
         // Load progress data if available
         if ($activeSync->progress_data) {
             $data = $activeSync->progress_data;
@@ -99,27 +94,32 @@ class ImportProgress extends Component
             // Determine current stage (cast to int for strict comparison)
             $this->currentStage = (int) ($data['stage'] ?? 1);
 
-            // Only show UI when Stage 2 starts (importing)
-            // Stage 1 (streaming IDs) is internal detail - don't show to user
+            // ONLY show UI for Stage 2 (importing)
+            // Stage 1 (streaming IDs) is completely hidden from user
             if ($this->currentStage === 1) {
-                // Stage 1: Just show "Preparing import..."
-                $this->message = 'Preparing import...';
-                $this->totalOrders = $data['total_results'] ?? 0;
-            } else {
-                // Stage 2: Show actual import progress
-                $this->message = $data['message'] ?? 'Importing orders...';
-                $this->totalProcessed = $data['total_processed'] ?? 0;
-                $this->created = $data['created'] ?? 0;
-                $this->updated = $data['updated'] ?? 0;
-                $this->totalErrors = $data['failed'] ?? 0;
-                $this->batchNumber = $data['current_batch'] ?? 0;
-                $this->totalOrders = $data['total_expected'] ?? 0;
-                $this->totalBatches = $data['total_batches'] ?? 0;
-                $this->ordersPerSecond = $data['orders_per_second'] ?? 0;
-                $this->memoryMb = $data['memory_mb'] ?? 0;
-                $this->timeElapsed = $data['time_elapsed'] ?? 0;
-                $this->estimatedRemaining = $data['estimated_remaining'] ?? null;
+                // Stage 1: Don't show anything to user
+                $this->isImporting = false;
+                $this->isCompleted = false;
+                return;
             }
+
+            // Stage 2: Show import progress
+            $this->isImporting = true;
+            $this->isCompleted = false;
+            $this->startedAt = $activeSync->started_at->toISOString();
+            $this->percentage = $activeSync->progress_percentage;
+            $this->message = $data['message'] ?? 'Importing orders...';
+            $this->totalProcessed = $data['total_processed'] ?? 0;
+            $this->created = $data['created'] ?? 0;
+            $this->updated = $data['updated'] ?? 0;
+            $this->totalErrors = $data['failed'] ?? 0;
+            $this->batchNumber = $data['current_batch'] ?? 0;
+            $this->totalOrders = $data['total_expected'] ?? 0;
+            $this->totalBatches = $data['total_batches'] ?? 0;
+            $this->ordersPerSecond = $data['orders_per_second'] ?? 0;
+            $this->memoryMb = $data['memory_mb'] ?? 0;
+            $this->timeElapsed = $data['time_elapsed'] ?? 0;
+            $this->estimatedRemaining = $data['estimated_remaining'] ?? null;
         }
     }
 
