@@ -82,6 +82,16 @@ final class RecentOrders extends Component
     #[Computed]
     public function totalOrders(): int
     {
+        // Use cached metrics if available (memory efficient)
+        $service = app(DashboardDataService::class);
+        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
+            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            if ($cached && isset($cached['orders'])) {
+                return $cached['orders'];
+            }
+        }
+
+        // Fallback to live count (loads all orders into memory)
         return $this->orders->count();
     }
 
