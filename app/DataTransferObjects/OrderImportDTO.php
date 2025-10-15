@@ -53,21 +53,12 @@ readonly class OrderImportDTO
             return null;
         }
 
-        // Check if this timestamp exists in the timezone
-        // During DST spring-forward, some timestamps don't exist
-        try {
-            // Force conversion to ensure timestamp is valid
-            $timestamp = $date->timestamp;
+        // Linnworks sends dates in UTC. Convert to app timezone (Europe/London)
+        // before converting to string. This handles DST automatically.
+        // Example: 2025-03-30 01:56:29 UTC -> 2025-03-30 02:56:29 BST (valid!)
+        $localTime = $date->copy()->setTimezone(config('app.timezone'));
 
-            // Recreate from timestamp to get the actual valid time
-            // If original was in a DST gap, this will adjust it forward
-            $validDate = Carbon::createFromTimestamp($timestamp, $date->timezone);
-
-            return $validDate->toDateTimeString();
-        } catch (\Exception $e) {
-            // If anything goes wrong, return null
-            return null;
-        }
+        return $localTime->toDateTimeString();
     }
 
     /**

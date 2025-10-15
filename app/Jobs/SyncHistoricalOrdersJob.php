@@ -57,7 +57,7 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
         public readonly ?string $startedBy = null,
     ) {
         $this->tries = 1;
-        $this->timeout = 3600; // 1 hour for large historical imports
+        $this->timeout = 0; // No timeout - historical imports can take hours
         $this->onQueue('low'); // Don't block recent syncs
     }
 
@@ -181,6 +181,13 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
 
                 // Persist progress EVERY batch (not every 10) for responsive UI
                 $this->persistProgress($syncLog, $currentBatch, $totalProcessed, $totalCreated, $totalUpdated, $totalFailed, $totalOrdersExpected);
+
+                // Broadcast progress update AFTER database is updated
+                event(new SyncProgressUpdated(
+                    'batch-completed',
+                    "Batch {$currentBatch} completed: {$totalProcessed}/{$totalOrdersExpected} orders",
+                    $totalProcessed
+                ));
 
                 unset($pageOrderIds);
 

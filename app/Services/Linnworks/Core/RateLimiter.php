@@ -12,9 +12,14 @@ class RateLimiter
 
     private const CACHE_TTL = 60; // 1 minute
 
+    private readonly RateLimitConfig $config;
+
     public function __construct(
-        private readonly RateLimitConfig $config = new RateLimitConfig(150, 1, 400, 3, 1000)
-    ) {}
+        ?RateLimitConfig $config = null
+    ) {
+        // Use provided config or default to standard rate limiting
+        $this->config = $config ?? RateLimitConfig::standard();
+    }
 
     /**
      * Check if we can make a request within rate limits

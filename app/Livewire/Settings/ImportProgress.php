@@ -158,9 +158,35 @@ class ImportProgress extends Component
         $this->message = 'Historical import queued. Waiting for background workers...';
     }
 
-    // Note: SyncProgressUpdated events are ignored - we only use polling
-    // Stage 1 (streaming IDs) is an internal detail users don't need to see
-    // Stage 2 (importing) updates come from database polling every 3s
+    #[On('echo:sync-progress,SyncProgressUpdated')]
+    public function handleSyncProgress(array $data): void
+    {
+        // Only reload state when database has been updated
+        $stage = $data['stage'] ?? null;
+
+        // Ignore Stage 1 streaming events (Stage 1 is hidden from UI)
+        if ($stage === 'historical-import') {
+            return;
+        }
+
+        // Ignore intermediate batch events (fired BEFORE database update)
+        if ($stage === 'fetching-batch' || $stage === 'importing-batch') {
+            return;
+        }
+
+        // Handle 'batch-completed' event (fired AFTER database update)
+        if ($stage === 'batch-completed') {
+            $this->loadPersistedState();
+
+            // Force Livewire to detect changes and re-render
+            $this->dispatch('$refresh');
+            return;
+        }
+
+        // Fallback: reload for any other events
+        $this->loadPersistedState();
+        $this->dispatch('$refresh');
+    }
 
     #[On('echo:sync-progress,SyncCompleted')]
     public function handleSyncCompleted(array $data): void

@@ -150,7 +150,17 @@ readonly class LinnworksOrder implements Arrayable
         }
 
         try {
-            return Carbon::parse($date);
+            $parsed = Carbon::parse($date);
+
+            // Filter out Unix epoch dates
+            if ($parsed->year <= 1970) {
+                return null;
+            }
+
+            // Return as-is. Linnworks sends UTC, conversion to local timezone
+            // happens later in OrderImportDTO when preparing for MySQL
+            return $parsed;
+
         } catch (\Exception) {
             return null;
         }

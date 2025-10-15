@@ -16,10 +16,12 @@ readonly class RateLimitConfig implements JsonSerializable
 
     public static function standard(): self
     {
+        // Maximum aggression - Linnworks supports 250 req/min for GetOrdersById
+        // Minimal delay allows bursting to API limit, rate limiter enforces 250/min cap
         return new self(
-            maxRequests: 150,
+            maxRequests: 250,
             perMinutes: 1,
-            delayBetweenRequests: 400,
+            delayBetweenRequests: 50, // Allow ~20 req/sec attempts, rate limiter caps at 250/min
             maxRetries: 3,
             retryDelay: 1000,
         );
