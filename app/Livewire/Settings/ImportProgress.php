@@ -64,6 +64,12 @@ class ImportProgress extends Component
 
     public ?string $startedAt = null;
 
+    // Stage indicators
+    public int $currentStage = 1;
+    public int $streamingPage = 0;
+    public int $streamingTotalPages = 0;
+    public int $streamingFetched = 0;
+
     public function mount(): void
     {
         // Set default date range (maximum 730 days)
@@ -94,16 +100,30 @@ class ImportProgress extends Component
         // Load progress data if available
         if ($activeSync->progress_data) {
             $data = $activeSync->progress_data;
-            $this->totalProcessed = $data['total_processed'] ?? 0;
-            $this->created = $data['created'] ?? 0;
-            $this->updated = $data['updated'] ?? 0;
-            $this->totalErrors = $data['failed'] ?? 0;
-            $this->batchNumber = $data['current_batch'] ?? 0;
-            $this->totalBatches = $data['total_batches'] ?? 0;
-            $this->ordersPerSecond = $data['orders_per_second'] ?? 0;
-            $this->memoryMb = $data['memory_mb'] ?? 0;
-            $this->timeElapsed = $data['time_elapsed'] ?? 0;
-            $this->estimatedRemaining = $data['estimated_remaining'] ?? null;
+
+            // Determine current stage
+            $this->currentStage = $data['stage'] ?? 1;
+
+            if ($this->currentStage === 1) {
+                // Stage 1: Streaming order IDs
+                $this->streamingPage = $data['current_page'] ?? 0;
+                $this->streamingTotalPages = $data['total_pages'] ?? 0;
+                $this->streamingFetched = $data['fetched_count'] ?? 0;
+                $this->totalOrders = $data['total_results'] ?? 0;
+            } else {
+                // Stage 2: Importing orders
+                $this->totalProcessed = $data['total_processed'] ?? 0;
+                $this->created = $data['created'] ?? 0;
+                $this->updated = $data['updated'] ?? 0;
+                $this->totalErrors = $data['failed'] ?? 0;
+                $this->batchNumber = $data['current_batch'] ?? 0;
+                $this->totalOrders = $data['total_expected'] ?? 0;
+                $this->totalBatches = $data['total_batches'] ?? 0;
+                $this->ordersPerSecond = $data['orders_per_second'] ?? 0;
+                $this->memoryMb = $data['memory_mb'] ?? 0;
+                $this->timeElapsed = $data['time_elapsed'] ?? 0;
+                $this->estimatedRemaining = $data['estimated_remaining'] ?? null;
+            }
         }
     }
 
