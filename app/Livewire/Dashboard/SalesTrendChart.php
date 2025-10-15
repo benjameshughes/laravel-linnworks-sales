@@ -52,7 +52,7 @@ final class SalesTrendChart extends Component
         // CACHE-ONLY MODE: No fallback to prevent OOM on large periods
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
             if ($cached) {
                 if ($this->viewMode === 'orders' && isset($cached['chart_orders'])) {
                     return $cached['chart_orders'];

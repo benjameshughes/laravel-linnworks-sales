@@ -73,7 +73,7 @@ final class MetricsSummary extends Component
         // Try to use pre-warmed cache first (instant response)
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
             if ($cached) {
                 if ($this->period === 'custom') {
                     $periodDays = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
@@ -125,7 +125,7 @@ final class MetricsSummary extends Component
         // Try cache first
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
             if ($cached && isset($cached['best_day'])) {
                 return $cached['best_day']; // This will be a Collection from cache
             }

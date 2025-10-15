@@ -68,9 +68,9 @@ enum Period: string
     /**
      * Get the cache key for this period
      */
-    public function cacheKey(string $channel = 'all'): string
+    public function cacheKey(string $channel = 'all', string $status = 'all'): string
     {
-        return "metrics_{$this->value}d_{$channel}";
+        return "metrics_{$this->value}d_{$channel}_{$status}";
     }
 
     /**

@@ -69,7 +69,7 @@ final class RecentOrders extends Component
         // Try to use pre-warmed cache first (instant response)
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
             if ($cached && isset($cached['recent_orders'])) {
                 return collect($cached['recent_orders']);
             }
@@ -85,7 +85,7 @@ final class RecentOrders extends Component
         // Use cached metrics if available (memory efficient)
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel);
+            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
             if ($cached && isset($cached['orders'])) {
                 return $cached['orders'];
             }

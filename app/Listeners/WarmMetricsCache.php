@@ -47,8 +47,8 @@ final class WarmMetricsCache implements ShouldQueue
     /**
      * Handle the event.
      *
-     * Dispatches individual WarmPeriodCacheJob for each period/channel combination.
-     * This prevents memory issues by processing one period at a time in the queue worker.
+     * Dispatches individual WarmPeriodCacheJob for each period/channel/status combination.
+     * This prevents memory issues by processing one combination at a time in the queue worker.
      */
     public function handle(OrdersSynced $event): void
     {
@@ -58,16 +58,29 @@ final class WarmMetricsCache implements ShouldQueue
         ]);
 
         $periods = \App\Enums\Period::cacheable();
-        $channels = ['all']; // Can add specific channels later
+
+        // Get all available channels from database
+        $channels = \Illuminate\Support\Facades\DB::table('orders')
+            ->select('channel_name')
+            ->where('channel_name', '!=', 'DIRECT')
+            ->distinct()
+            ->pluck('channel_name')
+            ->prepend('all') // Always include 'all' channel
+            ->toArray();
+
+        // All status filter options
+        $statuses = ['all', 'open', 'processed', 'open_paid'];
 
         // Broadcast that warming has started
         CacheWarmingStarted::dispatch(collect($periods)->map(fn ($p) => "{$p->value}d")->toArray());
 
-        // Dispatch individual jobs for each period/channel combination
+        // Dispatch individual jobs for each period/channel/status combination
         // Jobs are queued and processed sequentially, preventing memory buildup
-        $jobs = collect($periods)->flatMap(function (\App\Enums\Period $period) use ($channels) {
-            return collect($channels)->map(function (string $channel) use ($period) {
-                return new WarmPeriodCacheJob($period->value, $channel);
+        $jobs = collect($periods)->flatMap(function (\App\Enums\Period $period) use ($channels, $statuses) {
+            return collect($channels)->flatMap(function (string $channel) use ($period, $statuses) {
+                return collect($statuses)->map(function (string $status) use ($period, $channel) {
+                    return new WarmPeriodCacheJob($period->value, $channel, $status);
+                });
             });
         });
 
@@ -83,6 +96,7 @@ final class WarmMetricsCache implements ShouldQueue
 
         Log::info('Cache warming jobs dispatched', [
             'job_count' => $jobs->count(),
+            'combinations' => 'periods × channels × statuses',
         ]);
     }
 

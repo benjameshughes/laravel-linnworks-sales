@@ -38,16 +38,16 @@ class DashboardDataService
      * - Scheduled commands
      * - Manual cache warming button
      */
-    public function getCachedMetrics(string $period, string $channel = 'all'): ?array
+    public function getCachedMetrics(string $period, string $channel = 'all', string $status = 'all'): ?array
     {
         $periodEnum = \App\Enums\Period::tryFrom($period);
 
-        // Only support caching for cacheable periods with 'all' channel
-        if ($periodEnum === null || ! $periodEnum->isCacheable() || $channel !== 'all') {
+        // Only support caching for cacheable periods (any channel, any status)
+        if ($periodEnum === null || ! $periodEnum->isCacheable()) {
             return null;
         }
 
-        $cacheKey = $periodEnum->cacheKey($channel);
+        $cacheKey = $periodEnum->cacheKey($channel, $status);
 
         // Simply return cached data or null - NEVER calculate
         return $this->cachedMetrics ??= Cache::get($cacheKey);
@@ -56,11 +56,11 @@ class DashboardDataService
     /**
      * Check if we can use pre-warmed cache for current filters
      *
-     * Cache is only available for:
+     * Cache is available for:
      * - Configured cacheable periods (from config/dashboard.php)
-     * - "all" channel filter
-     * - "all" status (shows everything for cache)
-     * - No custom date range
+     * - Any channel filter (all channels are cached)
+     * - Any status filter (all statuses are cached)
+     * - Non-custom date ranges only
      */
     public function canUseCachedMetrics(
         string $period,
@@ -72,8 +72,6 @@ class DashboardDataService
         $periodEnum = \App\Enums\Period::tryFrom($period);
 
         return $periodEnum?->isCacheable() === true
-            && $channel === 'all'
-            && $status === 'all'
             && $customFrom === null
             && $customTo === null;
     }

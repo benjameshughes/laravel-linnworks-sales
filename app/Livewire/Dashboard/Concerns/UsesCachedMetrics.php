@@ -60,7 +60,7 @@ trait UsesCachedMetrics
             return null;
         }
 
-        return $service->getCachedMetrics($this->period, $this->channel);
+        return $service->getCachedMetrics($this->period, $this->channel, $this->status);
     }
 
     #[Computed]

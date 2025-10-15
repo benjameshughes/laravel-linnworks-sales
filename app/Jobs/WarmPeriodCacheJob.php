@@ -53,7 +53,8 @@ final class WarmPeriodCacheJob implements ShouldQueue
      */
     public function __construct(
         public readonly string $period,
-        public readonly string $channel = 'all'
+        public readonly string $channel = 'all',
+        public readonly string $status = 'all'
     ) {}
 
     /**
@@ -72,6 +73,7 @@ final class WarmPeriodCacheJob implements ShouldQueue
         Log::debug('Warming cache for period', [
             'period' => $this->period,
             'channel' => $this->channel,
+            'status' => $this->status,
         ]);
 
         $startTime = microtime(true);
@@ -85,7 +87,7 @@ final class WarmPeriodCacheJob implements ShouldQueue
 
             // Cache for 1 hour (will be refreshed when new orders sync)
             $periodEnum = \App\Enums\Period::tryFrom($this->period);
-            $cacheKey = $periodEnum?->cacheKey($this->channel) ?? "metrics_{$this->period}d_{$this->channel}";
+            $cacheKey = $periodEnum?->cacheKey($this->channel, $this->status) ?? "metrics_{$this->period}d_{$this->channel}_{$this->status}";
             Cache::put($cacheKey, $cacheData, 3600);
 
             $duration = round(microtime(true) - $startTime, 2);
@@ -114,6 +116,7 @@ final class WarmPeriodCacheJob implements ShouldQueue
             Log::error('Failed to warm cache for period', [
                 'period' => $this->period,
                 'channel' => $this->channel,
+                'status' => $this->status,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -143,9 +146,10 @@ final class WarmPeriodCacheJob implements ShouldQueue
             Log::debug('Using chunked calculation for large period', [
                 'period' => $this->period,
                 'channel' => $this->channel,
+                'status' => $this->status,
             ]);
 
-            $calculator = new ChunkedMetricsCalculator($this->period, $this->channel);
+            $calculator = new ChunkedMetricsCalculator($this->period, $this->channel, $this->status);
 
             return $calculator->calculate();
         }
@@ -154,10 +158,11 @@ final class WarmPeriodCacheJob implements ShouldQueue
         Log::debug('Using in-memory calculation for small period', [
             'period' => $this->period,
             'channel' => $this->channel,
+            'status' => $this->status,
         ]);
 
         $service = app(DashboardDataService::class);
-        $orders = $service->getOrders($this->period, $this->channel);
+        $orders = $service->getOrders($this->period, $this->channel, $this->status);
         $metrics = new SalesMetrics($orders);
 
         // Calculate date range
@@ -207,6 +212,7 @@ final class WarmPeriodCacheJob implements ShouldQueue
         Log::error('WarmPeriodCacheJob failed permanently after retries', [
             'period' => $this->period,
             'channel' => $this->channel,
+            'status' => $this->status,
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString(),
         ]);
