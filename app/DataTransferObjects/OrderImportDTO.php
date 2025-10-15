@@ -205,7 +205,7 @@ readonly class OrderImportDTO
                 'channel_sku' => $item->channelSku,
             ]),
             // Metadata
-            'added_date' => $item->addedDate,
+            'added_date' => $item->addedDate ? self::safeToDateTimeString(\Carbon\Carbon::parse($item->addedDate)) : null,
             'created_at' => now()->toDateTimeString(),
             'updated_at' => now()->toDateTimeString(),
         ])->toArray();
