@@ -155,9 +155,19 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
 
             // STREAMING MICRO-BATCH PROCESSING
             // Stage 2: Importing full order details (10-100% of progress bar)
+            $message = $totalOrdersExpected
+                ? "Starting import of {$totalOrdersExpected} orders..."
+                : 'Starting historical import...';
+
             $syncLog->updateProgress('historical_import', 10, 100, [
-                'message' => 'Starting historical import...',
+                'message' => $message,
                 'stage' => 2,
+                'total_processed' => 0,
+                'total_expected' => $totalOrdersExpected ?? 0,
+                'created' => 0,
+                'updated' => 0,
+                'failed' => 0,
+                'current_batch' => 0,
             ]);
 
             $currentBatch = 0;

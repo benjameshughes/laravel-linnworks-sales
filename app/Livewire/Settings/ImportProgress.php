@@ -101,8 +101,8 @@ class ImportProgress extends Component
         if ($activeSync->progress_data) {
             $data = $activeSync->progress_data;
 
-            // Determine current stage
-            $this->currentStage = $data['stage'] ?? 1;
+            // Determine current stage (cast to int for strict comparison)
+            $this->currentStage = (int) ($data['stage'] ?? 1);
 
             if ($this->currentStage === 1) {
                 // Stage 1: Streaming order IDs
