@@ -224,7 +224,8 @@ final readonly class ChunkedMetricsCalculator
                     ? "{$channel->subsource} ({$channel->channel_name})"
                     : $channel->channel_name;
 
-                return [
+                // Wrap in collect() to match SalesMetrics format (blade template expects Collection)
+                return collect([
                     'name' => $displayName,
                     'channel' => $channel->channel_name,
                     'subsource' => $channel->subsource ?: null,
@@ -232,7 +233,7 @@ final readonly class ChunkedMetricsCalculator
                     'revenue' => $revenue,
                     'avg_order_value' => $orders > 0 ? $revenue / $orders : 0,
                     'percentage' => $totalRevenue > 0 ? ($revenue / $totalRevenue) * 100 : 0,
-                ];
+                ]);
             });
     }
 
@@ -274,14 +275,15 @@ final readonly class ChunkedMetricsCalculator
             // Prefer product table title, fall back to item title
             $title = $products[$product->sku] ?? $product->item_title ?? 'Unknown Product';
 
-            return [
+            // Wrap in collect() to match SalesMetrics format (blade template expects Collection)
+            return collect([
                 'sku' => $product->sku,
                 'title' => $title,
                 'quantity' => $quantity,
                 'revenue' => $revenue,
                 'orders' => (int) $product->order_count,
                 'avg_price' => $quantity > 0 ? $revenue / $quantity : 0,
-            ];
+            ]);
         });
     }
 
