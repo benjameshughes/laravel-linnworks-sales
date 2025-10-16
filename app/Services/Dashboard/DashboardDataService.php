@@ -54,6 +54,17 @@ class DashboardDataService
     }
 
     /**
+     * Clear the service's internal cached metrics
+     *
+     * Forces the next call to getCachedMetrics() to read fresh data from cache.
+     * This is needed when cache is re-warmed but filters haven't changed.
+     */
+    public function clearCachedMetrics(): void
+    {
+        $this->cachedMetrics = null;
+    }
+
+    /**
      * Check if we can use pre-warmed cache for current filters
      *
      * Cache is available for:

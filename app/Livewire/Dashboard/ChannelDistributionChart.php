@@ -48,6 +48,10 @@ final class ChannelDistributionChart extends Component
     #[On('echo:cache-management,CacheWarmingCompleted')]
     public function refreshAfterCacheWarming(): void
     {
+        // Clear the service's internal cache so it reads fresh data from Redis/file cache
+        // Without this, the singleton service returns stale null values
+        app(DashboardDataService::class)->clearCachedMetrics();
+
         // Trigger re-render to load newly cached data
         // Computed properties will automatically fetch fresh cache
     }
