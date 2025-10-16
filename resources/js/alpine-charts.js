@@ -5,30 +5,25 @@ Alpine.data('baseChart', (config, chartId) => ({
     chartId: chartId,
 
     initChart() {
-        // Only initialize if we have data (labels and datasets)
-        if (!this.config.data?.labels?.length || !this.config.data?.datasets?.length) {
-            // Listen for updates and initialize when data arrives
-            Livewire.on('chart-update-' + this.chartId, (data) => {
-                if (!this.chart && data[0]?.data?.labels?.length) {
-                    // First time initialization with data
-                    this.config = data[0];
-                    const ctx = this.$refs.canvas.getContext('2d');
-                    this.processOptions(this.config.options);
-                    this.chart = new Chart(ctx, this.config);
-                } else if (this.chart) {
-                    this.updateChart(data[0]);
-                }
-            });
-            return;
-        }
-
-        const ctx = this.$refs.canvas.getContext('2d');
-        this.processOptions(this.config.options);
-        this.chart = new Chart(ctx, this.config);
-
+        // Set up the Livewire listener first (works for both empty and populated charts)
         Livewire.on('chart-update-' + this.chartId, (data) => {
-            this.updateChart(data[0]);
+            if (!this.chart && data[0]?.data?.labels?.length) {
+                // First time initialization with data (for delayed hydration)
+                this.config = data[0];
+                const ctx = this.$refs.canvas.getContext('2d');
+                this.processOptions(this.config.options);
+                this.chart = new Chart(ctx, this.config);
+            } else if (this.chart) {
+                this.updateChart(data[0]);
+            }
         });
+
+        // If we already have data on mount, initialize immediately
+        if (this.config.data?.labels?.length && this.config.data?.datasets?.length) {
+            const ctx = this.$refs.canvas.getContext('2d');
+            this.processOptions(this.config.options);
+            this.chart = new Chart(ctx, this.config);
+        }
     },
 
     processOptions(options) {
@@ -48,26 +43,15 @@ Alpine.data('baseChart', (config, chartId) => ({
     updateChart(newData) {
         if (!this.chart) return;
 
-        // Completely replace data (don't merge)
+        // Simple data replacement (v1.5 approach that worked)
         if (newData.data) {
             this.chart.data = newData.data;
         }
 
-        // For options, only merge if it's a partial update
-        // If we have a complete new config, destroy and recreate
+        // Simple options merge (v1.5 approach that worked)
         if (newData.options) {
             this.processOptions(newData.options);
-
-            // Check if this is a major config change (different chart type or structure)
-            // If so, destroy and recreate the chart
-            if (newData.type && newData.type !== this.chart.config.type) {
-                this.chart.destroy();
-                const ctx = this.$refs.canvas.getContext('2d');
-                this.chart = new Chart(ctx, newData);
-            } else {
-                // Merge options for minor updates
-                Object.assign(this.chart.options, newData.options);
-            }
+            this.chart.options = { ...this.chart.options, ...newData.options };
         }
 
         this.chart.update('active');
