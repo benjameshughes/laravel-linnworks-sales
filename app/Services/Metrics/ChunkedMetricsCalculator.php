@@ -634,13 +634,19 @@ final readonly class ChunkedMetricsCalculator
         $options = [
             'layout' => [
                 'padding' => [
-                    'left' => 20,
-                    'right' => 20,
+                    'left' => 40,
+                    'right' => 40,
                     'top' => 20,
                     'bottom' => 10,
                 ],
             ],
             'scales' => [
+                'x' => [
+                    'offset' => true, // Add padding on x-axis to center the points
+                    'grid' => [
+                        'offset' => true,
+                    ],
+                ],
                 'y' => [
                     'grace' => '15%', // Add 15% padding above the highest value
                 ],
