@@ -24,7 +24,7 @@ class DashboardDataService
 
     private ?string $currentFilters = null;
 
-    private ?array $cachedMetrics = null;
+    private array $cachedMetrics = [];
 
     /**
      * Get pre-warmed metrics from cache
@@ -49,8 +49,13 @@ class DashboardDataService
 
         $cacheKey = $periodEnum->cacheKey($channel, $status);
 
-        // Simply return cached data or null - NEVER calculate
-        return $this->cachedMetrics ??= Cache::get($cacheKey);
+        // Cache the result keyed by cache key to avoid re-fetching
+        // Uses array instead of single value to support multiple period/channel/status combinations
+        if (!isset($this->cachedMetrics[$cacheKey])) {
+            $this->cachedMetrics[$cacheKey] = Cache::get($cacheKey);
+        }
+
+        return $this->cachedMetrics[$cacheKey];
     }
 
     /**
@@ -61,7 +66,7 @@ class DashboardDataService
      */
     public function clearCachedMetrics(): void
     {
-        $this->cachedMetrics = null;
+        $this->cachedMetrics = [];
     }
 
     /**
@@ -104,7 +109,7 @@ class DashboardDataService
         if ($this->currentFilters !== $filters) {
             $this->orders = null;
             $this->previousPeriodOrders = null;
-            $this->cachedMetrics = null;
+            $this->cachedMetrics = [];
             $this->currentFilters = $filters;
         }
 
