@@ -598,7 +598,7 @@ class SalesMetrics extends MetricBase
             return "{$day['date']} - {$formattedRevenue}";
         })->toArray();
 
-        return [
+        $chart = [
             'labels' => $labels,
             'datasets' => [
                 [
@@ -634,6 +634,13 @@ class SalesMetrics extends MetricBase
                 'iso_dates' => $chartData->pluck('iso_date')->toArray(),
             ],
         ];
+
+        // Add padding for single-day periods
+        if ($period === '1' || $period === 'yesterday') {
+            $chart['options'] = $this->getSingleDayChartOptions();
+        }
+
+        return $chart;
     }
 
     /**
@@ -682,7 +689,7 @@ class SalesMetrics extends MetricBase
             return "{$day['date']} - {$orders} / {$formattedRevenue}";
         })->toArray();
 
-        return [
+        $chart = [
             'labels' => $labels,
             'datasets' => [
                 [
@@ -710,6 +717,13 @@ class SalesMetrics extends MetricBase
                 'iso_dates' => $chartData->pluck('iso_date')->toArray(),
             ],
         ];
+
+        // Add padding for single-day periods (with dual-axis support)
+        if ($period === '1' || $period === 'yesterday') {
+            $chart['options'] = $this->getSingleDayChartOptions(true);
+        }
+
+        return $chart;
     }
 
     /**
@@ -725,7 +739,7 @@ class SalesMetrics extends MetricBase
             return "{$day['date']} - {$items}";
         })->toArray();
 
-        return [
+        $chart = [
             'labels' => $labels,
             'datasets' => [
                 [
@@ -742,6 +756,13 @@ class SalesMetrics extends MetricBase
                 'iso_dates' => $chartData->pluck('iso_date')->toArray(),
             ],
         ];
+
+        // Add padding for single-day periods
+        if ($period === '1' || $period === 'yesterday') {
+            $chart['options'] = $this->getSingleDayChartOptions();
+        }
+
+        return $chart;
     }
 
     /**
@@ -781,7 +802,7 @@ class SalesMetrics extends MetricBase
             return "{$day['date']} - {$orders}";
         })->toArray();
 
-        return [
+        $chart = [
             'labels' => $labels,
             'datasets' => [
                 [
@@ -817,6 +838,13 @@ class SalesMetrics extends MetricBase
                 'iso_dates' => $chartData->pluck('iso_date')->toArray(),
             ],
         ];
+
+        // Add padding for single-day periods
+        if ($period === '1' || $period === 'yesterday') {
+            $chart['options'] = $this->getSingleDayChartOptions();
+        }
+
+        return $chart;
     }
 
     /**
@@ -837,6 +865,39 @@ class SalesMetrics extends MetricBase
                 'borderWidth' => 2,
             ]],
         ];
+    }
+
+    /**
+     * Get Chart.js options for single-day periods (Today/Yesterday)
+     *
+     * Adds extra padding to improve visualization of single data points
+     */
+    private function getSingleDayChartOptions(bool $dualAxis = false): array
+    {
+        $options = [
+            'layout' => [
+                'padding' => [
+                    'left' => 20,
+                    'right' => 20,
+                    'top' => 20,
+                    'bottom' => 10,
+                ],
+            ],
+            'scales' => [
+                'y' => [
+                    'grace' => '15%', // Add 15% padding above the highest value
+                ],
+            ],
+        ];
+
+        // For dual-axis charts, add padding to both y-axes
+        if ($dualAxis) {
+            $options['scales']['y1'] = [
+                'grace' => '15%',
+            ];
+        }
+
+        return $options;
     }
 
     private function calculateOrderRevenue(object $order): float
