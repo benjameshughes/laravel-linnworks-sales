@@ -8,6 +8,7 @@
         subtitle="{{ $this->periodLabel }}"
         icon="{{ $viewMode === 'items' ? 'cube' : 'chart-bar' }}"
         height="250px"
+        class="!px-2"
     >
         <x-slot:actions>
             <flux:radio.group
