@@ -45,6 +45,13 @@ final class ChannelDistributionChart extends Component
         $this->customTo = $customTo;
     }
 
+    #[On('echo:cache-management,CacheWarmingCompleted')]
+    public function refreshAfterCacheWarming(): void
+    {
+        // Trigger re-render to load newly cached data
+        // Computed properties will automatically fetch fresh cache
+    }
+
     #[Computed]
     public function chartData(): array
     {
