@@ -129,6 +129,7 @@ final class ChannelDistributionChart extends Component
     #[Computed]
     public function chartKey(): string
     {
+        // Include viewMode so changing tabs recreates the component
         return "channel-doughnut-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->status}-{$this->customFrom}-{$this->customTo}";
     }
 

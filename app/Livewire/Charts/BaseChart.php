@@ -43,10 +43,6 @@ abstract class BaseChart extends Component
         if ($width) {
             $this->width = $width;
         }
-
-        // Dispatch initial chart data to Alpine on mount
-        // updatedData() only fires on changes, not initial mount
-        $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
     }
 
     protected function getDefaultOptions(): array
@@ -70,18 +66,33 @@ abstract class BaseChart extends Component
 
     public function updatedData(): void
     {
+        \Illuminate\Support\Facades\Log::debug('[BaseChart] updatedData() called', [
+            'chartId' => $this->chartId,
+            'hasData' => !empty($this->data),
+            'labels' => $this->data['labels'] ?? null,
+        ]);
+
         $this->updateMergedOptions();
         $this->dispatchChartUpdate();
     }
 
     public function updatedOptions(): void
     {
+        \Illuminate\Support\Facades\Log::debug('[BaseChart] updatedOptions() called', [
+            'chartId' => $this->chartId,
+        ]);
+
         $this->updateMergedOptions();
         $this->dispatchChartUpdate();
     }
 
     protected function dispatchChartUpdate(): void
     {
+        \Illuminate\Support\Facades\Log::debug('[BaseChart] Dispatching chart-update event', [
+            'chartId' => $this->chartId,
+            'eventName' => 'chart-update-'.$this->chartId,
+        ]);
+
         $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
     }
 

@@ -100,6 +100,7 @@ final class DailyRevenueChart extends Component
     #[Computed]
     public function chartKey(): string
     {
+        // Include viewMode so changing tabs recreates the component
         return "daily-bar-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->status}-{$this->customFrom}-{$this->customTo}";
     }
 

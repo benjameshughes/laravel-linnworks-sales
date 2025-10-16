@@ -60,6 +60,16 @@ final class SalesTrendChart extends Component
         $service = app(DashboardDataService::class);
         if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
             $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
+
+            \Illuminate\Support\Facades\Log::debug('[SalesTrendChart] chartData() called', [
+                'period' => $this->period,
+                'channel' => $this->channel,
+                'status' => $this->status,
+                'viewMode' => $this->viewMode,
+                'hasCached' => !!$cached,
+                'cachedKeys' => $cached ? array_keys($cached) : null,
+            ]);
+
             if ($cached) {
                 if ($this->viewMode === 'orders' && isset($cached['chart_orders'])) {
                     return $cached['chart_orders'];
@@ -69,6 +79,12 @@ final class SalesTrendChart extends Component
                 }
             }
         }
+
+        \Illuminate\Support\Facades\Log::warning('[SalesTrendChart] Returning empty chart data', [
+            'period' => $this->period,
+            'channel' => $this->channel,
+            'status' => $this->status,
+        ]);
 
         // Return empty chart if cache unavailable (prevents OOM on large datasets)
         return [
@@ -100,6 +116,7 @@ final class SalesTrendChart extends Component
     #[Computed]
     public function chartKey(): string
     {
+        // Include viewMode so changing tabs recreates the component
         return "sales-trend-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->status}-{$this->customFrom}-{$this->customTo}";
     }
 
@@ -110,6 +127,11 @@ final class SalesTrendChart extends Component
 
     public function render()
     {
+        \Illuminate\Support\Facades\Log::debug('[SalesTrendChart] render() called', [
+            'viewMode' => $this->viewMode,
+            'period' => $this->period,
+        ]);
+
         return view('livewire.dashboard.sales-trend-chart');
     }
 }
