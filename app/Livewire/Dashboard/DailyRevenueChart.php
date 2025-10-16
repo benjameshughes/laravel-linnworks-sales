@@ -31,15 +31,6 @@ final class DailyRevenueChart extends Component
         $this->status = request('status', 'all');
     }
 
-    public function hydrate(): void
-    {
-        // After hydration, check if we have data and need to update charts
-        $data = $this->chartData;
-        if (!empty($data['labels']) && !empty($data['datasets'])) {
-            $this->dispatch('chartDataReady');
-        }
-    }
-
     #[On('filters-updated')]
     public function updateFilters(
         string $period,

@@ -5,25 +5,13 @@ Alpine.data('baseChart', (config, chartId) => ({
     chartId: chartId,
 
     initChart() {
-        // Set up the Livewire listener first (works for both empty and populated charts)
-        Livewire.on('chart-update-' + this.chartId, (data) => {
-            if (!this.chart && data[0]?.data?.labels?.length) {
-                // First time initialization with data (for delayed hydration)
-                this.config = data[0];
-                const ctx = this.$refs.canvas.getContext('2d');
-                this.processOptions(this.config.options);
-                this.chart = new Chart(ctx, this.config);
-            } else if (this.chart) {
-                this.updateChart(data[0]);
-            }
-        });
+        const ctx = this.$refs.canvas.getContext('2d');
+        this.processOptions(this.config.options);
+        this.chart = new Chart(ctx, this.config);
 
-        // If we already have data on mount, initialize immediately
-        if (this.config.data?.labels?.length && this.config.data?.datasets?.length) {
-            const ctx = this.$refs.canvas.getContext('2d');
-            this.processOptions(this.config.options);
-            this.chart = new Chart(ctx, this.config);
-        }
+        Livewire.on('chart-update-' + this.chartId, (data) => {
+            this.updateChart(data[0]);
+        });
     },
 
     processOptions(options) {
@@ -43,12 +31,10 @@ Alpine.data('baseChart', (config, chartId) => ({
     updateChart(newData) {
         if (!this.chart) return;
 
-        // Simple data replacement (v1.5 approach that worked)
         if (newData.data) {
             this.chart.data = newData.data;
         }
 
-        // Simple options merge (v1.5 approach that worked)
         if (newData.options) {
             this.processOptions(newData.options);
             this.chart.options = { ...this.chart.options, ...newData.options };
