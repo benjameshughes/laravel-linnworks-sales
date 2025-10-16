@@ -589,8 +589,15 @@ class SalesMetrics extends MetricBase
     {
         $chartData = $this->dailySalesData($period, $startDate, $endDate);
 
+        $labels = $chartData->map(function ($day) {
+            $revenue = $day['revenue'];
+            $formattedRevenue = '£'.number_format($revenue, 0);
+
+            return "{$day['date']} - {$formattedRevenue}";
+        })->toArray();
+
         return [
-            'labels' => $chartData->pluck('date')->toArray(),
+            'labels' => $labels,
             'datasets' => [
                 [
                     'label' => 'Total Revenue (£)',
@@ -665,8 +672,16 @@ class SalesMetrics extends MetricBase
     {
         $chartData = $this->dailySalesData($period, $startDate, $endDate);
 
+        $labels = $chartData->map(function ($day) {
+            $orders = $day['orders'];
+            $revenue = $day['revenue'];
+            $formattedRevenue = '£'.number_format($revenue, 0);
+
+            return "{$day['date']} - {$orders} / {$formattedRevenue}";
+        })->toArray();
+
         return [
-            'labels' => $chartData->pluck('date')->toArray(),
+            'labels' => $labels,
             'datasets' => [
                 [
                     'label' => 'Orders',
@@ -702,8 +717,14 @@ class SalesMetrics extends MetricBase
     {
         $chartData = $this->dailySalesData($period, $startDate, $endDate);
 
+        $labels = $chartData->map(function ($day) {
+            $items = $day['items'];
+
+            return "{$day['date']} - {$items}";
+        })->toArray();
+
         return [
-            'labels' => $chartData->pluck('date')->toArray(),
+            'labels' => $labels,
             'datasets' => [
                 [
                     'label' => 'Items Sold',
@@ -752,8 +773,14 @@ class SalesMetrics extends MetricBase
     {
         $chartData = $this->dailySalesData($period, $startDate, $endDate);
 
+        $labels = $chartData->map(function ($day) {
+            $orders = $day['orders'];
+
+            return "{$day['date']} - {$orders}";
+        })->toArray();
+
         return [
-            'labels' => $chartData->pluck('date')->toArray(),
+            'labels' => $labels,
             'datasets' => [
                 [
                     'label' => 'Total Orders',

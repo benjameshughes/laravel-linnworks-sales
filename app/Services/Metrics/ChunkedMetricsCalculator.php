@@ -363,8 +363,15 @@ final readonly class ChunkedMetricsCalculator
      */
     private function buildLineChart(Collection $dailyData): array
     {
+        $labels = $dailyData->map(function ($day) {
+            $revenue = $day['revenue'];
+            $formattedRevenue = '£'.number_format($revenue, 0);
+
+            return "{$day['date']} - {$formattedRevenue}";
+        })->toArray();
+
         return [
-            'labels' => $dailyData->pluck('date')->toArray(),
+            'labels' => $labels,
             'datasets' => [
                 [
                     'label' => 'Total Revenue (£)',
@@ -406,8 +413,14 @@ final readonly class ChunkedMetricsCalculator
      */
     private function buildOrderCountChart(Collection $dailyData): array
     {
+        $labels = $dailyData->map(function ($day) {
+            $orders = $day['orders'];
+
+            return "{$day['date']} - {$orders}";
+        })->toArray();
+
         return [
-            'labels' => $dailyData->pluck('date')->toArray(),
+            'labels' => $labels,
             'datasets' => [
                 [
                     'label' => 'Total Orders',
@@ -470,8 +483,14 @@ final readonly class ChunkedMetricsCalculator
      */
     private function buildItemsChart(Collection $dailyData): array
     {
+        $labels = $dailyData->map(function ($day) {
+            $items = $day['items'];
+
+            return "{$day['date']} - {$items}";
+        })->toArray();
+
         return [
-            'labels' => $dailyData->pluck('date')->toArray(),
+            'labels' => $labels,
             'datasets' => [
                 [
                     'label' => 'Items Sold',
@@ -494,8 +513,16 @@ final readonly class ChunkedMetricsCalculator
      */
     private function buildOrdersVsRevenueChart(Collection $dailyData): array
     {
+        $labels = $dailyData->map(function ($day) {
+            $orders = $day['orders'];
+            $revenue = $day['revenue'];
+            $formattedRevenue = '£'.number_format($revenue, 0);
+
+            return "{$day['date']} - {$orders} / {$formattedRevenue}";
+        })->toArray();
+
         return [
-            'labels' => $dailyData->pluck('date')->toArray(),
+            'labels' => $labels,
             'datasets' => [
                 [
                     'label' => 'Orders',
