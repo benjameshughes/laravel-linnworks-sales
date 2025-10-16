@@ -43,6 +43,10 @@ abstract class BaseChart extends Component
         if ($width) {
             $this->width = $width;
         }
+
+        // Dispatch initial chart data to Alpine on mount
+        // updatedData() only fires on changes, not initial mount
+        $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
     }
 
     protected function getDefaultOptions(): array
