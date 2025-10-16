@@ -563,6 +563,14 @@ final readonly class ChunkedMetricsCalculator
             ];
         }
 
+        // Special case: period '1' means "today" (not last 24 hours)
+        if ($this->period === '1') {
+            return [
+                Carbon::today()->startOfDay(),
+                Carbon::today()->endOfDay(),
+            ];
+        }
+
         $days = (int) $this->period;
         $now = Carbon::now();
 

@@ -336,8 +336,10 @@ class SalesMetrics extends MetricBase
             return $this->buildDailyBreakdownBatch($dates);
         }
 
-        if ($period === 'yesterday') {
-            $date = Carbon::yesterday();
+        // Special handling for single-day periods (yesterday and today)
+        // Returns 3 data points (yesterday, target day, tomorrow) to center the bar in charts
+        if ($period === 'yesterday' || $period === '1') {
+            $date = $period === 'yesterday' ? Carbon::yesterday() : Carbon::today();
             $dayOrders = $this->data;
             $openOrders = $dayOrders->where('is_processed', false);
             $processedOrders = $dayOrders->where('is_processed', true);

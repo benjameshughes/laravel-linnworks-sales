@@ -22,7 +22,7 @@ enum Period: string
     public function label(): string
     {
         return match ($this) {
-            self::TODAY => 'Last 24 hours',
+            self::TODAY => 'Today',
             self::YESTERDAY => 'Yesterday',
             self::SEVEN_DAYS => 'Last 7 days',
             self::THIRTY_DAYS => 'Last 30 days',

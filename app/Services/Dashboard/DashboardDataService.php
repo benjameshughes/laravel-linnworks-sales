@@ -136,6 +136,14 @@ class DashboardDataService
             ]);
         }
 
+        // Special case: period '1' means "today" (not last 24 hours)
+        if ($period === '1') {
+            return collect([
+                'start' => Carbon::today()->startOfDay(),
+                'end' => Carbon::today()->endOfDay(),
+            ]);
+        }
+
         $days = (int) $period;
         $now = Carbon::now();
 
