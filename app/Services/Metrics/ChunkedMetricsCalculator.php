@@ -661,6 +661,7 @@ final readonly class ChunkedMetricsCalculator
                     ],
                 ],
                 'y' => [
+                    'beginAtZero' => true, // Force Y-axis to start at 0
                     'grace' => '15%', // Add 15% padding above the highest value
                 ],
             ],
@@ -669,6 +670,7 @@ final readonly class ChunkedMetricsCalculator
         // For dual-axis charts, add padding to both y-axes
         if ($dualAxis) {
             $options['scales']['y1'] = [
+                'beginAtZero' => true,
                 'grace' => '15%',
             ];
         }

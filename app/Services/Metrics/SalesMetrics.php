@@ -891,6 +891,7 @@ class SalesMetrics extends MetricBase
                     ],
                 ],
                 'y' => [
+                    'beginAtZero' => true, // Force Y-axis to start at 0
                     'grace' => '15%', // Add 15% padding above the highest value
                 ],
             ],
@@ -899,6 +900,7 @@ class SalesMetrics extends MetricBase
         // For dual-axis charts, add padding to both y-axes
         if ($dualAxis) {
             $options['scales']['y1'] = [
+                'beginAtZero' => true,
                 'grace' => '15%',
             ];
         }
