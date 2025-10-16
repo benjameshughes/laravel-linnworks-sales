@@ -48,13 +48,26 @@ Alpine.data('baseChart', (config, chartId) => ({
     updateChart(newData) {
         if (!this.chart) return;
 
+        // Completely replace data (don't merge)
         if (newData.data) {
             this.chart.data = newData.data;
         }
 
+        // For options, only merge if it's a partial update
+        // If we have a complete new config, destroy and recreate
         if (newData.options) {
             this.processOptions(newData.options);
-            this.chart.options = { ...this.chart.options, ...newData.options };
+
+            // Check if this is a major config change (different chart type or structure)
+            // If so, destroy and recreate the chart
+            if (newData.type && newData.type !== this.chart.config.type) {
+                this.chart.destroy();
+                const ctx = this.$refs.canvas.getContext('2d');
+                this.chart = new Chart(ctx, newData);
+            } else {
+                // Merge options for minor updates
+                Object.assign(this.chart.options, newData.options);
+            }
         }
 
         this.chart.update('active');
