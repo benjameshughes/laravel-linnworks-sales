@@ -6,11 +6,23 @@ Alpine.data('baseChart', (config, chartId) => ({
 
     initChart() {
         const ctx = this.$refs.canvas.getContext('2d');
-        this.processOptions(this.config.options);
-        this.chart = new Chart(ctx, this.config);
 
+        // Only initialize if we have data (prevents blank chart on initial load)
+        if (this.config.data?.labels?.length > 0) {
+            this.processOptions(this.config.options);
+            this.chart = new Chart(ctx, this.config);
+        }
+
+        // Listen for updates (will create chart on first update if not already created)
         Livewire.on('chart-update-' + this.chartId, (data) => {
-            this.updateChart(data[0]);
+            if (!this.chart && data[0]?.data?.labels?.length > 0) {
+                // First-time initialization with data (for delayed load)
+                this.config = data[0];
+                this.processOptions(this.config.options);
+                this.chart = new Chart(ctx, this.config);
+            } else if (this.chart) {
+                this.updateChart(data[0]);
+            }
         });
     },
 
