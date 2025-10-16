@@ -77,7 +77,8 @@ final class MetricsSummary extends Component
             if ($cached) {
                 if ($this->period === 'custom') {
                     $periodDays = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
-                } elseif ($this->period === 'yesterday') {
+                } elseif ($this->period === '0' || $this->period === '1') {
+                    // Today (0) and Yesterday (1) are both single-day periods
                     $periodDays = 1;
                 } else {
                     $periodDays = (int) $this->period;
@@ -89,7 +90,7 @@ final class MetricsSummary extends Component
                     'total_orders' => $cached['orders'],
                     'average_order_value' => $cached['avg_order_value'],
                     'total_items' => $cached['items'],
-                    'orders_per_day' => $cached['orders'] / $periodDays,
+                    'orders_per_day' => $periodDays > 0 ? $cached['orders'] / $periodDays : 0,
                     // Growth rate omitted - would need previous period cache too
                 ]);
             }
@@ -98,10 +99,11 @@ final class MetricsSummary extends Component
         // Fallback to live calculation with growth rate
         if ($this->period === 'custom') {
             $periodDays = Carbon::parse($this->customFrom)->diffInDays(Carbon::parse($this->customTo)) + 1;
-        } elseif ($this->period === 'yesterday') {
+        } elseif ($this->period === '0' || $this->period === '1') {
+            // Today (0) and Yesterday (1) are both single-day periods
             $periodDays = 1;
         } else {
-            $periodDays = (int) $this->period;
+            $periodDays = max(1, (int) $this->period);
         }
 
         $previousPeriodData = $this->getPreviousPeriodOrders();

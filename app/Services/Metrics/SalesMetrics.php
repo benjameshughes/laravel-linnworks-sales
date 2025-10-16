@@ -140,9 +140,8 @@ class SalesMetrics extends MetricBase
      */
     public function ordersPerDay(int $days): float
     {
-        if ($days === 0) {
-            return 0.0;
-        }
+        // Treat 0 or negative as 1 day (today is 1 day)
+        $days = max(1, $days);
 
         return $this->totalOrders() / $days;
     }
