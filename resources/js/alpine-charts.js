@@ -3,6 +3,38 @@ Alpine.data('baseChart', (config, chartId) => ({
     chart: null,
     config: config,
     chartId: chartId,
+    listenerRegistered: false,
+
+    init() {
+        // Register Livewire listener once during Alpine component initialization
+        if (!this.listenerRegistered) {
+            Livewire.on('chart-update-' + this.chartId, (data) => {
+                console.log('[Alpine Chart] Received chart-update event', {
+                    chartId: this.chartId,
+                    hasChart: !!this.chart,
+                    eventData: data[0]
+                });
+
+                const ctx = this.$refs.canvas?.getContext('2d');
+                if (!ctx) {
+                    console.warn('[Alpine Chart] Canvas ref not available');
+                    return;
+                }
+
+                if (!this.chart && data[0]?.data?.labels?.length > 0) {
+                    // First-time initialization with data (for delayed load)
+                    console.log('[Alpine Chart] Creating chart from update event');
+                    this.config = data[0];
+                    this.processOptions(this.config.options);
+                    this.chart = new Chart(ctx, this.config);
+                } else if (this.chart) {
+                    console.log('[Alpine Chart] Updating existing chart');
+                    this.updateChart(data[0]);
+                }
+            });
+            this.listenerRegistered = true;
+        }
+    },
 
     initChart() {
         const ctx = this.$refs.canvas.getContext('2d');
@@ -22,26 +54,6 @@ Alpine.data('baseChart', (config, chartId) => ({
         } else {
             console.log('[Alpine Chart] No data on init, waiting for update event');
         }
-
-        // Listen for updates (will create chart on first update if not already created)
-        Livewire.on('chart-update-' + this.chartId, (data) => {
-            console.log('[Alpine Chart] Received chart-update event', {
-                chartId: this.chartId,
-                hasChart: !!this.chart,
-                eventData: data[0]
-            });
-
-            if (!this.chart && data[0]?.data?.labels?.length > 0) {
-                // First-time initialization with data (for delayed load)
-                console.log('[Alpine Chart] Creating chart from update event');
-                this.config = data[0];
-                this.processOptions(this.config.options);
-                this.chart = new Chart(ctx, this.config);
-            } else if (this.chart) {
-                console.log('[Alpine Chart] Updating existing chart');
-                this.updateChart(data[0]);
-            }
-        });
     },
 
     processOptions(options) {
