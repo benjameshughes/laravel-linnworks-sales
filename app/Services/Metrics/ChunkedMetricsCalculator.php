@@ -127,6 +127,16 @@ final readonly class ChunkedMetricsCalculator
      */
     private function calculateDailyAggregates(Carbon $start, Carbon $end): Collection
     {
+        // For single-day periods (Today/Yesterday), add padding days to center the bar
+        $actualStart = $start;
+        $actualEnd = $end;
+
+        if ($this->period === '1' || $this->period === 'yesterday') {
+            // Expand range to include day before and day after for chart padding
+            $start = $start->copy()->subDay();
+            $end = $end->copy()->addDay();
+        }
+
         // Get all dates in the range
         $dates = collect(CarbonPeriod::create($start, '1 day', $end))
             ->mapWithKeys(fn (Carbon $date) => [
@@ -145,9 +155,12 @@ final readonly class ChunkedMetricsCalculator
                 ],
             ]);
 
-        // Aggregate orders by date
+        // Aggregate orders by date (use actualStart/actualEnd for single-day periods to only fetch real data)
+        $queryStart = ($this->period === '1' || $this->period === 'yesterday') ? $actualStart : $start;
+        $queryEnd = ($this->period === '1' || $this->period === 'yesterday') ? $actualEnd : $end;
+
         $orderStatsQuery = DB::table('orders')
-            ->whereBetween('received_date', [$start, $end])
+            ->whereBetween('received_date', [$queryStart, $queryEnd])
             ->where('channel_name', '!=', 'DIRECT')
             ->when($this->channel !== 'all', fn ($q) => $q->where('channel_name', $this->channel));
 
@@ -167,10 +180,10 @@ final readonly class ChunkedMetricsCalculator
             ->get()
             ->keyBy('date');
 
-        // Aggregate items by date
+        // Aggregate items by date (use actualStart/actualEnd for single-day periods to only fetch real data)
         $itemStatsQuery = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->whereBetween('orders.received_date', [$start, $end])
+            ->whereBetween('orders.received_date', [$queryStart, $queryEnd])
             ->where('orders.channel_name', '!=', 'DIRECT')
             ->when($this->channel !== 'all', fn ($q) => $q->where('orders.channel_name', $this->channel));
 

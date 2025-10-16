@@ -21,6 +21,7 @@ The project is currently built on a Laravel Livewire starter kit foundation with
 - Pest testing framework
 - Vite for asset compilation
 - Linnworks API integration (read-only data ingestion)
+- Chart.js
 
 ## Development Commands
 
