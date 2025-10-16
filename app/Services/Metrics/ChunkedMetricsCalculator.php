@@ -131,7 +131,7 @@ final readonly class ChunkedMetricsCalculator
         $actualStart = $start;
         $actualEnd = $end;
 
-        if ($this->period === '1' || $this->period === 'yesterday') {
+        if ($this->period === '0' || $this->period === '1') {
             // Expand range to include day before and day after for chart padding
             $start = $start->copy()->subDay();
             $end = $end->copy()->addDay();
@@ -156,8 +156,8 @@ final readonly class ChunkedMetricsCalculator
             ]);
 
         // Aggregate orders by date (use actualStart/actualEnd for single-day periods to only fetch real data)
-        $queryStart = ($this->period === '1' || $this->period === 'yesterday') ? $actualStart : $start;
-        $queryEnd = ($this->period === '1' || $this->period === 'yesterday') ? $actualEnd : $end;
+        $queryStart = ($this->period === '0' || $this->period === '1') ? $actualStart : $start;
+        $queryEnd = ($this->period === '0' || $this->period === '1') ? $actualEnd : $end;
 
         $orderStatsQuery = DB::table('orders')
             ->whereBetween('received_date', [$queryStart, $queryEnd])
@@ -421,7 +421,7 @@ final readonly class ChunkedMetricsCalculator
         ];
 
         // Add padding for single-day periods
-        if ($this->period === '1' || $this->period === 'yesterday') {
+        if ($this->period === '0' || $this->period === '1') {
             $chart['options'] = $this->getSingleDayChartOptions();
         }
 
@@ -477,7 +477,7 @@ final readonly class ChunkedMetricsCalculator
         ];
 
         // Add padding for single-day periods
-        if ($this->period === '1' || $this->period === 'yesterday') {
+        if ($this->period === '0' || $this->period === '1') {
             $chart['options'] = $this->getSingleDayChartOptions();
         }
 
@@ -535,7 +535,7 @@ final readonly class ChunkedMetricsCalculator
         ];
 
         // Add padding for single-day periods
-        if ($this->period === '1' || $this->period === 'yesterday') {
+        if ($this->period === '0' || $this->period === '1') {
             $chart['options'] = $this->getSingleDayChartOptions();
         }
 
@@ -585,7 +585,7 @@ final readonly class ChunkedMetricsCalculator
         ];
 
         // Add padding for single-day periods (with dual-axis support)
-        if ($this->period === '1' || $this->period === 'yesterday') {
+        if ($this->period === '0' || $this->period === '1') {
             $chart['options'] = $this->getSingleDayChartOptions(true);
         }
 
@@ -597,18 +597,19 @@ final readonly class ChunkedMetricsCalculator
      */
     private function getDateRange(): array
     {
-        if ($this->period === 'yesterday') {
-            return [
-                Carbon::yesterday()->startOfDay(),
-                Carbon::yesterday()->endOfDay(),
-            ];
-        }
-
-        // Special case: period '1' means "today" (not last 24 hours)
-        if ($this->period === '1') {
+        // Special case: period '0' means "today" (not last 24 hours)
+        if ($this->period === '0') {
             return [
                 Carbon::today()->startOfDay(),
                 Carbon::today()->endOfDay(),
+            ];
+        }
+
+        // Special case: period '1' means "yesterday"
+        if ($this->period === '1') {
+            return [
+                Carbon::yesterday()->startOfDay(),
+                Carbon::yesterday()->endOfDay(),
             ];
         }
 

@@ -127,18 +127,19 @@ class DashboardDataService
             ]);
         }
 
-        if ($period === 'yesterday') {
-            return collect([
-                'start' => Carbon::yesterday()->startOfDay(),
-                'end' => Carbon::yesterday()->endOfDay(),
-            ]);
-        }
-
-        // Special case: period '1' means "today" (not last 24 hours)
-        if ($period === '1') {
+        // Special case: period '0' means "today" (not last 24 hours)
+        if ($period === '0') {
             return collect([
                 'start' => Carbon::today()->startOfDay(),
                 'end' => Carbon::today()->endOfDay(),
+            ]);
+        }
+
+        // Special case: period '1' means "yesterday"
+        if ($period === '1') {
+            return collect([
+                'start' => Carbon::yesterday()->startOfDay(),
+                'end' => Carbon::yesterday()->endOfDay(),
             ]);
         }
 
@@ -224,7 +225,12 @@ class DashboardDataService
             $days = Carbon::parse($customFrom)->diffInDays(Carbon::parse($customTo)) + 1;
             $start = Carbon::parse($customFrom)->subDays($days)->startOfDay();
             $end = Carbon::parse($customFrom)->subDay()->endOfDay();
-        } elseif ($period === 'yesterday') {
+        } elseif ($period === '0') {
+            // Previous period for "today" is yesterday
+            $start = Carbon::yesterday()->startOfDay();
+            $end = Carbon::yesterday()->endOfDay();
+        } elseif ($period === '1') {
+            // Previous period for "yesterday" is the day before yesterday
             $start = Carbon::now()->subDays(2)->startOfDay();
             $end = Carbon::now()->subDays(2)->endOfDay();
         } else {

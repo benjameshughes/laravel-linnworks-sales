@@ -166,6 +166,7 @@ final class WarmPeriodCacheJob implements ShouldQueue
         $metrics = new SalesMetrics($orders);
 
         // Calculate date range
+        // Note: (int) '0' = 0 (today), (int) '1' = 1 (yesterday)
         $startDate = now()->subDays((int) $this->period)->startOfDay()->format('Y-m-d');
         $endDate = now()->endOfDay()->format('Y-m-d');
 

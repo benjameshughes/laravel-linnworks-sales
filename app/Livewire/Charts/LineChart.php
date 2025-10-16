@@ -49,12 +49,6 @@ final class LineChart extends BaseChart
                     'hitRadius' => 10,
                 ],
             ],
-            'layout' => [
-                'padding' => [
-                    'left' => 10,
-                    'right' => 10,
-                ],
-            ],
         ]);
     }
 }

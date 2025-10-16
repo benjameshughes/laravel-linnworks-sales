@@ -338,8 +338,8 @@ class SalesMetrics extends MetricBase
 
         // Special handling for single-day periods (yesterday and today)
         // Returns 3 data points (yesterday, target day, tomorrow) to center the bar in charts
-        if ($period === 'yesterday' || $period === '1') {
-            $date = $period === 'yesterday' ? Carbon::yesterday() : Carbon::today();
+        if ($period === '0' || $period === '1') {
+            $date = $period === '0' ? Carbon::today() : Carbon::yesterday();
             $dayOrders = $this->data;
             $openOrders = $dayOrders->where('is_processed', false);
             $processedOrders = $dayOrders->where('is_processed', true);
@@ -636,7 +636,7 @@ class SalesMetrics extends MetricBase
         ];
 
         // Add padding for single-day periods
-        if ($period === '1' || $period === 'yesterday') {
+        if ($period === '0' || $period === '1') {
             $chart['options'] = $this->getSingleDayChartOptions();
         }
 
@@ -719,7 +719,7 @@ class SalesMetrics extends MetricBase
         ];
 
         // Add padding for single-day periods (with dual-axis support)
-        if ($period === '1' || $period === 'yesterday') {
+        if ($period === '0' || $period === '1') {
             $chart['options'] = $this->getSingleDayChartOptions(true);
         }
 
@@ -758,7 +758,7 @@ class SalesMetrics extends MetricBase
         ];
 
         // Add padding for single-day periods
-        if ($period === '1' || $period === 'yesterday') {
+        if ($period === '0' || $period === '1') {
             $chart['options'] = $this->getSingleDayChartOptions();
         }
 
@@ -840,7 +840,7 @@ class SalesMetrics extends MetricBase
         ];
 
         // Add padding for single-day periods
-        if ($period === '1' || $period === 'yesterday') {
+        if ($period === '0' || $period === '1') {
             $chart['options'] = $this->getSingleDayChartOptions();
         }
 

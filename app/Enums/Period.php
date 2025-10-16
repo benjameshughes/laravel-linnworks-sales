@@ -6,8 +6,8 @@ namespace App\Enums;
 
 enum Period: string
 {
-    case TODAY = '1';
-    case YESTERDAY = 'yesterday';
+    case TODAY = '0';
+    case YESTERDAY = '1';
     case SEVEN_DAYS = '7';
     case THIRTY_DAYS = '30';
     case NINETY_DAYS = '90';
