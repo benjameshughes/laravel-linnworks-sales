@@ -24,14 +24,12 @@ class DashboardDataService
 
     private ?string $currentFilters = null;
 
-    private array $cachedMetrics = [];
-
     /**
      * Get pre-warmed metrics from cache
      *
      * IMPORTANT: This method ONLY reads from cache, never calculates.
-     * If cache is empty, it returns null. The frontend should show a
-     * "Cache is warming..." message and never call SalesMetrics directly.
+     * Always reads fresh from cache store (Redis/file) - no in-memory caching.
+     * This allows charts to immediately see updates when cache is re-warmed.
      *
      * Cache is warmed by:
      * - Background jobs (WarmPeriodCacheJob)
@@ -49,24 +47,9 @@ class DashboardDataService
 
         $cacheKey = $periodEnum->cacheKey($channel, $status);
 
-        // Cache the result keyed by cache key to avoid re-fetching
-        // Uses array instead of single value to support multiple period/channel/status combinations
-        if (!isset($this->cachedMetrics[$cacheKey])) {
-            $this->cachedMetrics[$cacheKey] = Cache::get($cacheKey);
-        }
-
-        return $this->cachedMetrics[$cacheKey];
-    }
-
-    /**
-     * Clear the service's internal cached metrics
-     *
-     * Forces the next call to getCachedMetrics() to read fresh data from cache.
-     * This is needed when cache is re-warmed but filters haven't changed.
-     */
-    public function clearCachedMetrics(): void
-    {
-        $this->cachedMetrics = [];
+        // Always read fresh from cache - no in-memory caching
+        // This ensures charts see updates immediately when cache is re-warmed
+        return Cache::get($cacheKey);
     }
 
     /**
@@ -109,7 +92,6 @@ class DashboardDataService
         if ($this->currentFilters !== $filters) {
             $this->orders = null;
             $this->previousPeriodOrders = null;
-            $this->cachedMetrics = [];
             $this->currentFilters = $filters;
         }
 
