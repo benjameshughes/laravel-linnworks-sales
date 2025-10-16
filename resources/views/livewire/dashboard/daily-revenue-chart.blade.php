@@ -3,6 +3,7 @@
         type="line"
         :chart-key="$this->chartKey"
         :data="$this->chartData"
+        :options="$this->chartOptions"
         title="{{ $viewMode === 'items' ? 'Items Sold' : 'Orders vs Revenue' }}"
         subtitle="{{ $this->periodLabel }}"
         icon="{{ $viewMode === 'items' ? 'cube' : 'chart-bar' }}"

@@ -3,6 +3,7 @@
         type="area"
         :chart-key="$this->chartKey"
         :data="$this->chartData"
+        :options="$this->chartOptions"
         title="Sales Trend"
         :subtitle="$this->periodLabel"
         icon="chart-line"

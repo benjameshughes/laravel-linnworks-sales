@@ -71,6 +71,14 @@ final class SalesTrendChart extends Component
     }
 
     #[Computed]
+    public function chartOptions(): array
+    {
+        // Extract options from cached chart data (for single-day padding)
+        $data = $this->chartData;
+        return $data['options'] ?? [];
+    }
+
+    #[Computed]
     public function periodLabel(): string
     {
         if ($this->period === 'custom') {
