@@ -11,6 +11,7 @@ use App\Livewire\Settings\ImportProgress;
 use App\Livewire\Settings\LinnworksSettings;
 use App\Livewire\Settings\Password;
 use App\Livewire\Settings\Profile;
+use App\Livewire\Sophie;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -23,6 +24,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('products', ProductAnalytics::class)->name('products.analytics');
     Route::get('products/{sku}', ProductDetail::class)->name('products.detail');
     Route::get('channels', ChannelComparison::class)->name('channels.comparison');
+    Route::get('sophie', Sophie::class)->name('sophie');
     Route::get('linnworks/install-url', [LinnworksCallbackController::class, 'getInstallationUrl'])->name('linnworks.install.url');
 });
 

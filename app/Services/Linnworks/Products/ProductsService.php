@@ -133,4 +133,81 @@ final class ProductsService
         return $response->getData()
             ->map(fn ($product) => is_array($product) ? $product : (array) $product);
     }
+
+    /**
+     * Get variation group id from a search term
+     *
+     * @params searchType<array>
+     * @params searchText<string>
+     * @params pageNumber<int>
+     * @params enteriesPerPage<int>
+     */
+    public function getVariationId(int $userId, string $searchType, string $searchText, int $pageNumber = 1, int $entriesPerPage = 100): Collection
+    {
+        $sessionToken = $this->sessionManager->getValidSessionToken($userId);
+        if (! $sessionToken) {
+            Log::warning('No valid session token for variation items', ['user_id' => $userId]);
+
+            return collect();
+        }
+        $payload = [
+            'searchType' => $searchType,
+            'searchText' => $searchText,
+            'pageNumber' => $pageNumber,
+            'entriesPerPage' => $entriesPerPage,
+        ];
+
+        $request = ApiRequest::post('Stock/SearchVariationGroups', $payload)->asJson();
+        $response = $this->client->makeRequest($request, $sessionToken);
+
+        if ($response->isError()) {
+            Log::warning('Failed to fetch variation items by ID', [
+                'user_id' => $userId,
+                'error' => $response->error,
+            ]);
+
+            return collect();
+        }
+
+        $data = $response->getData();
+
+        // Extract the Data array from the paginated response
+        if ($data->has('Data')) {
+            return collect($data->get('Data'))
+                ->map(fn ($variation) => is_array($variation) ? $variation : (array) $variation);
+        }
+
+        return $data->map(fn ($variation) => is_array($variation) ? $variation : (array) $variation);
+    }
+
+    /**
+     * Get variation group items by variation item ID
+     */
+    public function getVariationGroupItems(int $userId, string $pkVariationItemId): Collection
+    {
+        $sessionToken = $this->sessionManager->getValidSessionToken($userId);
+        if (! $sessionToken) {
+            Log::warning('No valid session token for variation items', ['user_id' => $userId]);
+
+            return collect();
+        }
+
+        $payload = [
+            'pkVariationItemId' => $pkVariationItemId,
+        ];
+
+        $request = ApiRequest::post('Stock/GetVariationItems', $payload)->asJson();
+        $response = $this->client->makeRequest($request, $sessionToken);
+        if ($response->isError()) {
+            Log::warning('Failed to fetch variation items by ID', [
+                'user_id' => $userId,
+                'pk_variation_item_id' => $pkVariationItemId,
+                'error' => $response->error,
+            ]);
+
+            return collect();
+        }
+
+        return $response->getData()->map(fn ($variation) => is_array($variation) ? $variation : (array) $variation);
+    }
 }

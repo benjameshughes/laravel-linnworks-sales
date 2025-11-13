@@ -5,6 +5,8 @@
     'placeholder' => 'Select options',
     'wireModel' => null,
     'multiple' => true,
+    'toggleMethod' => 'toggleChannel',
+    'clearMethod' => 'clearFilters',
 ])
 
 <div {{ $attributes->class(['space-y-2']) }}>
@@ -60,7 +62,7 @@
                     @endphp
                     <button
                         type="button"
-                        wire:click="toggleChannel('{{ $value }}')"
+                        wire:click="{{ $toggleMethod }}('{{ $value }}')"
                         class="w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors {{ $isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : '' }}"
                     >
                         <span class="text-sm {{ $isSelected ? 'text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300' }}">
@@ -90,7 +92,7 @@
                     {{ $label }}
                     <button
                         type="button"
-                        wire:click="toggleChannel('{{ $value }}')"
+                        wire:click="{{ $toggleMethod }}('{{ $value }}')"
                         class="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
                     >
                         <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
@@ -103,7 +105,7 @@
             @if(count($selected) > 1)
                 <button
                     type="button"
-                    wire:click="clearFilters"
+                    wire:click="{{ $clearMethod }}"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
                 >
                     Clear all
