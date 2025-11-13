@@ -193,9 +193,10 @@ class Sophie extends Component
 
         $whereClause = implode(' AND ', $whereClauses);
 
-        // Raw MySQL query for subsource breakdown
+        // Raw MySQL query for subsource breakdown (includes source)
         return DB::select("
             SELECT
+                o.source,
                 COALESCE(NULLIF(o.subsource, ''), 'Unknown') as subsource,
                 COUNT(DISTINCT oi.order_id) as order_count,
                 SUM(oi.quantity) as total_units,
@@ -203,9 +204,59 @@ class Sophie extends Component
             FROM order_items oi
             INNER JOIN orders o ON o.id = oi.order_id
             WHERE {$whereClause}
-            GROUP BY o.subsource
+            GROUP BY o.source, o.subsource
             ORDER BY total_revenue DESC
         ", $bindings);
+    }
+
+    protected function getAllSubsourcesWithSource(): Collection
+    {
+        $dateRange = $this->dateRange;
+
+        $whereClauses = ['oi.parent_sku IS NOT NULL'];
+        $bindings = [];
+
+        // Date filter
+        $whereClauses[] = 'o.received_date BETWEEN ? AND ?';
+        $bindings[] = $dateRange['start'];
+        $bindings[] = $dateRange['end'];
+
+        // SKU filter
+        if (! empty($this->selectedSkus)) {
+            $placeholders = implode(',', array_fill(0, count($this->selectedSkus), '?'));
+            $whereClauses[] = "oi.parent_sku IN ($placeholders)";
+            $bindings = array_merge($bindings, $this->selectedSkus);
+        }
+
+        // Subsource filter
+        if (! empty($this->selectedSubsources)) {
+            $placeholders = implode(',', array_fill(0, count($this->selectedSubsources), '?'));
+            $whereClauses[] = "COALESCE(NULLIF(o.subsource, ''), 'Unknown') IN ($placeholders)";
+            $bindings = array_merge($bindings, $this->selectedSubsources);
+        }
+
+        $whereClause = implode(' AND ', $whereClauses);
+
+        // Get all unique source-subsource combinations ordered by total revenue
+        $results = DB::select("
+            SELECT
+                o.source,
+                COALESCE(NULLIF(o.subsource, ''), 'Unknown') as subsource,
+                SUM(oi.quantity * oi.unit_price) as total_revenue
+            FROM order_items oi
+            INNER JOIN orders o ON o.id = oi.order_id
+            WHERE {$whereClause}
+            GROUP BY o.source, o.subsource
+            ORDER BY total_revenue DESC
+        ", $bindings);
+
+        return collect($results)->map(function ($row) {
+            return [
+                'source' => strtolower($row->source),
+                'subsource' => $row->subsource,
+                'total_revenue' => (float) $row->total_revenue,
+            ];
+        });
     }
 
     public function toggleSku(string $sku): void
@@ -299,89 +350,92 @@ class Sophie extends Component
             return [];
         }
 
-        $data = [];
+        // Get all subsources ordered by revenue
+        $allSubsources = $this->getAllSubsourcesWithSource();
 
-        foreach ($groups as $group) {
-            // Add summary row for parent SKU
-            $data[] = [
-                'type' => 'Summary',
-                'parent_sku' => $group['sku'],
-                'item_channel' => $group['sku'],
-                'orders' => $group['order_count'],
-                'units_sold' => $group['total_units'],
-                'revenue' => number_format($group['total_revenue'], 2, '.', ''),
-                'percent_of_parent' => '100%',
-            ];
-
-            // Add subsource rows
-            $subsources = $this->getSubsources($group['sku']);
-            $parentRevenue = $group['total_revenue'];
-
-            foreach ($subsources as $subsource) {
-                $percentage = $parentRevenue > 0
-                    ? round(($subsource->total_revenue / $parentRevenue) * 100)
-                    : 0;
-
-                $data[] = [
-                    'type' => 'Subsource',
-                    'parent_sku' => $group['sku'],
-                    'item_channel' => $subsource->subsource,
-                    'orders' => $subsource->order_count,
-                    'units_sold' => $subsource->total_units,
-                    'revenue' => number_format($subsource->total_revenue, 2, '.', ''),
-                    'percent_of_parent' => $percentage.'%',
-                ];
-            }
+        if ($allSubsources->isEmpty()) {
+            return [];
         }
 
-        return $data;
+        $rows = [];
+
+        foreach ($groups as $group) {
+            // Get subsource breakdown for this parent SKU
+            $subsources = $this->getSubsources($group['sku']);
+
+            // Create a map of source-subsource to metrics
+            $subsourceMap = [];
+            foreach ($subsources as $subsource) {
+                $key = strtolower($subsource->source).'-'.$subsource->subsource;
+                $subsourceMap[$key] = [
+                    'orders' => $subsource->order_count,
+                    'units' => $subsource->total_units,
+                    'revenue' => $subsource->total_revenue,
+                ];
+            }
+
+            // Build row for this SKU
+            $row = [
+                'sku' => $group['sku'],
+                'name' => $group['sku'],
+            ];
+
+            // Add metrics for each subsource in order
+            foreach ($allSubsources as $subsource) {
+                $key = $subsource['source'].'-'.$subsource['subsource'];
+
+                if (isset($subsourceMap[$key])) {
+                    $row[] = $subsourceMap[$key]['orders'];
+                    $row[] = $subsourceMap[$key]['units'];
+                    $row[] = number_format($subsourceMap[$key]['revenue'], 2, '.', '');
+                } else {
+                    // No data for this subsource
+                    $row[] = 0;
+                    $row[] = 0;
+                    $row[] = '0.00';
+                }
+            }
+
+            $rows[] = $row;
+        }
+
+        return [
+            'subsources' => $allSubsources,
+            'rows' => $rows,
+        ];
     }
 
     protected function generateCSV(array $data): string
     {
         $output = fopen('php://temp', 'r+');
 
-        // Metadata row
-        $dateRange = Carbon::parse($this->dateFrom)->format('Y-m-d').' to '.Carbon::parse($this->dateTo)->format('Y-m-d');
-        $exportTime = Carbon::now()->format('Y-m-d H:i:s');
-        fputcsv($output, [
-            'Sophie Variation Group Sales Export',
-            '',
-            'Date Range: '.$dateRange,
-            'Exported: '.$exportTime,
-        ]);
+        // Row 1: Date range in human-readable format
+        $dateFrom = Carbon::parse($this->dateFrom)->format('jS F Y');
+        $dateTo = Carbon::parse($this->dateTo)->format('jS F Y');
+        fputcsv($output, ["Date Range: {$dateFrom} to {$dateTo}"]);
 
-        // Active filters row (if any)
-        $filtersText = $this->getActiveFiltersText();
-        if ($filtersText) {
-            fputcsv($output, ['Filters Applied:', $filtersText]);
+        // Row 2 - Subsource headers (with column spanning)
+        $subsourceRow = ['Subsource'];
+        foreach ($data['subsources'] as $subsource) {
+            $subsourceRow[] = strtolower($subsource['source']).' - '.$subsource['subsource'];
+            $subsourceRow[] = ''; // Empty cell for Orders column
+            $subsourceRow[] = ''; // Empty cell for Units column
+            // Revenue column will get the next subsource header
         }
+        fputcsv($output, $subsourceRow);
 
-        // Empty separator row
-        fputcsv($output, []);
+        // Row 3: Column headers (SKU, Name, then Orders/Units/Revenue for each subsource)
+        $columnHeaders = ['SKU', 'Name'];
+        foreach ($data['subsources'] as $subsource) {
+            $columnHeaders[] = 'Orders';
+            $columnHeaders[] = 'Units';
+            $columnHeaders[] = 'Revenue';
+        }
+        fputcsv($output, $columnHeaders);
 
-        // Column headers
-        fputcsv($output, [
-            'Type',
-            'Parent SKU',
-            'Item/Channel',
-            'Orders',
-            'Units Sold',
-            'Revenue (£)',
-            '% of Parent Revenue',
-        ]);
-
-        // Data rows
-        foreach ($data as $row) {
-            fputcsv($output, [
-                $row['type'],
-                $row['parent_sku'],
-                $row['item_channel'],
-                $row['orders'],
-                $row['units_sold'],
-                $row['revenue'],
-                $row['percent_of_parent'],
-            ]);
+        // Rows 4+: Data rows
+        foreach ($data['rows'] as $row) {
+            fputcsv($output, $row);
         }
 
         rewind($output);
@@ -397,25 +451,6 @@ class Sophie extends Component
         $toDate = Carbon::parse($this->dateTo)->format('Ymd');
 
         return "sophie-variation-groups-{$fromDate}-{$toDate}.csv";
-    }
-
-    protected function getActiveFiltersText(): string
-    {
-        $filters = [];
-
-        if (! empty($this->selectedSkus)) {
-            $skuCount = count($this->selectedSkus);
-            $skuList = implode(' ', array_slice($this->selectedSkus, 0, 3));
-            $filters[] = "{$skuCount} SKU(s): {$skuList}".(count($this->selectedSkus) > 3 ? '...' : '');
-        }
-
-        if (! empty($this->selectedSubsources)) {
-            $subCount = count($this->selectedSubsources);
-            $subList = implode(' ', array_slice($this->selectedSubsources, 0, 3));
-            $filters[] = "{$subCount} Subsource(s): {$subList}".(count($this->selectedSubsources) > 3 ? '...' : '');
-        }
-
-        return implode(' | ', $filters);
     }
 
     public function render()
