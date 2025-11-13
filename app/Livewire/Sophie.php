@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 #[Layout('components.layouts.app')]
 class Sophie extends Component
@@ -332,9 +336,9 @@ class Sophie extends Component
         }
 
         return response()->streamDownload(function () use ($data) {
-            echo $this->generateCSV($data);
-        }, $this->generateCSVFilename(), [
-            'Content-Type' => 'text/csv',
+            echo $this->generateXLSX($data);
+        }, $this->generateXLSXFilename(), [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
             'Content-Description' => 'File Transfer',
             'Expires' => '0',
@@ -374,26 +378,58 @@ class Sophie extends Component
                 ];
             }
 
-            // Build row for this SKU
+            // Build row for this SKU - start with SKU and Name
             $row = [
                 'sku' => $group['sku'],
                 'name' => $group['sku'],
             ];
 
-            // Add metrics for each subsource in order
+            // Calculate totals first
+            $totalOrders = 0;
+            $totalUnits = 0;
+            $totalRevenue = 0;
+
+            // Create a map for subsource data
+            $subsourceData = [];
+
             foreach ($allSubsources as $subsource) {
                 $key = $subsource['source'].'-'.$subsource['subsource'];
 
                 if (isset($subsourceMap[$key])) {
-                    $row[] = $subsourceMap[$key]['orders'];
-                    $row[] = $subsourceMap[$key]['units'];
-                    $row[] = number_format($subsourceMap[$key]['revenue'], 2, '.', '');
+                    $orders = $subsourceMap[$key]['orders'];
+                    $units = $subsourceMap[$key]['units'];
+                    $revenue = $subsourceMap[$key]['revenue'];
+
+                    $subsourceData[] = [
+                        'orders' => $orders,
+                        'units' => $units,
+                        'revenue' => number_format($revenue, 2, '.', ''),
+                    ];
+
+                    // Accumulate totals
+                    $totalOrders += $orders;
+                    $totalUnits += $units;
+                    $totalRevenue += $revenue;
                 } else {
                     // No data for this subsource
-                    $row[] = 0;
-                    $row[] = 0;
-                    $row[] = '0.00';
+                    $subsourceData[] = [
+                        'orders' => 0,
+                        'units' => 0,
+                        'revenue' => '0.00',
+                    ];
                 }
+            }
+
+            // Add TOTAL columns BEFORE subsource data
+            $row[] = $totalOrders;
+            $row[] = $totalUnits;
+            $row[] = number_format($totalRevenue, 2, '.', '');
+
+            // Add subsource data after totals
+            foreach ($subsourceData as $data) {
+                $row[] = $data['orders'];
+                $row[] = $data['units'];
+                $row[] = $data['revenue'];
             }
 
             $rows[] = $row;
@@ -405,52 +441,137 @@ class Sophie extends Component
         ];
     }
 
-    protected function generateCSV(array $data): string
+    protected function generateXLSX(array $data): string
     {
-        $output = fopen('php://temp', 'r+');
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
 
-        // Row 1: Date range in human-readable format
-        $dateFrom = Carbon::parse($this->dateFrom)->format('jS F Y');
-        $dateTo = Carbon::parse($this->dateTo)->format('jS F Y');
-        fputcsv($output, ["Date Range: {$dateFrom} to {$dateTo}"]);
+        $rowNum = 1;
 
-        // Row 2 - Subsource headers (with column spanning)
-        $subsourceRow = ['Subsource'];
+        // Row 1 - Date range
+        $dateRange = Carbon::parse($this->dateFrom)->format('jS F Y').' to '.Carbon::parse($this->dateTo)->format('jS F Y');
+        $sheet->setCellValue('A1', 'Date Range: '.$dateRange);
+        $sheet->getStyle('A1')->getFont()->setBold(true);
+        $rowNum++;
+
+        // Row 2 - Subsource headers
+        $colNum = 1;
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum).$rowNum, 'Subsource');
+        $colNum++;
+
+        // TOTAL header (spans 3 columns)
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, 'TOTAL');
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, '');
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, '');
+
+        // Subsource headers with two-tone colors
+        $subsourceColors = ['F3F4F6', 'FFFFFF'];
+        $colorIndex = 0;
+
         foreach ($data['subsources'] as $subsource) {
-            $subsourceRow[] = strtolower($subsource['source']).' - '.$subsource['subsource'];
-            $subsourceRow[] = ''; // Empty cell for Orders column
-            $subsourceRow[] = ''; // Empty cell for Units column
-            // Revenue column will get the next subsource header
-        }
-        fputcsv($output, $subsourceRow);
+            $label = strtolower($subsource['source']).' - '.$subsource['subsource'];
+            $startCol = $colNum;
 
-        // Row 3: Column headers (SKU, Name, then Orders/Units/Revenue for each subsource)
-        $columnHeaders = ['SKU', 'Name'];
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, $label);
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, '');
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, '');
+
+            // Apply background color to this subsource group (3 columns)
+            for ($c = $startCol; $c < $colNum; $c++) {
+                $sheet->getStyle(Coordinate::stringFromColumnIndex($c).$rowNum)
+                    ->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()
+                    ->setARGB($subsourceColors[$colorIndex]);
+            }
+
+            $colorIndex = ($colorIndex + 1) % 2;
+        }
+
+        $sheet->getStyle($rowNum.':'.$rowNum)->getFont()->setBold(true);
+        $rowNum++;
+
+        // Row 3 - Column headers
+        $colNum = 1;
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, 'SKU');
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, 'Name');
+
+        // TOTAL columns
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, 'Orders');
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, 'Units');
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, 'Revenue');
+
+        // Subsource columns with two-tone colors
+        $colorIndex = 0;
         foreach ($data['subsources'] as $subsource) {
-            $columnHeaders[] = 'Orders';
-            $columnHeaders[] = 'Units';
-            $columnHeaders[] = 'Revenue';
+            $startCol = $colNum;
+
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, 'Orders');
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, 'Units');
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum++).$rowNum, 'Revenue');
+
+            // Apply same background color to match Row 2
+            for ($c = $startCol; $c < $colNum; $c++) {
+                $sheet->getStyle(Coordinate::stringFromColumnIndex($c).$rowNum)
+                    ->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()
+                    ->setARGB($subsourceColors[$colorIndex]);
+            }
+
+            $colorIndex = ($colorIndex + 1) % 2;
         }
-        fputcsv($output, $columnHeaders);
 
-        // Rows 4+: Data rows
-        foreach ($data['rows'] as $row) {
-            fputcsv($output, $row);
+        $sheet->getStyle($rowNum.':'.$rowNum)->getFont()->setBold(true);
+        $rowNum++;
+
+        // Data rows
+        foreach ($data['rows'] as $dataRow) {
+            $colNum = 1;
+
+            foreach ($dataRow as $cellValue) {
+                $sheet->setCellValue(Coordinate::stringFromColumnIndex($colNum).$rowNum, $cellValue);
+                $colNum++;
+            }
+
+            // Apply alternating colors to subsource columns
+            $colNum = 6; // Start after SKU, Name, TOTAL (5 columns)
+            $colorIndex = 0;
+
+            foreach ($data['subsources'] as $subsource) {
+                for ($i = 0; $i < 3; $i++) {
+                    $sheet->getStyle(Coordinate::stringFromColumnIndex($colNum).$rowNum)
+                        ->getFill()
+                        ->setFillType(Fill::FILL_SOLID)
+                        ->getStartColor()
+                        ->setARGB($subsourceColors[$colorIndex]);
+                    $colNum++;
+                }
+                $colorIndex = ($colorIndex + 1) % 2;
+            }
+
+            $rowNum++;
         }
 
-        rewind($output);
-        $csv = stream_get_contents($output);
-        fclose($output);
+        // Auto-size columns
+        foreach (range(1, $colNum - 1) as $columnIndex) {
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($columnIndex))->setAutoSize(true);
+        }
 
-        return $csv;
+        // Write to stream
+        $writer = new Xlsx($spreadsheet);
+        ob_start();
+        $writer->save('php://output');
+
+        return ob_get_clean();
     }
 
-    protected function generateCSVFilename(): string
+    protected function generateXLSXFilename(): string
     {
         $fromDate = Carbon::parse($this->dateFrom)->format('Ymd');
         $toDate = Carbon::parse($this->dateTo)->format('Ymd');
 
-        return "sophie-variation-groups-{$fromDate}-{$toDate}.csv";
+        return "sophie-variation-groups-{$fromDate}-{$toDate}.xlsx";
     }
 
     public function render()
