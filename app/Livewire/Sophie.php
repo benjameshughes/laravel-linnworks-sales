@@ -271,6 +271,153 @@ class Sophie extends Component
         unset($this->variationGroups);
     }
 
+    public function downloadCsv()
+    {
+        $data = $this->prepareCSVData();
+
+        if (empty($data)) {
+            // Optionally dispatch a notification/error event
+            return null;
+        }
+
+        return response()->streamDownload(function () use ($data) {
+            echo $this->generateCSV($data);
+        }, $this->generateCSVFilename(), [
+            'Content-Type' => 'text/csv',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Content-Description' => 'File Transfer',
+            'Expires' => '0',
+            'Pragma' => 'public',
+        ]);
+    }
+
+    protected function prepareCSVData(): array
+    {
+        $groups = $this->variationGroups;
+
+        if ($groups->isEmpty()) {
+            return [];
+        }
+
+        $data = [];
+
+        foreach ($groups as $group) {
+            // Add summary row for parent SKU
+            $data[] = [
+                'type' => 'Summary',
+                'parent_sku' => $group['sku'],
+                'item_channel' => $group['sku'],
+                'orders' => $group['order_count'],
+                'units_sold' => $group['total_units'],
+                'revenue' => number_format($group['total_revenue'], 2, '.', ''),
+                'percent_of_parent' => '100%',
+            ];
+
+            // Add subsource rows
+            $subsources = $this->getSubsources($group['sku']);
+            $parentRevenue = $group['total_revenue'];
+
+            foreach ($subsources as $subsource) {
+                $percentage = $parentRevenue > 0
+                    ? round(($subsource->total_revenue / $parentRevenue) * 100)
+                    : 0;
+
+                $data[] = [
+                    'type' => 'Subsource',
+                    'parent_sku' => $group['sku'],
+                    'item_channel' => $subsource->subsource,
+                    'orders' => $subsource->order_count,
+                    'units_sold' => $subsource->total_units,
+                    'revenue' => number_format($subsource->total_revenue, 2, '.', ''),
+                    'percent_of_parent' => $percentage.'%',
+                ];
+            }
+        }
+
+        return $data;
+    }
+
+    protected function generateCSV(array $data): string
+    {
+        $output = fopen('php://temp', 'r+');
+
+        // Metadata row
+        $dateRange = Carbon::parse($this->dateFrom)->format('Y-m-d').' to '.Carbon::parse($this->dateTo)->format('Y-m-d');
+        $exportTime = Carbon::now()->format('Y-m-d H:i:s');
+        fputcsv($output, [
+            'Sophie Variation Group Sales Export',
+            '',
+            'Date Range: '.$dateRange,
+            'Exported: '.$exportTime,
+        ]);
+
+        // Active filters row (if any)
+        $filtersText = $this->getActiveFiltersText();
+        if ($filtersText) {
+            fputcsv($output, ['Filters Applied:', $filtersText]);
+        }
+
+        // Empty separator row
+        fputcsv($output, []);
+
+        // Column headers
+        fputcsv($output, [
+            'Type',
+            'Parent SKU',
+            'Item/Channel',
+            'Orders',
+            'Units Sold',
+            'Revenue (£)',
+            '% of Parent Revenue',
+        ]);
+
+        // Data rows
+        foreach ($data as $row) {
+            fputcsv($output, [
+                $row['type'],
+                $row['parent_sku'],
+                $row['item_channel'],
+                $row['orders'],
+                $row['units_sold'],
+                $row['revenue'],
+                $row['percent_of_parent'],
+            ]);
+        }
+
+        rewind($output);
+        $csv = stream_get_contents($output);
+        fclose($output);
+
+        return $csv;
+    }
+
+    protected function generateCSVFilename(): string
+    {
+        $fromDate = Carbon::parse($this->dateFrom)->format('Ymd');
+        $toDate = Carbon::parse($this->dateTo)->format('Ymd');
+
+        return "sophie-variation-groups-{$fromDate}-{$toDate}.csv";
+    }
+
+    protected function getActiveFiltersText(): string
+    {
+        $filters = [];
+
+        if (! empty($this->selectedSkus)) {
+            $skuCount = count($this->selectedSkus);
+            $skuList = implode(' ', array_slice($this->selectedSkus, 0, 3));
+            $filters[] = "{$skuCount} SKU(s): {$skuList}".(count($this->selectedSkus) > 3 ? '...' : '');
+        }
+
+        if (! empty($this->selectedSubsources)) {
+            $subCount = count($this->selectedSubsources);
+            $subList = implode(' ', array_slice($this->selectedSubsources, 0, 3));
+            $filters[] = "{$subCount} Subsource(s): {$subList}".(count($this->selectedSubsources) > 3 ? '...' : '');
+        }
+
+        return implode(' | ', $filters);
+    }
+
     public function render()
     {
         return view('livewire.sophie');

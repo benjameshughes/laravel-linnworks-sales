@@ -108,6 +108,23 @@
                     <div class="text-2xl font-bold text-green-600 dark:text-green-400">£{{ number_format($this->variationGroups->sum('total_revenue'), 2) }}</div>
                 </div>
             </div>
+
+            {{-- Action Bar --}}
+            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-4 mb-6 flex items-center justify-between">
+                <div class="text-sm text-zinc-600 dark:text-zinc-400">
+                    <span class="font-medium">Showing {{ number_format($this->variationGroups->count()) }} variation groups</span>
+                    <span class="text-zinc-400 mx-1">•</span>
+                    <span>{{ number_format($this->variationGroups->sum('order_count')) }} orders</span>
+                </div>
+                <flux:button
+                    wire:click="downloadCsv"
+                    class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
+                    icon="arrow-down-tray"
+                >
+                    <span wire:loading.remove wire:target="downloadCsv">Download CSV</span>
+                    <span wire:loading wire:target="downloadCsv">Preparing...</span>
+                </flux:button>
+            </div>
         @endif
 
         {{-- Main Table --}}
