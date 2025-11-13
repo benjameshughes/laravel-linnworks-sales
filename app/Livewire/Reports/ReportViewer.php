@@ -5,6 +5,7 @@ namespace App\Livewire\Reports;
 use App\Models\ReportExecution;
 use App\Reports\AbstractReport;
 use App\Reports\Enums\ExportFormat;
+use App\Reports\ReportRegistry;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ class ReportViewer extends Component
 {
     use WithPagination;
 
-    public string $reportClass;
+    public string $reportSlug;
 
     public array $filters = [];
 
@@ -28,17 +29,25 @@ class ReportViewer extends Component
 
     public array $availableSubsources = [];
 
-    public function mount(string $reportClass): void
+    public function mount(string $reportSlug): void
     {
-        $this->reportClass = $reportClass;
-        $this->filters = $this->report->getDefaultFilters();
+        $this->reportSlug = $reportSlug;
+
+        $report = $this->report;
+        $this->filters = $report->getDefaultFilters();
         $this->loadFilterOptions();
     }
 
     #[Computed]
     public function report(): AbstractReport
     {
-        return app($this->reportClass);
+        $report = ReportRegistry::findBySlug($this->reportSlug);
+
+        if (! $report) {
+            abort(404, "Report not found: {$this->reportSlug}");
+        }
+
+        return $report;
     }
 
     public function loadFilterOptions(): void
@@ -145,7 +154,7 @@ class ReportViewer extends Component
 
         ReportExecution::create([
             'user_id' => auth()->id(),
-            'report_class' => $this->reportClass,
+            'report_class' => get_class($this->report),
             'filters' => $this->filters,
             'row_count' => $this->totalRows ?? $this->report->count($this->filters),
             'status' => 'completed',

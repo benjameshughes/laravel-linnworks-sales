@@ -9,20 +9,20 @@ use Livewire\Component;
 #[Layout('components.layouts.app')]
 class ReportsIndex extends Component
 {
-    public ?string $selectedReportClass = null;
+    public ?string $selectedReportSlug = null;
 
     public function mount(): void
     {
         $firstReport = ReportRegistry::all()->first();
 
         if ($firstReport) {
-            $this->selectedReportClass = get_class($firstReport);
+            $this->selectedReportSlug = $firstReport->slug();
         }
     }
 
-    public function selectReport(string $reportClass): void
+    public function selectReport(string $slug): void
     {
-        $this->selectedReportClass = $reportClass;
+        $this->selectedReportSlug = $slug;
     }
 
     public function render()
