@@ -68,7 +68,7 @@ abstract class BaseChart extends Component
     {
         \Illuminate\Support\Facades\Log::debug('[BaseChart] updatedData() called', [
             'chartId' => $this->chartId,
-            'hasData' => !empty($this->data),
+            'hasData' => ! empty($this->data),
             'labels' => $this->data['labels'] ?? null,
         ]);
 

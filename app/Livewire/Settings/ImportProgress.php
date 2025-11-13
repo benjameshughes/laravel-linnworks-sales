@@ -100,6 +100,7 @@ class ImportProgress extends Component
                 // Stage 1: Don't show anything to user
                 $this->isImporting = false;
                 $this->isCompleted = false;
+
                 return;
             }
 
@@ -180,6 +181,7 @@ class ImportProgress extends Component
 
             // Force Livewire to detect changes and re-render
             $this->dispatch('$refresh');
+
             return;
         }
 

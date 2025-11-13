@@ -68,7 +68,7 @@ class LinnworksServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(ProcessedOrdersResponseParser::class, function () {
-            return new ProcessedOrdersResponseParser();
+            return new ProcessedOrdersResponseParser;
         });
 
         $this->app->singleton(ProcessedOrdersService::class, function ($app) {

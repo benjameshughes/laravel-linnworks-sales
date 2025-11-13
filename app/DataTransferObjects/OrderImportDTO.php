@@ -44,7 +44,7 @@ readonly class OrderImportDTO
      */
     private static function safeToDateTimeString(?Carbon $date): ?string
     {
-        if (!$date) {
+        if (! $date) {
             return null;
         }
 

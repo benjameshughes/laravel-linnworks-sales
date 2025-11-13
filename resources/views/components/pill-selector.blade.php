@@ -9,7 +9,7 @@
     'clearMethod' => 'clearFilters',
 ])
 
-<div {{ $attributes->class(['space-y-2']) }}>
+<div {{ $attributes->class(['items-center text-sm font-medium [:where(&)]:text-zinc-800 [:where(&)]:dark:text-white w-full text-zinc-500 dark:text-zinc-400']) }}>
     @if($label)
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             {{ $label }}
@@ -25,7 +25,7 @@
             type="button"
             @click="open = !open"
             @click.away="open = false"
-            class="w-full flex items-center justify-between px-4 py-2.5 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 transition-colors"
+            class="w-full border rounded-lg flex justify-between disabled:shadow-none dark:shadow-none appearance-none text-base sm:text-sm py-2 h-10 leading-[1.375rem] ps-3 pe-3 bg-white dark:bg-white/10 dark:disabled:bg-white/[7%] text-zinc-700 disabled:text-zinc-500 placeholder-zinc-400 disabled:placeholder-zinc-400/70 dark:text-zinc-300 dark:disabled:text-zinc-400 dark:placeholder-zinc-400 dark:disabled:placeholder-zinc-500 shadow-xs border-zinc-200 border-b-zinc-300/80 disabled:border-b-zinc-200 dark:border-white/10 dark:disabled:border-white/5"
         >
             <span class="text-sm text-gray-700 dark:text-gray-300">
                 @if(count($selected) === 0)

@@ -32,6 +32,7 @@ class AddAllowedDomain extends Command
         if (! filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
             $this->error("Invalid domain format: '{$domain}'");
             $this->line('Domain must be a valid hostname (e.g., example.com, subdomain.example.com)');
+
             return Command::FAILURE;
         }
 

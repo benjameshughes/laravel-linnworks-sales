@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Dashboard;
 
-use App\Services\Metrics\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;

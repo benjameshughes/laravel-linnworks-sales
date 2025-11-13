@@ -206,6 +206,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                         'batch_size' => $pageOrderIds->count(),
                         'duplicates_skipped' => $pageOrderIds->count(),
                     ]);
+
                     continue; // Skip this batch entirely
                 }
 

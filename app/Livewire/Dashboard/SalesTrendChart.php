@@ -66,7 +66,7 @@ final class SalesTrendChart extends Component
                 'channel' => $this->channel,
                 'status' => $this->status,
                 'viewMode' => $this->viewMode,
-                'hasCached' => !!$cached,
+                'hasCached' => (bool) $cached,
                 'cachedKeys' => $cached ? array_keys($cached) : null,
             ]);
 
@@ -98,6 +98,7 @@ final class SalesTrendChart extends Component
     {
         // Extract options from cached chart data (for single-day padding)
         $data = $this->chartData;
+
         return $data['options'] ?? [];
     }
 

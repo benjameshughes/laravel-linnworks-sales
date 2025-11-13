@@ -31,6 +31,7 @@ class MakeUserAdmin extends Command
         // Validate email format
         if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->error("Invalid email format: '{$email}'");
+
             return Command::FAILURE;
         }
 

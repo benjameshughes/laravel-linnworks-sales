@@ -6,6 +6,7 @@ use App\Livewire\Dashboard\ChannelComparison;
 use App\Livewire\Dashboard\ProductAnalytics;
 use App\Livewire\Dashboard\SalesDashboard;
 use App\Livewire\ProductDetail;
+use App\Livewire\Reports\ReportsIndex;
 use App\Livewire\Settings\Appearance;
 use App\Livewire\Settings\ImportProgress;
 use App\Livewire\Settings\LinnworksSettings;
@@ -25,6 +26,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('products/{sku}', ProductDetail::class)->name('products.detail');
     Route::get('channels', ChannelComparison::class)->name('channels.comparison');
     Route::get('sophie', Sophie::class)->name('sophie');
+    Route::get('reports', ReportsIndex::class)->name('reports');
     Route::get('linnworks/install-url', [LinnworksCallbackController::class, 'getInstallationUrl'])->name('linnworks.install.url');
 });
 

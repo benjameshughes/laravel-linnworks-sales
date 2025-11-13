@@ -104,7 +104,7 @@ final class ChannelDistributionChart extends Component
                 $channel = $label; // No parentheses, use as-is
             }
 
-            if (!isset($grouped[$channel])) {
+            if (! isset($grouped[$channel])) {
                 $grouped[$channel] = [
                     'value' => 0,
                     'color' => $colors[$index] ?? '#3B82F6',

@@ -25,6 +25,7 @@
                 <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:sidebar.item>
                 <flux:sidebar.item icon="chart-bar" :href="route('analytics')" :current="request()->routeIs('analytics')" wire:navigate>{{ __('Sales Analytics') }}</flux:sidebar.item>
                 <flux:sidebar.item icon="cube" :href="route('products.analytics')" :current="request()->routeIs('products.analytics')" wire:navigate>{{ __('Products') }}</flux:sidebar.item>
+                <flux:sidebar.item icon="document-text" :href="route('reports')" :current="request()->routeIs('reports')" wire:navigate>{{ __('Reports') }}</flux:sidebar.item>
             </flux:sidebar.nav>
 
             <flux:spacer />

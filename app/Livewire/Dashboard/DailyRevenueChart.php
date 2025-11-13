@@ -82,6 +82,7 @@ final class DailyRevenueChart extends Component
     {
         // Extract options from cached chart data (for single-day padding)
         $data = $this->chartData;
+
         return $data['options'] ?? [];
     }
 

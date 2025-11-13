@@ -2,7 +2,6 @@
 
 namespace App\Services\Linnworks\Orders;
 
-use App\Models\LinnworksConnection;
 use App\Services\Linnworks\Auth\SessionManager;
 use App\Services\Linnworks\Concerns\HandlesApiRetries;
 use App\Services\Linnworks\Core\LinnworksClient;
