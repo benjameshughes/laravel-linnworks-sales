@@ -5,6 +5,7 @@ namespace App\Reports;
 use App\Reports\Enums\ReportCategory;
 use App\Reports\Filters\DateRangeFilter;
 use App\Reports\Filters\SkuFilter;
+use App\Reports\Filters\StatusFilter;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,7 @@ class ProductPerformanceReport extends AbstractReport
         return [
             new DateRangeFilter(required: true, defaultDays: 30),
             new SkuFilter(multiple: true, required: false),
+            new StatusFilter(required: false),
         ];
     }
 
@@ -60,8 +62,15 @@ class ProductPerformanceReport extends AbstractReport
 
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd])
-            ->where('o.status', '!=', 'cancelled');
+            ->whereBetween('o.received_date', [$dateStart, $dateEnd]);
+
+        // Apply status filter if provided
+        if (! empty($filters['statuses'])) {
+            $query->whereIn('o.status', $filters['statuses']);
+        } else {
+            // Default: exclude cancelled orders if no status filter specified
+            $query->where('o.status', '!=', 'cancelled');
+        }
 
         if (! empty($filters['skus'])) {
             $query->whereIn('oi.sku', $filters['skus']);
@@ -78,7 +87,7 @@ class ProductPerformanceReport extends AbstractReport
             DB::raw('SUM(oi.quantity * oi.unit_price) / COUNT(DISTINCT o.id) as avg_order_value'),
         ])
             ->groupBy('oi.sku')
-            ->orderByDesc('total_revenue');
+            ->orderByRaw('total_revenue DESC');
 
         return $query;
     }

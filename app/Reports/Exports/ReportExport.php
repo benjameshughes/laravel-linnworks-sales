@@ -4,7 +4,8 @@ namespace App\Reports\Exports;
 
 use App\Reports\AbstractReport;
 use App\Reports\Enums\ExportFormat;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -14,7 +15,7 @@ class ReportExport
 {
     public function __construct(
         private readonly AbstractReport $report,
-        private readonly Builder $query,
+        private readonly EloquentBuilder|QueryBuilder $query,
         private readonly array $filters,
         private readonly ExportFormat $format = ExportFormat::XLSX
     ) {}

@@ -2,26 +2,29 @@
 
 namespace App\Reports\Filters;
 
-class SkuFilter extends AbstractFilter
+class TextFilter extends AbstractFilter
 {
     public function __construct(
-        private readonly bool $multiple = true,
-        private readonly bool $required = false
+        private readonly string $name,
+        private readonly string $label,
+        private readonly bool $required = false,
+        private readonly ?string $placeholder = null,
+        private readonly ?string $icon = null
     ) {}
 
     public function name(): string
     {
-        return 'skus';
+        return $this->name;
     }
 
     public function label(): string
     {
-        return 'SKUs';
+        return $this->label;
     }
 
     public function type(): string
     {
-        return $this->multiple ? 'multi_select' : 'select';
+        return 'text';
     }
 
     public function required(): bool
@@ -29,9 +32,9 @@ class SkuFilter extends AbstractFilter
         return $this->required;
     }
 
-    public function default(): mixed
+    public function default(): ?string
     {
-        return $this->multiple ? [] : null;
+        return null;
     }
 
     public function options(): array
@@ -41,20 +44,16 @@ class SkuFilter extends AbstractFilter
 
     public function validate(mixed $value): bool
     {
-        if ($this->multiple) {
-            return is_array($value);
-        }
-
         return is_string($value) || is_null($value);
     }
 
-    public function hasDynamicOptions(): bool
+    public function placeholder(): ?string
     {
-        return true;
+        return $this->placeholder;
     }
 
     public function icon(): ?string
     {
-        return 'cube';
+        return $this->icon;
     }
 }

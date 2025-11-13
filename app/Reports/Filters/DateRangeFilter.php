@@ -4,7 +4,7 @@ namespace App\Reports\Filters;
 
 use Carbon\Carbon;
 
-class DateRangeFilter implements FilterContract
+class DateRangeFilter extends AbstractFilter
 {
     public function __construct(
         private readonly bool $required = true,
@@ -55,8 +55,12 @@ class DateRangeFilter implements FilterContract
         }
 
         try {
-            Carbon::parse($value['start']);
-            Carbon::parse($value['end']);
+            $start = Carbon::parse($value['start']);
+            $end = Carbon::parse($value['end']);
+
+            if ($start->isAfter($end)) {
+                return false;
+            }
 
             return true;
         } catch (\Exception) {

@@ -75,10 +75,9 @@
                 <div class="flex items-center gap-2 pt-2">
                     <flux:button
                         wire:click="applyFilters"
-                        class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
                         icon="funnel"
                     >
-                        Apply Filters
+                        Generate Report
                     </flux:button>
                     <flux:button
                         wire:click="resetFilters"

@@ -59,7 +59,8 @@ class VariationGroupSalesReport extends AbstractReport
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
             ->whereNotNull('oi.parent_sku')
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd]);
+            ->whereBetween('o.received_date', [$dateStart, $dateEnd])
+            ->where('o.status', '!=', 'cancelled');
 
         if (! empty($filters['skus'])) {
             $query->whereIn('oi.parent_sku', $filters['skus']);
@@ -85,7 +86,7 @@ class VariationGroupSalesReport extends AbstractReport
             DB::raw('SUM(oi.quantity * oi.unit_price) as total_revenue'),
         ])
             ->groupBy('oi.parent_sku')
-            ->orderBy('oi.parent_sku');
+            ->orderByRaw('total_revenue DESC');
 
         return $query;
     }
@@ -115,7 +116,7 @@ class VariationGroupSalesReport extends AbstractReport
             return '';
         }
 
-        // 2 is needed to align everything...
+        // 2 is needed to align everything...o
         $colNum = 2;
         $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colNum).$rowNum, 'Subsource');
         $colNum++;
@@ -250,7 +251,8 @@ class VariationGroupSalesReport extends AbstractReport
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
             ->where('oi.parent_sku', '=', $parentSku)
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd]);
+            ->whereBetween('o.received_date', [$dateStart, $dateEnd])
+            ->where('o.status', '!=', 'cancelled');
 
         if (! empty($filters['subsources'])) {
             $query->where(function ($q) use ($filters) {
@@ -286,7 +288,8 @@ class VariationGroupSalesReport extends AbstractReport
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
             ->whereNotNull('oi.parent_sku')
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd]);
+            ->whereBetween('o.received_date', [$dateStart, $dateEnd])
+            ->where('o.status', '!=', 'cancelled');
 
         if (! empty($filters['skus'])) {
             $query->whereIn('oi.parent_sku', $filters['skus']);

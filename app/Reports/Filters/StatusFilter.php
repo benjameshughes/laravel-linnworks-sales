@@ -2,26 +2,26 @@
 
 namespace App\Reports\Filters;
 
-class SkuFilter extends AbstractFilter
+class StatusFilter extends AbstractFilter
 {
     public function __construct(
-        private readonly bool $multiple = true,
+        private readonly array $allowedStatuses = ['processed', 'open', 'cancelled'],
         private readonly bool $required = false
     ) {}
 
     public function name(): string
     {
-        return 'skus';
+        return 'statuses';
     }
 
     public function label(): string
     {
-        return 'SKUs';
+        return 'Order Status';
     }
 
     public function type(): string
     {
-        return $this->multiple ? 'multi_select' : 'select';
+        return 'multi_select';
     }
 
     public function required(): bool
@@ -29,32 +29,33 @@ class SkuFilter extends AbstractFilter
         return $this->required;
     }
 
-    public function default(): mixed
-    {
-        return $this->multiple ? [] : null;
-    }
-
-    public function options(): array
+    public function default(): array
     {
         return [];
     }
 
-    public function validate(mixed $value): bool
+    public function options(): array
     {
-        if ($this->multiple) {
-            return is_array($value);
-        }
-
-        return is_string($value) || is_null($value);
+        return $this->allowedStatuses;
     }
 
-    public function hasDynamicOptions(): bool
+    public function validate(mixed $value): bool
     {
+        if (! is_array($value)) {
+            return false;
+        }
+
+        foreach ($value as $status) {
+            if (! in_array($status, $this->allowedStatuses)) {
+                return false;
+            }
+        }
+
         return true;
     }
 
     public function icon(): ?string
     {
-        return 'cube';
+        return 'check-circle';
     }
 }

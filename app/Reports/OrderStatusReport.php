@@ -54,10 +54,6 @@ class OrderStatusReport extends AbstractReport
         $dateStart = Carbon::parse($filters['date_range']['start'])->startOfDay();
         $dateEnd = Carbon::parse($filters['date_range']['end'])->endOfDay();
 
-        $totalOrders = DB::table('orders')
-            ->whereBetween('received_date', [$dateStart, $dateEnd])
-            ->count();
-
         $query = DB::table('orders as o')
             ->whereBetween('o.received_date', [$dateStart, $dateEnd])
             ->select([
@@ -66,10 +62,13 @@ class OrderStatusReport extends AbstractReport
                 DB::raw('SUM(o.total_charge) as total_revenue'),
                 DB::raw('AVG(o.total_charge) as avg_order_value'),
                 DB::raw('SUM(o.num_items) as total_items'),
-                DB::raw($totalOrders > 0
-                    ? "ROUND((COUNT(*) / {$totalOrders}) * 100, 2) as percent_of_orders"
-                    : '0 as percent_of_orders'),
+                DB::raw('ROUND((COUNT(*) / (
+                    SELECT COUNT(*)
+                    FROM orders
+                    WHERE received_date BETWEEN ? AND ?
+                )) * 100, 2) as percent_of_orders'),
             ])
+            ->addBinding([$dateStart, $dateEnd], 'select')
             ->groupBy('o.status')
             ->orderByDesc('order_count');
 

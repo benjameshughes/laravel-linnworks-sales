@@ -2,7 +2,7 @@
 
 namespace App\Reports\Filters;
 
-class ChannelFilter implements FilterContract
+class ChannelFilter extends AbstractFilter
 {
     public function __construct(
         private readonly bool $multiple = true,
@@ -46,5 +46,15 @@ class ChannelFilter implements FilterContract
         }
 
         return is_string($value) || is_null($value);
+    }
+
+    public function hasDynamicOptions(): bool
+    {
+        return true;
+    }
+
+    public function icon(): ?string
+    {
+        return 'shopping-bag';
     }
 }

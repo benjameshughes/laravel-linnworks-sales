@@ -74,7 +74,7 @@ class ChannelPerformanceReport extends AbstractReport
             DB::raw('SUM(CASE WHEN o.status = "cancelled" THEN 1 ELSE 0 END) as cancelled_orders'),
         ])
             ->groupBy('o.channel_name', 'o.subsource')
-            ->orderByDesc('total_revenue');
+            ->orderByRaw('total_revenue DESC');
 
         return $query;
     }
