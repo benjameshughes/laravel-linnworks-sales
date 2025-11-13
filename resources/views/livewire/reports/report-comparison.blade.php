@@ -17,9 +17,9 @@
                     <flux:label>Report A</flux:label>
                     <flux:select wire:model.live="reportClassA">
                         @foreach($this->availableReports as $report)
-                            <flux:option value="{{ get_class($report) }}">
+                            <flux:select.option value="{{ get_class($report) }}">
                                 {{ $report->name() }}
-                            </flux:option>
+                            </flux:select.option>
                         @endforeach
                     </flux:select>
 
@@ -109,9 +109,9 @@
                     <flux:label>Report B</flux:label>
                     <flux:select wire:model.live="reportClassB">
                         @foreach($this->availableReports as $report)
-                            <flux:option value="{{ get_class($report) }}">
+                            <flux:select.option value="{{ get_class($report) }}">
                                 {{ $report->name() }}
-                            </flux:option>
+                            </flux:select.option>
                         @endforeach
                     </flux:select>
 
