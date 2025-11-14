@@ -125,39 +125,9 @@ class CacheManagement extends Component
     #[Computed]
     public function recentCacheWarming(): array
     {
-        // Get last 5 cache warming log entries with memory stats
-        $logFile = storage_path('logs/laravel.log');
-
-        if (! file_exists($logFile)) {
-            return [];
-        }
-
-        $lines = file($logFile);
-        $warmingLogs = [];
-
-        // Read file backwards to get most recent entries
-        for ($i = count($lines) - 1; $i >= 0 && count($warmingLogs) < 5; $i--) {
-            if (str_contains($lines[$i], 'Cache warmed successfully')) {
-                // Parse log entry with memory stats
-                preg_match(
-                    '/\[(.*?)\].*cache_key":"(.*?)".*orders_count":(\d+).*memory_used_mb":([\d.]+).*peak_memory_mb":([\d.]+)/',
-                    $lines[$i],
-                    $matches
-                );
-
-                if (count($matches) === 6) {
-                    $warmingLogs[] = [
-                        'timestamp' => $matches[1],
-                        'cache_key' => $matches[2],
-                        'orders_count' => (int) $matches[3],
-                        'memory_used_mb' => (float) $matches[4],
-                        'peak_memory_mb' => (float) $matches[5],
-                    ];
-                }
-            }
-        }
-
-        return $warmingLogs;
+        // No idea why I was loading the laravel log file.
+        // Return an empty array for now. Eventually fully remove this
+        return [];
     }
 
     public function warmCache(): void

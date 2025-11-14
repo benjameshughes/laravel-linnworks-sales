@@ -1,43 +1,21 @@
 // Base Chart Component
-Alpine.data('baseChart', (config, chartId) => ({
+Alpine.data('baseChart', () => ({
     chart: null,
-    config: config,
-    chartId: chartId,
-    listenerRegistered: false,
+    config: null,
+    chartId: null,
 
-    init() {
-        // Register Livewire listener once during Alpine component initialization
-        if (!this.listenerRegistered) {
-            console.log('[Alpine Chart] Registering listener for chart-update-' + this.chartId);
-            Livewire.on('chart-update-' + this.chartId, (data) => {
-                console.log('[Alpine Chart] Received chart-update event', {
-                    chartId: this.chartId,
-                    hasChart: !!this.chart,
-                    eventData: data[0]
-                });
-
-                const ctx = this.$refs.canvas?.getContext('2d');
-                if (!ctx) {
-                    console.warn('[Alpine Chart] Canvas ref not available in listener');
-                    return;
-                }
-
-                if (!this.chart && data[0]?.data?.labels?.length > 0) {
-                    // First-time initialization with data (for delayed load)
-                    console.log('[Alpine Chart] Creating chart from update event');
-                    this.config = data[0];
-                    this.processOptions(this.config.options);
-                    this.chart = new Chart(ctx, this.config);
-                } else if (this.chart) {
-                    console.log('[Alpine Chart] Updating existing chart');
-                    this.updateChart(data[0]);
-                }
-            });
-            this.listenerRegistered = true;
+    destroy() {
+        // Alpine lifecycle hook - called when component is destroyed
+        if (this.chart) {
+            this.chart.destroy();
+            this.chart = null;
         }
     },
 
-    initChart() {
+    initChart(config, chartId) {
+        this.config = config;
+        this.chartId = chartId;
+
         const ctx = this.$refs.canvas?.getContext('2d');
         if (!ctx) {
             console.warn('[Alpine Chart] Canvas context not available');
@@ -48,18 +26,55 @@ Alpine.data('baseChart', (config, chartId) => ({
             chartId: this.chartId,
             hasData: !!this.config.data,
             hasLabels: this.config.data?.labels?.length > 0,
-            labels: this.config.data?.labels,
-            datasets: this.config.data?.datasets
+            labelsCount: this.config.data?.labels?.length || 0,
+            datasetsCount: this.config.data?.datasets?.length || 0
         });
+
+        // Destroy existing chart if present (handles re-initialization)
+        if (this.chart) {
+            console.log('[Alpine Chart] Destroying existing chart before re-init');
+            this.chart.destroy();
+            this.chart = null;
+        }
 
         // Only initialize if we have data
         if (this.config.data?.labels?.length > 0) {
-            console.log('[Alpine Chart] Creating chart with initial data');
+            console.log('[Alpine Chart] Creating chart with data');
             this.processOptions(this.config.options);
             this.chart = new Chart(ctx, this.config);
         } else {
-            console.log('[Alpine Chart] No data on init, waiting for update event');
+            console.log('[Alpine Chart] No data provided, skipping chart creation');
         }
+
+        // Register Livewire listener for updates (e.g., when filters change)
+        // Use $nextTick to ensure we're fully initialized
+        this.$nextTick(() => {
+            Livewire.on('chart-update-' + this.chartId, (eventData) => {
+                console.log('[Alpine Chart] Received chart-update event', {
+                    chartId: this.chartId,
+                    hasChart: !!this.chart,
+                    hasEventData: !!eventData[0]
+                });
+
+                const newConfig = eventData[0];
+                if (!newConfig) return;
+
+                // If chart doesn't exist yet and we now have data, create it
+                if (!this.chart && newConfig.data?.labels?.length > 0) {
+                    console.log('[Alpine Chart] Creating chart from update event');
+                    this.config = newConfig;
+                    this.processOptions(this.config.options);
+                    this.chart = new Chart(ctx, this.config);
+                    return;
+                }
+
+                // If chart exists, update it
+                if (this.chart) {
+                    console.log('[Alpine Chart] Updating existing chart');
+                    this.updateChart(newConfig);
+                }
+            });
+        });
     },
 
     updateChart(newData) {
@@ -111,14 +126,6 @@ Alpine.data('baseChart', (config, chartId) => ({
                 // Replace placeholder with actual function
                 options[key] = callbacks[options[key]];
             }
-        }
-    },
-
-    destroy() {
-        // Clean up Chart.js instance when Alpine component is destroyed
-        if (this.chart) {
-            this.chart.destroy();
-            this.chart = null;
         }
     }
 }));

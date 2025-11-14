@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
-use Livewire\Attributes\Reactive;
 use Livewire\Component;
 
 final class Chart extends Component
 {
     public string $type = 'line';
 
-    #[Reactive]
     public array $data = [];
 
-    #[Reactive]
     public ?array $options = [];
 
     public string $chartId;
@@ -65,6 +62,8 @@ final class Chart extends Component
         $this->mergedOptions = array_merge($this->getDefaultOptionsForType($this->type), $this->options ?? []);
 
         // Dispatch event to Alpine to update the chart
+        // Note: This only fires on subsequent updates, not initial load
+        // due to wire:ignore protecting Alpine's DOM
         $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
     }
 
@@ -73,6 +72,8 @@ final class Chart extends Component
         $this->mergedOptions = array_merge($this->getDefaultOptionsForType($this->type), $this->options ?? []);
 
         // Dispatch event to Alpine to update the chart
+        // Note: This only fires on subsequent updates, not initial load
+        // due to wire:ignore protecting Alpine's DOM
         $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
     }
 

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dashboard;
 
-use App\Events\CacheWarmingCompleted;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
