@@ -32,10 +32,13 @@
                 console.error('[Chart] Creation failed:', error, config);
             }
 
-            // Watch for data changes from Livewire
-            this.$wire.$watch('data', (newData) => {
-                console.log('[Chart] Data updated via $wire.$watch', newData);
-                this.updateChart(newData);
+            // Watch for data prop changes from parent Livewire component
+            // Note: Alpine automatically tracks x-data dependencies
+            this.$watch('$wire.data', (newData) => {
+                console.log('[Chart] Data updated via Alpine $watch', newData);
+                if (newData) {
+                    this.updateChart(newData);
+                }
             });
         },
 
