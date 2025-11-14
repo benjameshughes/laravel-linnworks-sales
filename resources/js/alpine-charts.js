@@ -3,12 +3,54 @@ Alpine.data('baseChart', () => ({
     chart: null,
     config: null,
     chartId: null,
+    livewireListener: null,
+
+    init() {
+        // Register Livewire event listener ONCE when Alpine component initializes
+        // This prevents memory leaks and duplicate listeners
+        this.livewireListener = Livewire.on('chart-update-' + this.chartId, (eventData) => {
+            console.log('[Alpine Chart] Received chart-update event', {
+                chartId: this.chartId,
+                hasChart: !!this.chart,
+                hasEventData: !!eventData[0]
+            });
+
+            const newConfig = eventData[0];
+            if (!newConfig) return;
+
+            const ctx = this.$refs.canvas?.getContext('2d');
+            if (!ctx) return;
+
+            // If chart doesn't exist and we have data, create it
+            if (!this.chart && newConfig.data?.labels?.length > 0) {
+                console.log('[Alpine Chart] Creating chart from update event');
+                this.config = newConfig;
+                this.processOptions(this.config.options);
+                try {
+                    this.chart = new Chart(ctx, this.config);
+                } catch (error) {
+                    console.error('[Alpine Chart] Chart creation failed:', error);
+                }
+                return;
+            }
+
+            // If chart exists, update it
+            if (this.chart) {
+                console.log('[Alpine Chart] Updating existing chart');
+                this.updateChart(newConfig);
+            }
+        });
+    },
 
     destroy() {
-        // Alpine lifecycle hook - called when component is destroyed
+        // Alpine lifecycle hook - cleanup chart AND event listener
         if (this.chart) {
             this.chart.destroy();
             this.chart = null;
+        }
+        if (this.livewireListener) {
+            this.livewireListener();
+            this.livewireListener = null;
         }
     },
 
@@ -41,40 +83,14 @@ Alpine.data('baseChart', () => ({
         if (this.config.data?.labels?.length > 0) {
             console.log('[Alpine Chart] Creating chart with data');
             this.processOptions(this.config.options);
-            this.chart = new Chart(ctx, this.config);
+            try {
+                this.chart = new Chart(ctx, this.config);
+            } catch (error) {
+                console.error('[Alpine Chart] Chart creation failed:', error);
+            }
         } else {
             console.log('[Alpine Chart] No data provided, skipping chart creation');
         }
-
-        // Register Livewire listener for updates (e.g., when filters change)
-        // Use $nextTick to ensure we're fully initialized
-        this.$nextTick(() => {
-            Livewire.on('chart-update-' + this.chartId, (eventData) => {
-                console.log('[Alpine Chart] Received chart-update event', {
-                    chartId: this.chartId,
-                    hasChart: !!this.chart,
-                    hasEventData: !!eventData[0]
-                });
-
-                const newConfig = eventData[0];
-                if (!newConfig) return;
-
-                // If chart doesn't exist yet and we now have data, create it
-                if (!this.chart && newConfig.data?.labels?.length > 0) {
-                    console.log('[Alpine Chart] Creating chart from update event');
-                    this.config = newConfig;
-                    this.processOptions(this.config.options);
-                    this.chart = new Chart(ctx, this.config);
-                    return;
-                }
-
-                // If chart exists, update it
-                if (this.chart) {
-                    console.log('[Alpine Chart] Updating existing chart');
-                    this.updateChart(newConfig);
-                }
-            });
-        });
     },
 
     updateChart(newData) {
@@ -127,202 +143,5 @@ Alpine.data('baseChart', () => ({
                 options[key] = callbacks[options[key]];
             }
         }
-    }
-}));
-
-// Channel Performance Chart Component
-Alpine.data('channelChart', (chartData) => ({
-    chart: null,
-
-    createChart() {
-        const ctx = this.$el.querySelector('canvas');
-        if (!ctx) return;
-
-        if (this.chart) this.chart.destroy();
-
-        this.chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: chartData.labels,
-                datasets: [{
-                    label: 'Revenue',
-                    data: chartData.revenue,
-                    backgroundColor: 'rgba(0, 165, 224, 0.8)',
-                    borderColor: 'rgba(0, 165, 224, 1)',
-                    borderWidth: 1,
-                    yAxisID: 'y'
-                }, {
-                    label: 'Orders',
-                    data: chartData.orders,
-                    backgroundColor: 'rgba(202, 5, 77, 0.8)',
-                    borderColor: 'rgba(202, 5, 77, 1)',
-                    borderWidth: 1,
-                    yAxisID: 'y1'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    title: {
-                        display: true,
-                        text: 'Channel Performance Comparison'
-                    }
-                },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Revenue (£)'
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return '£' + value.toLocaleString();
-                            }
-                        }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Orders'
-                        },
-                        grid: {
-                            drawOnChartArea: false,
-                        }
-                    }
-                }
-            }
-        });
-    }
-}));
-
-// Market Share Chart Component
-Alpine.data('marketShareChart', (chartData) => ({
-    chart: null,
-
-    createChart() {
-        const ctx = this.$el.querySelector('canvas');
-        if (!ctx) return;
-
-        if (this.chart) this.chart.destroy();
-
-        this.chart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: chartData.labels,
-                datasets: [{
-                    data: chartData.revenue,
-                    backgroundColor: [
-                        'rgba(0, 165, 224, 0.8)',
-                        'rgba(202, 5, 77, 0.8)',
-                        'rgba(168, 194, 86, 0.8)',
-                        'rgba(115, 115, 115, 0.8)',
-                        'rgba(64, 64, 64, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgba(0, 165, 224, 1)',
-                        'rgba(202, 5, 77, 1)',
-                        'rgba(168, 194, 86, 1)',
-                        'rgba(115, 115, 115, 1)',
-                        'rgba(64, 64, 64, 1)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                    },
-                    title: {
-                        display: true,
-                        text: 'Channel Market Share'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((value / total) * 100).toFixed(1);
-                                return label + ': £' + value.toLocaleString() + ' (' + percentage + '%)';
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-}));
-
-// Channel Detail Chart Component
-Alpine.data('channelDetailChart', (channelDetails) => ({
-    chart: null,
-
-    createChart() {
-        const ctx = this.$el.querySelector('canvas');
-        if (!ctx) return;
-
-        const dailyData = channelDetails.daily_data || [];
-
-        if (this.chart) this.chart.destroy();
-
-        this.chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: dailyData.map(item => item.date),
-                datasets: [{
-                    label: 'Revenue (£)',
-                    data: dailyData.map(item => item.revenue),
-                    borderColor: 'rgb(59, 130, 246)',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.4,
-                    fill: true,
-                    yAxisID: 'y'
-                }, {
-                    label: 'Orders',
-                    data: dailyData.map(item => item.orders),
-                    borderColor: 'rgb(16, 185, 129)',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    tension: 0.4,
-                    yAxisID: 'y1'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        position: 'left',
-                        title: { display: true, text: 'Revenue (£)' },
-                        ticks: { callback: function(value) { return '£' + value.toLocaleString(); } }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: { display: true, text: 'Orders' },
-                        grid: { drawOnChartArea: false }
-                    }
-                }
-            }
-        });
     }
 }));
