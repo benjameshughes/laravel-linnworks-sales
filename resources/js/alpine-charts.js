@@ -8,44 +8,23 @@ Alpine.data('baseChart', (config, chartId) => ({
         this.$nextTick(() => {
             const ctx = this.$refs.canvas.getContext('2d');
 
-            console.log('[Alpine Chart] initChart() called', {
-                chartId: this.chartId,
-                hasData: this.config.data?.labels?.length > 0,
-                labels: this.config.data?.labels,
-                datasets: this.config.data?.datasets
-            });
-
             // Only initialize if we have data
             if (this.config.data?.labels?.length > 0) {
-                console.log('[Alpine Chart] Creating chart with initial data');
                 this.processOptions(this.config.options);
                 this.chart = new Chart(ctx, this.config);
-            } else {
-                console.log('[Alpine Chart] No data on init, waiting for update event');
             }
 
             // Register Livewire listener AFTER chart creation
             Livewire.on('chart-update-' + this.chartId, (data) => {
-                console.log('[Alpine Chart] Received chart-update event', {
-                    chartId: this.chartId,
-                    hasChart: !!this.chart,
-                    eventData: data[0]
-                });
-
                 const ctx = this.$refs.canvas?.getContext('2d');
-                if (!ctx) {
-                    console.warn('[Alpine Chart] Canvas ref not available');
-                    return;
-                }
+                if (!ctx) return;
 
                 if (!this.chart && data[0]?.data?.labels?.length > 0) {
                     // First-time initialization with data (for delayed load)
-                    console.log('[Alpine Chart] Creating chart from update event');
                     this.config = data[0];
                     this.processOptions(this.config.options);
                     this.chart = new Chart(ctx, this.config);
                 } else if (this.chart) {
-                    console.log('[Alpine Chart] Updating existing chart');
                     this.updateChart(data[0]);
                 }
             });
