@@ -1,4 +1,5 @@
 <div
+    wire:key="{{ $chartId }}"
     x-data="{
         chart: null,
 
