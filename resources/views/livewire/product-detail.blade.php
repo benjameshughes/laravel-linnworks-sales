@@ -143,7 +143,8 @@
             </div>
             
             <div class="h-64">
-                <livewire:charts.area-chart 
+                <livewire:chart
+                    type="area"
                     :data="[
                         'labels' => $this->salesTrend->pluck('date')->toArray(),
                         'datasets' => [
@@ -163,8 +164,8 @@
                             'legend' => ['display' => false],
                             'tooltip' => [
                                 'callbacks' => [
-                                    'afterBody' => 'function(context) { 
-                                        var index = context[0].dataIndex; 
+                                    'afterBody' => 'function(context) {
+                                        var index = context[0].dataIndex;
                                         var revenue = ' . json_encode($this->salesTrend->pluck('revenue')->toArray()) . '[index];
                                         return "Revenue: £" + revenue.toFixed(2);
                                     }'

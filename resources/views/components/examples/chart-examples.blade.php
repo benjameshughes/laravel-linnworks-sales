@@ -148,8 +148,9 @@
     {{-- Inline Charts Without Container --}}
     <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Direct Component Usage</h3>
-        
-        <livewire:charts.line-chart 
+
+        <livewire:chart
+            type="line"
             :data="[
                 'labels' => ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
                 'datasets' => [

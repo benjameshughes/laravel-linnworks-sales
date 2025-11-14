@@ -209,19 +209,22 @@
                     </div>
                     <div class="mt-6 h-80">
                         @if($chartType === 'line')
-                            <livewire:charts.line-chart
+                            <livewire:chart
+                                type="line"
                                 :data="$this->chartData"
                                 :options="$this->chartInteractionOptions"
                                 wire:key="overview-line-{{ $startDate }}-{{ $endDate }}"
                             />
                         @elseif($chartType === 'bar')
-                            <livewire:charts.bar-chart
+                            <livewire:chart
+                                type="bar"
                                 :data="$this->chartData"
                                 :options="$this->chartInteractionOptions"
                                 wire:key="overview-bar-{{ $startDate }}-{{ $endDate }}"
                             />
                         @else
-                            <livewire:charts.bar-chart
+                            <livewire:chart
+                                type="bar"
                                 :data="$this->chartData"
                                 :options="$this->chartInteractionOptions"
                                 wire:key="overview-count-{{ $startDate }}-{{ $endDate }}"
@@ -233,7 +236,8 @@
                 <div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-4">Daily revenue</h3>
                     <div class="h-72">
-                        <livewire:charts.bar-chart
+                        <livewire:chart
+                            type="bar"
                             :data="$this->salesMetrics->getBarChartData($this->getChartPeriod(), $this->startDate, $this->endDate)"
                             wire:key="overview-daily-{{ $startDate }}-{{ $endDate }}"
                         />
@@ -246,7 +250,7 @@
                     <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Channel mix</h3>
                     <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-4">Contribution to revenue by sales channel.</p>
                     <div class="h-64">
-                        <livewire:charts.doughnut-chart :data="$this->salesMetrics->getDoughnutChartData()" wire:key="overview-channel-{{ $startDate }}-{{ $endDate }}" />
+                        <livewire:chart type="doughnut" :data="$this->salesMetrics->getDoughnutChartData()" wire:key="overview-channel-{{ $startDate }}-{{ $endDate }}" />
                     </div>
                 </div>
 
@@ -286,11 +290,11 @@
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2" wire:loading.class="opacity-50" wire:target="activeTab">
             <div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                 <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-4">Revenue vs order volume</h3>
-                <livewire:charts.line-chart :data="$this->salesMetrics->getLineChartData($this->getChartPeriod(), $this->startDate, $this->endDate)" wire:key="trends-revenue-{{ $startDate }}-{{ $endDate }}" />
+                <livewire:chart type="line" :data="$this->salesMetrics->getLineChartData($this->getChartPeriod(), $this->startDate, $this->endDate)" wire:key="trends-revenue-{{ $startDate }}-{{ $endDate }}" />
             </div>
             <div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                 <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-4">Order status split</h3>
-                <livewire:charts.bar-chart :data="$this->salesMetrics->getOrderCountChartData($this->getChartPeriod(), $this->startDate, $this->endDate)" wire:key="trends-status-{{ $startDate }}-{{ $endDate }}" />
+                <livewire:chart type="bar" :data="$this->salesMetrics->getOrderCountChartData($this->getChartPeriod(), $this->startDate, $this->endDate)" wire:key="trends-status-{{ $startDate }}-{{ $endDate }}" />
             </div>
         </div>
     @endif

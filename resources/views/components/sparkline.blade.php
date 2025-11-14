@@ -48,10 +48,11 @@
     @endif
     
     <div style="width: {{ $width }}; height: {{ $height }};">
-        <livewire:charts.sparkline-chart 
-            :data="$chartData" 
-            :height="$height" 
-            :width="$width" 
+        <livewire:chart
+            type="line"
+            :data="$chartData"
+            :height="$height"
+            :width="$width"
         />
     </div>
 </div>
