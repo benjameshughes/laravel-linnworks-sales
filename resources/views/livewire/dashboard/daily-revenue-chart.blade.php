@@ -7,7 +7,7 @@
         title="{{ $viewMode === 'items' ? 'Items Sold' : 'Orders vs Revenue' }}"
         subtitle="{{ $this->periodLabel }}"
         icon="{{ $viewMode === 'items' ? 'cube' : 'chart-bar' }}"
-        height="250px"
+        height="350px"
     >
         <x-slot:actions>
             <flux:radio.group
