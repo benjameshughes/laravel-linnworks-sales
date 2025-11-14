@@ -1,4 +1,5 @@
 <div
+    wire:ignore
     wire:key="{{ $chartId }}"
     x-data="{
         chart: null,
@@ -6,7 +7,7 @@
         init() {
             const config = @js($this->getChartData());
             if (!config.data?.labels?.length) {
-                console.log('[Chart] No data provided, skipping chart creation');
+                console.log('[Chart] No initial data, skipping chart creation');
                 return;
             }
 
@@ -30,6 +31,36 @@
             } catch (error) {
                 console.error('[Chart] Creation failed:', error, config);
             }
+
+            // Watch for data changes from Livewire
+            this.$wire.\$watch('data', (newData) => {
+                console.log('[Chart] Data updated via \$wire.\$watch', newData);
+                this.updateChart(newData);
+            });
+        },
+
+        updateChart(newData) {
+            if (!this.chart) {
+                console.warn('[Chart] Cannot update - chart not initialized');
+                return;
+            }
+
+            if (!newData?.labels?.length) {
+                console.log('[Chart] Empty data received, skipping update');
+                return;
+            }
+
+            console.log('[Chart] Updating chart with new data', {
+                labelsCount: newData.labels.length,
+                datasetsCount: newData.datasets.length
+            });
+
+            // Update chart data
+            this.chart.data.labels = newData.labels;
+            this.chart.data.datasets = newData.datasets;
+
+            // Update without animation for smooth transitions
+            this.chart.update('none');
         },
 
         destroy() {
