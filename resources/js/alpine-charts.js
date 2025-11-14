@@ -3,22 +3,16 @@ Alpine.data('baseChart', (config, chartId) => ({
     chart: null,
     config: config,
     chartId: chartId,
+    listenerRegistered: false,
 
-    initChart() {
-        this.$nextTick(() => {
-            const ctx = this.$refs.canvas?.getContext('2d');
-            if (!ctx) return;
-
-            // Only initialize if we have data
-            if (this.config.data?.labels?.length > 0) {
-                this.processOptions(this.config.options);
-                this.chart = new Chart(ctx, this.config);
-            }
-
-            // Register Livewire listener AFTER chart creation
+    init() {
+        // Register Livewire listener once during Alpine component initialization
+        if (!this.listenerRegistered) {
             Livewire.on('chart-update-' + this.chartId, (data) => {
                 const ctx = this.$refs.canvas?.getContext('2d');
-                if (!ctx) return;
+                if (!ctx) {
+                    return;
+                }
 
                 if (!this.chart && data[0]?.data?.labels?.length > 0) {
                     // First-time initialization with data (for delayed load)
@@ -29,7 +23,34 @@ Alpine.data('baseChart', (config, chartId) => ({
                     this.updateChart(data[0]);
                 }
             });
-        });
+            this.listenerRegistered = true;
+        }
+    },
+
+    initChart() {
+        const ctx = this.$refs.canvas?.getContext('2d');
+        if (!ctx) return;
+
+        // Only initialize if we have data
+        if (this.config.data?.labels?.length > 0) {
+            this.processOptions(this.config.options);
+            this.chart = new Chart(ctx, this.config);
+        }
+    },
+
+    updateChart(newData) {
+        if (!this.chart) return;
+
+        if (newData.data) {
+            this.chart.data = newData.data;
+        }
+
+        if (newData.options) {
+            this.processOptions(newData.options);
+            this.chart.options = { ...this.chart.options, ...newData.options };
+        }
+
+        this.chart.update('active');
     },
 
     processOptions(options) {
@@ -69,19 +90,12 @@ Alpine.data('baseChart', (config, chartId) => ({
         }
     },
 
-    updateChart(newData) {
-        if (!this.chart) return;
-
-        if (newData.data) {
-            this.chart.data = newData.data;
+    destroy() {
+        // Clean up Chart.js instance when Alpine component is destroyed
+        if (this.chart) {
+            this.chart.destroy();
+            this.chart = null;
         }
-
-        if (newData.options) {
-            this.processOptions(newData.options);
-            this.chart.options = { ...this.chart.options, ...newData.options };
-        }
-
-        this.chart.update('active');
     }
 }));
 

@@ -62,24 +62,18 @@ final class Chart extends Component
 
     public function updatedData(): void
     {
-        $this->updateMergedOptions();
-        $this->dispatchChartUpdate();
+        $this->mergedOptions = array_merge($this->getDefaultOptionsForType($this->type), $this->options ?? []);
+
+        // Dispatch event to Alpine to update the chart
+        $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
     }
 
     public function updatedOptions(): void
     {
-        $this->updateMergedOptions();
-        $this->dispatchChartUpdate();
-    }
-
-    protected function dispatchChartUpdate(): void
-    {
-        $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
-    }
-
-    protected function updateMergedOptions(): void
-    {
         $this->mergedOptions = array_merge($this->getDefaultOptionsForType($this->type), $this->options ?? []);
+
+        // Dispatch event to Alpine to update the chart
+        $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
     }
 
     public function getChartData(): array
