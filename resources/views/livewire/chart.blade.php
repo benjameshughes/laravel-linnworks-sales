@@ -28,6 +28,8 @@
         destroy() {
             if (this.chart) {
                 console.log('[Chart] Destroying chart');
+                // Stop any pending animations before destroying
+                this.chart.stop();
                 this.chart.destroy();
                 this.chart = null;
             }
