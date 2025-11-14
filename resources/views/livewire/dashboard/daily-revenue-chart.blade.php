@@ -1,7 +1,7 @@
 <div class="transition-opacity duration-200" wire:loading.class="opacity-50">
     <x-chart-widget
         type="line"
-        :chart-key="$this->chartKey()"
+        chart-key="daily-revenue-chart"
         :data="$this->chartData"
         :options="$this->chartOptions"
         title="{{ $viewMode === 'items' ? 'Items Sold' : 'Orders vs Revenue' }}"

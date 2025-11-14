@@ -41,6 +41,7 @@
     
     <div class="p-6 {{ $class }}">
         <livewire:chart
+            :key="$chartKey ?? 'chart-' . uniqid()"
             :type="$type"
             :data="$data"
             :options="$options"
