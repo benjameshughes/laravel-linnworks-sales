@@ -40,76 +40,14 @@
     @endif
     
     <div class="p-6 {{ $class }}">
-        @switch($type)
-            @case('line')
-                <livewire:charts.line-chart
-                    :wire:key="$chartKey"
-                    :data="$data"
-                    :options="$options"
-                    :height="$height"
-                    :width="$width"
-                />
-                @break
-
-            @case('bar')
-                <livewire:charts.bar-chart
-                    :wire:key="$chartKey"
-                    :data="$data"
-                    :options="$options"
-                    :height="$height"
-                    :width="$width"
-                />
-                @break
-
-            @case('doughnut')
-                <livewire:charts.doughnut-chart
-                    :wire:key="$chartKey"
-                    :data="$data"
-                    :options="$options"
-                    :height="$height"
-                    :width="$width"
-                />
-                @break
-
-            @case('pie')
-                <livewire:charts.pie-chart
-                    :wire:key="$chartKey"
-                    :data="$data"
-                    :options="$options"
-                    :height="$height"
-                    :width="$width"
-                />
-                @break
-
-            @case('area')
-                <livewire:charts.area-chart
-                    :wire:key="$chartKey"
-                    :data="$data"
-                    :options="$options"
-                    :height="$height"
-                    :width="$width"
-                />
-                @break
-
-            @case('mixed')
-                <livewire:charts.mixed-chart
-                    :wire:key="$chartKey"
-                    :data="$data"
-                    :options="$options"
-                    :height="$height"
-                    :width="$width"
-                />
-                @break
-
-            @default
-                <livewire:charts.line-chart
-                    :wire:key="$chartKey"
-                    :data="$data"
-                    :options="$options"
-                    :height="$height"
-                    :width="$width"
-                />
-        @endswitch
+        <livewire:chart
+            :wire:key="$chartKey"
+            :type="$type"
+            :data="$data"
+            :options="$options"
+            :height="$height"
+            :width="$width"
+        />
     </div>
     
     {{ $slot }}
