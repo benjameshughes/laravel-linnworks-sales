@@ -29,17 +29,7 @@ final class PieChart extends BaseChart
                 'tooltip' => [
                     'enabled' => true,
                     'callbacks' => [
-                        'label' => "function(context) {
-                            let label = context.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            const value = context.parsed;
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((value / total) * 100).toFixed(1);
-                            label += percentage + '%';
-                            return label;
-                        }",
+                        'label' => '__PIE_LABEL_CALLBACK__',
                     ],
                 ],
             ],

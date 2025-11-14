@@ -57,16 +57,38 @@ Alpine.data('baseChart', (config, chartId) => ({
     },
 
     processOptions(options) {
+        // Define reusable callback functions
+        const callbacks = {
+            '__DOUGHNUT_LABEL_CALLBACK__': function(context) {
+                let label = context.label || '';
+                if (label) {
+                    label += ': ';
+                }
+                const value = context.parsed;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = ((value / total) * 100).toFixed(1);
+                label += percentage + '%';
+                return label;
+            },
+            '__PIE_LABEL_CALLBACK__': function(context) {
+                let label = context.label || '';
+                if (label) {
+                    label += ': ';
+                }
+                const value = context.parsed;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = ((value / total) * 100).toFixed(1);
+                label += percentage + '%';
+                return label;
+            }
+        };
+
         for (const key in options) {
             if (typeof options[key] === 'object' && options[key] !== null) {
                 this.processOptions(options[key]);
-            } else if (typeof options[key] === 'string' && options[key].startsWith('function')) {
-                try {
-                    // Use Function constructor instead of eval to avoid CSP violations
-                    options[key] = new Function('return ' + options[key])();
-                } catch (e) {
-                    console.error('Error parsing function:', e);
-                }
+            } else if (typeof options[key] === 'string' && callbacks[options[key]]) {
+                // Replace placeholder with actual function
+                options[key] = callbacks[options[key]];
             }
         }
     },
