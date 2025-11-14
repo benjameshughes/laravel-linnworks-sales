@@ -57,26 +57,6 @@ final class Chart extends Component
         }
     }
 
-    public function updatedData(): void
-    {
-        $this->mergedOptions = array_merge($this->getDefaultOptionsForType($this->type), $this->options ?? []);
-
-        // Dispatch event to Alpine to update the chart
-        // Note: This only fires on subsequent updates, not initial load
-        // due to wire:ignore protecting Alpine's DOM
-        $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
-    }
-
-    public function updatedOptions(): void
-    {
-        $this->mergedOptions = array_merge($this->getDefaultOptionsForType($this->type), $this->options ?? []);
-
-        // Dispatch event to Alpine to update the chart
-        // Note: This only fires on subsequent updates, not initial load
-        // due to wire:ignore protecting Alpine's DOM
-        $this->dispatch('chart-update-'.$this->chartId, $this->getChartData());
-    }
-
     public function getChartData(): array
     {
         // Determine Chart.js type (area uses 'line' in Chart.js)

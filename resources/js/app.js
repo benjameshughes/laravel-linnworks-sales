@@ -13,11 +13,6 @@ import Chart from 'chart.js/auto';
 window.Chart = Chart;
 
 /**
- * Alpine.js chart components
- */
-import './alpine-charts';
-
-/**
  * Alpine.js store for metrics
  */
 import './alpine-store';
