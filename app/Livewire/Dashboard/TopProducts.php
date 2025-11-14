@@ -65,4 +65,12 @@ final class TopProducts extends Component
     {
         return view('livewire.dashboard.top-products');
     }
+
+    /**
+     * Skeleton loader shown while lazy loading
+     */
+    public function placeholder(array $params = [])
+    {
+        return view('livewire.placeholders.top-list', $params);
+    }
 }

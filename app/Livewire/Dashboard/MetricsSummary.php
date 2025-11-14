@@ -145,6 +145,14 @@ final class MetricsSummary extends Component
         return view('livewire.dashboard.metrics-summary');
     }
 
+    /**
+     * Skeleton loader shown while lazy loading
+     */
+    public function placeholder(array $params = [])
+    {
+        return view('livewire.placeholders.metrics-summary', $params);
+    }
+
     private function getPreviousPeriodOrders(): Collection
     {
         // Also uses shared service for previous period data

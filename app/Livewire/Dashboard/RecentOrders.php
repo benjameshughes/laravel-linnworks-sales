@@ -99,4 +99,12 @@ final class RecentOrders extends Component
     {
         return view('livewire.dashboard.recent-orders');
     }
+
+    /**
+     * Skeleton loader shown while lazy loading
+     */
+    public function placeholder(array $params = [])
+    {
+        return view('livewire.placeholders.table', $params);
+    }
 }

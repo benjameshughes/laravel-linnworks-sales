@@ -114,4 +114,12 @@ final class DailyRevenueChart extends Component
     {
         return view('livewire.dashboard.daily-revenue-chart');
     }
+
+    /**
+     * Skeleton loader shown while lazy loading
+     */
+    public function placeholder(array $params = [])
+    {
+        return view('livewire.placeholders.chart', $params);
+    }
 }
