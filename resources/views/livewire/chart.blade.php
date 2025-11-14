@@ -33,8 +33,8 @@
             }
 
             // Watch for data changes from Livewire
-            this.$wire.\$watch('data', (newData) => {
-                console.log('[Chart] Data updated via \$wire.\$watch', newData);
+            this.$wire.$watch('data', (newData) => {
+                console.log('[Chart] Data updated via $wire.$watch', newData);
                 this.updateChart(newData);
             });
         },
