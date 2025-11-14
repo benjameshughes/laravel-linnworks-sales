@@ -6,7 +6,8 @@ Alpine.data('baseChart', (config, chartId) => ({
 
     initChart() {
         this.$nextTick(() => {
-            const ctx = this.$refs.canvas.getContext('2d');
+            const ctx = this.$refs.canvas?.getContext('2d');
+            if (!ctx) return;
 
             // Only initialize if we have data
             if (this.config.data?.labels?.length > 0) {
