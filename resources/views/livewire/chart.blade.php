@@ -16,12 +16,19 @@
                 datasetsCount: config.data.datasets.length
             });
 
-            this.processOptions(config.options);
+            // Deep clone config to prevent reference issues
+            const chartConfig = JSON.parse(JSON.stringify(config));
+            this.processOptions(chartConfig.options);
+
+            // Disable animations on initial creation to prevent race conditions
+            if (!chartConfig.options) chartConfig.options = {};
+            if (!chartConfig.options.animation) chartConfig.options.animation = {};
+            chartConfig.options.animation.duration = 0;
 
             try {
-                this.chart = new Chart(this.$refs.canvas, config);
+                this.chart = new Chart(this.$refs.canvas, chartConfig);
             } catch (error) {
-                console.error('[Chart] Creation failed:', error);
+                console.error('[Chart] Creation failed:', error, config);
             }
         },
 
