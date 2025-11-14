@@ -62,7 +62,8 @@ Alpine.data('baseChart', (config, chartId) => ({
                 this.processOptions(options[key]);
             } else if (typeof options[key] === 'string' && options[key].startsWith('function')) {
                 try {
-                    options[key] = eval('(' + options[key] + ')');
+                    // Use Function constructor instead of eval to avoid CSP violations
+                    options[key] = new Function('return ' + options[key])();
                 } catch (e) {
                     console.error('Error parsing function:', e);
                 }

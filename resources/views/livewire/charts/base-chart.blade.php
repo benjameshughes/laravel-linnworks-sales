@@ -1,6 +1,7 @@
 <div
     x-data="baseChart(@js($this->getChartData()), @js($chartId))"
-    x-init="initChart()"
+    x-init="init()"
+    wire:init="initializeChart"
     wire:ignore
     class="relative"
     style="height: {{ $height }}; width: {{ $width }};"

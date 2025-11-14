@@ -45,6 +45,18 @@ abstract class BaseChart extends Component
         }
     }
 
+    public function initializeChart(): void
+    {
+        \Illuminate\Support\Facades\Log::debug('[BaseChart] initializeChart() called via wire:init', [
+            'chartId' => $this->chartId,
+            'hasData' => ! empty($this->data),
+        ]);
+
+        if (! empty($this->data)) {
+            $this->dispatchChartUpdate();
+        }
+    }
+
     protected function getDefaultOptions(): array
     {
         return [
