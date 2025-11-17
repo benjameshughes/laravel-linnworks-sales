@@ -136,8 +136,13 @@ final class WarmPeriodCacheJob implements ShouldQueue
      * Calculate all metrics for this period/channel
      *
      * Memory optimization strategy:
-     * - Small periods (≤180d): Use in-memory collection-based approach (fast, proven)
+     * - Small periods (≤180d): Use service + factory approach (fast, clean architecture)
      * - Large periods (365d, 730d): Use database aggregation (memory-efficient)
+     *
+     * Architecture:
+     * - Core business metrics come from SalesMetrics service
+     * - Chart.js formatting comes from factory (presentation logic)
+     * - Status counts come from factory (status-filtered aggregation)
      */
     private function calculateMetrics(): array
     {
@@ -154,44 +159,60 @@ final class WarmPeriodCacheJob implements ShouldQueue
             return $calculator->calculate();
         }
 
-        // For smaller periods, use existing optimized in-memory approach
-        Log::debug('Using in-memory calculation for small period', [
+        // For smaller periods, use service for core metrics
+        Log::debug('Using service-based calculation for small period', [
             'period' => $this->period,
             'channel' => $this->channel,
             'status' => $this->status,
         ]);
 
+        $service = app(\App\Services\Metrics\Sales\SalesMetrics::class);
+
+        // Get core business metrics from service
+        $summary = $service->getMetricsSummary($this->period, $this->channel);
+        $topChannels = $service->getTopChannels($this->period, $this->channel, 6);
+        $topProducts = $service->getTopProducts($this->period, $this->channel, 5);
+        $recentOrders = $service->getRecentOrders(15);
+        $bestDay = $service->getBestPerformingDay($this->period, $this->channel);
+        $doughnutData = $service->getChannelDistributionData($this->period, $this->channel);
+
+        // Get date range for chart formatters
+        $dateRange = $service->getDateRange($this->period);
+        $startDate = $dateRange['start']->format('Y-m-d');
+        $endDate = $dateRange['end']->format('Y-m-d');
+
+        // For chart formatting and status counts, use factory (presentation logic)
         $repository = app(SalesRepository::class);
         $orders = $repository->getOrdersForPeriodWithFilters(
             period: $this->period,
             channel: $this->channel,
             status: $this->status
         );
-
         $factory = new SalesFactory($orders);
-
-        // Calculate date range
-        // Note: (int) '0' = 0 (today), (int) '1' = 1 (yesterday)
-        $startDate = now()->subDays((int) $this->period)->startOfDay()->format('Y-m-d');
-        $endDate = now()->endOfDay()->format('Y-m-d');
 
         // Build comprehensive metrics data
         return [
-            'revenue' => $factory->totalRevenue(),
-            'orders' => $factory->totalOrders(),
-            'items' => $factory->totalItemsSold(),
-            'avg_order_value' => $factory->averageOrderValue(),
+            // Core metrics from service
+            'revenue' => $summary['total_revenue'],
+            'orders' => $summary['total_orders'],
+            'items' => $summary['total_items'],
+            'avg_order_value' => $summary['average_order_value'],
+            'top_channels' => $topChannels,
+            'top_products' => $topProducts,
+            'recent_orders' => $recentOrders,
+            'best_day' => $bestDay,
+            'chart_doughnut' => $doughnutData,
+
+            // Status counts from factory
             'processed_orders' => $factory->totalProcessedOrders(),
             'open_orders' => $factory->totalOpenOrders(),
-            'top_channels' => $factory->topChannels(6),
-            'top_products' => $factory->topProducts(5),
+
+            // Chart.js formatted data from factory (presentation logic)
             'chart_line' => $factory->getLineChartData($this->period),
             'chart_orders' => $factory->getOrderCountChartData($this->period),
-            'chart_doughnut' => $factory->getDoughnutChartData(),
             'chart_items' => $factory->getItemsSoldChartData($this->period, $startDate, $endDate),
             'chart_orders_revenue' => $factory->getOrdersVsRevenueChartData($this->period, $startDate, $endDate),
-            'recent_orders' => $factory->recentOrders(15),
-            'best_day' => $factory->bestPerformingDay($startDate, $endDate),
+
             'warmed_at' => now()->toISOString(),
         ];
     }
