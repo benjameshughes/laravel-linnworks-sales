@@ -6,9 +6,9 @@ namespace App\Jobs;
 
 use App\Events\CachePeriodWarmed;
 use App\Events\CachePeriodWarmingStarted;
-use App\Services\Dashboard\DashboardDataService;
+use App\Factories\Metrics\Sales\SalesFactory;
+use App\Repositories\Metrics\Sales\SalesRepository;
 use App\Services\Metrics\ChunkedMetricsCalculator;
-use App\Services\Metrics\SalesMetrics;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -161,9 +161,14 @@ final class WarmPeriodCacheJob implements ShouldQueue
             'status' => $this->status,
         ]);
 
-        $service = app(DashboardDataService::class);
-        $orders = $service->getOrders($this->period, $this->channel, $this->status);
-        $metrics = new SalesMetrics($orders);
+        $repository = app(SalesRepository::class);
+        $orders = $repository->getOrdersForPeriodWithFilters(
+            period: $this->period,
+            channel: $this->channel,
+            status: $this->status
+        );
+
+        $factory = new SalesFactory($orders);
 
         // Calculate date range
         // Note: (int) '0' = 0 (today), (int) '1' = 1 (yesterday)
@@ -172,21 +177,21 @@ final class WarmPeriodCacheJob implements ShouldQueue
 
         // Build comprehensive metrics data
         return [
-            'revenue' => $metrics->totalRevenue(),
-            'orders' => $metrics->totalOrders(),
-            'items' => $metrics->totalItemsSold(),
-            'avg_order_value' => $metrics->averageOrderValue(),
-            'processed_orders' => $metrics->totalProcessedOrders(),
-            'open_orders' => $metrics->totalOpenOrders(),
-            'top_channels' => $metrics->topChannels(6),
-            'top_products' => $metrics->topProducts(5),
-            'chart_line' => $metrics->getLineChartData($this->period),
-            'chart_orders' => $metrics->getOrderCountChartData($this->period),
-            'chart_doughnut' => $metrics->getDoughnutChartData(),
-            'chart_items' => $metrics->getItemsSoldChartData($this->period, $startDate, $endDate),
-            'chart_orders_revenue' => $metrics->getOrdersVsRevenueChartData($this->period, $startDate, $endDate),
-            'recent_orders' => $metrics->recentOrders(15),
-            'best_day' => $metrics->bestPerformingDay($startDate, $endDate),
+            'revenue' => $factory->totalRevenue(),
+            'orders' => $factory->totalOrders(),
+            'items' => $factory->totalItemsSold(),
+            'avg_order_value' => $factory->averageOrderValue(),
+            'processed_orders' => $factory->totalProcessedOrders(),
+            'open_orders' => $factory->totalOpenOrders(),
+            'top_channels' => $factory->topChannels(6),
+            'top_products' => $factory->topProducts(5),
+            'chart_line' => $factory->getLineChartData($this->period),
+            'chart_orders' => $factory->getOrderCountChartData($this->period),
+            'chart_doughnut' => $factory->getDoughnutChartData(),
+            'chart_items' => $factory->getItemsSoldChartData($this->period, $startDate, $endDate),
+            'chart_orders_revenue' => $factory->getOrdersVsRevenueChartData($this->period, $startDate, $endDate),
+            'recent_orders' => $factory->recentOrders(15),
+            'best_day' => $factory->bestPerformingDay($startDate, $endDate),
             'warmed_at' => now()->toISOString(),
         ];
     }

@@ -167,7 +167,7 @@ final readonly class SalesMetrics
      */
     public function getBestPerformingDays(int $days): float
     {
-        // Implement this at some point haha
+        // TODO: Implement this at some point haha
         return 9999.99;
     }
 

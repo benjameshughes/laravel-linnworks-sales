@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Models\User;
-use App\Services\Dashboard\DashboardDataService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -18,9 +17,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Register DashboardDataService as singleton
-        // All dashboard islands share same instance = 1 query instead of 8
-        $this->app->singleton(DashboardDataService::class);
+        //
     }
 
     /**
