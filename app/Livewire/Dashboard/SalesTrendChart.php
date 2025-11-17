@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Dashboard\DashboardDataService;
+use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -23,10 +23,12 @@ final class SalesTrendChart extends Component
     public ?string $customTo = null;
 
     public string $viewMode = 'revenue'; // 'revenue' or 'orders'
+    private $metricsService;
 
-    public function mount(): void
+    public function mount(SalesMetricsService $metrics): void
     {
-        $this->period = request('period', '7');
+        // Inject the metrics service
+        $this->metricsService = $metrics;$this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
     }
@@ -56,41 +58,13 @@ final class SalesTrendChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        // CACHE-ONLY MODE: No fallback to prevent OOM on large periods
-        $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
-
-            \Illuminate\Support\Facades\Log::debug('[SalesTrendChart] chartData() called', [
-                'period' => $this->period,
-                'channel' => $this->channel,
-                'status' => $this->status,
-                'viewMode' => $this->viewMode,
-                'hasCached' => (bool) $cached,
-                'cachedKeys' => $cached ? array_keys($cached) : null,
-            ]);
-
-            if ($cached) {
-                if ($this->viewMode === 'orders' && isset($cached['chart_orders'])) {
-                    return $cached['chart_orders'];
-                }
-                if ($this->viewMode === 'revenue' && isset($cached['chart_line'])) {
-                    return $cached['chart_line'];
-                }
-            }
-        }
-
-        \Illuminate\Support\Facades\Log::warning('[SalesTrendChart] Returning empty chart data', [
-            'period' => $this->period,
-            'channel' => $this->channel,
-            'status' => $this->status,
-        ]);
-
-        // Return empty chart if cache unavailable (prevents OOM on large datasets)
-        return [
-            'labels' => [],
-            'datasets' => [],
-        ];
+        return $this->metricsService->getDailyRevenueData(
+            period: $this->period,
+            channel: $this->channel,
+            viewMode: $this->viewMode === 'revenue' ? 'orders_revenue' : 'orders',
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
     }
 
     #[Computed]
@@ -128,11 +102,6 @@ final class SalesTrendChart extends Component
 
     public function render()
     {
-        \Illuminate\Support\Facades\Log::debug('[SalesTrendChart] render() called', [
-            'viewMode' => $this->viewMode,
-            'period' => $this->period,
-        ]);
-
         return view('livewire.dashboard.sales-trend-chart');
     }
 

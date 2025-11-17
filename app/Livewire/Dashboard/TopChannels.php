@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Dashboard\DashboardDataService;
+use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -22,9 +22,12 @@ final class TopChannels extends Component
 
     public ?string $customTo = null;
 
-    public function mount(): void
+    private $metricsService;
+
+    public function mount(SalesMetricsService $metrics): void
     {
-        $this->period = request('period', '7');
+        // Inject the metrics service
+        $this->metricsService = $metrics;$this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
     }
@@ -47,18 +50,13 @@ final class TopChannels extends Component
     #[Computed]
     public function topChannels(): Collection
     {
-        // CACHE-ONLY MODE: No fallback to prevent OOM on large periods
-        $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
-            if ($cached && isset($cached['top_channels'])) {
-                // Cache returns arrays - wrap each channel in collect() for blade compatibility
-                return collect($cached['top_channels'])->map(fn ($item) => collect($item));
-            }
-        }
-
-        // Return empty collection if cache unavailable (prevents OOM on large datasets)
-        return collect();
+        return $this->metricsService->getTopChannels(
+            period: $this->period,
+            channel: $this->channel,
+            limit: 6,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
     }
 
     public function render()

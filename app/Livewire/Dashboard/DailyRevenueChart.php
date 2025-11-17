@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Dashboard\DashboardDataService;
+use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -24,8 +24,12 @@ final class DailyRevenueChart extends Component
 
     public string $viewMode = 'orders_revenue'; // 'orders_revenue' or 'items'
 
-    public function mount(): void
+    private $metricsService;
+
+    public function mount(SalesMetricsService $metrics): void
     {
+        // Inject the metrics service
+        $this->metricsService = $metrics;
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
@@ -56,25 +60,13 @@ final class DailyRevenueChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        // CACHE-ONLY MODE: No fallback to prevent OOM on large periods
-        $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
-            if ($cached) {
-                if ($this->viewMode === 'items' && isset($cached['chart_items'])) {
-                    return $cached['chart_items'];
-                }
-                if ($this->viewMode === 'orders_revenue' && isset($cached['chart_orders_revenue'])) {
-                    return $cached['chart_orders_revenue'];
-                }
-            }
-        }
-
-        // Return empty chart if cache unavailable (prevents OOM on large datasets)
-        return [
-            'labels' => [],
-            'datasets' => [],
-        ];
+        return $this->metricsService->getDailyRevenueData(
+            period: $this->period,
+            channel: $this->channel,
+            viewMode: $this->viewMode,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
     }
 
     #[Computed]

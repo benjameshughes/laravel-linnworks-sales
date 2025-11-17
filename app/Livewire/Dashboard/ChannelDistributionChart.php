@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Dashboard\DashboardDataService;
+use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -23,9 +23,12 @@ final class ChannelDistributionChart extends Component
 
     public string $viewMode = 'detailed'; // 'detailed' (subsource breakdown) or 'grouped' (channel only)
 
-    public function mount(): void
+    private $metricsService;
+
+    public function mount(SalesMetricsService $metrics): void
     {
-        $this->period = request('period', '7');
+        // Inject the metrics service
+        $this->metricsService = $metrics;$this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
     }
@@ -55,27 +58,19 @@ final class ChannelDistributionChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        // CACHE-ONLY MODE: No fallback to prevent OOM on large periods
-        $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
-            if ($cached && isset($cached['chart_doughnut'])) {
-                $detailedData = $cached['chart_doughnut'];
+        $data = $this->metricsService->getChannelDistributionData(
+            period: $this->period,
+            channel: $this->channel,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
 
-                // If grouped view requested, transform detailed data (memory efficient)
-                if ($this->viewMode === 'grouped') {
-                    return $this->transformToGroupedView($detailedData);
-                }
-
-                return $detailedData;
-            }
+        // If grouped view requested, transform detailed data (memory efficient)
+        if ($this->viewMode === 'grouped') {
+            return $this->transformToGroupedView($data);
         }
 
-        // Return empty chart if cache unavailable (prevents OOM on large datasets)
-        return [
-            'labels' => [],
-            'datasets' => [],
-        ];
+        return $data;
     }
 
     /**
