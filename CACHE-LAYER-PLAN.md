@@ -1,5 +1,24 @@
 # Metrics Cache Layer Implementation Plan
 
+## ⚠️ NOTE: Plan Not Implemented
+
+**Decision:** We decided NOT to implement this MetricsCacheService approach to avoid adding bloat.
+
+**What We Did Instead (Phase 4):**
+- Refactored existing `WarmPeriodCacheJob` to use `SalesMetrics` service
+- Deleted unused `UsesCachedMetrics` trait
+- Kept the hybrid approach: Service for business logic, Factory for Chart.js formatting
+- See `REFACTOR-PLAN.md` Phase 4 for details
+
+**Why:**
+- Adding a new service layer would add complexity
+- Existing cache warming already works well
+- Simple refactor was sufficient
+
+---
+
+## Original Plan (For Reference)
+
 ## Goal
 Add a clean cache layer on top of the new metrics architecture WITHOUT touching the pure SalesMetrics service.
 

@@ -195,3 +195,71 @@ public function metrics(): Collection
 ### Future Refactors:
 - Analytics/Comparisons system (apply same pattern)
 - Caching architecture revisit
+
+---
+
+## Phase 4: Refactor Cache System ✅ COMPLETE
+
+**Goal:** Refactor existing cache warming to use new SalesMetrics service instead of direct Repository/Factory calls.
+
+**Completed:** 2025-01-17
+
+### What Changed:
+
+#### `app/Jobs/WarmPeriodCacheJob.php`
+**Before:** Directly used `SalesRepository` + `SalesFactory`
+```php
+$repository = app(SalesRepository::class);
+$orders = $repository->getOrdersForPeriodWithFilters(...);
+$factory = new SalesFactory($orders);
+return [
+    'revenue' => $factory->totalRevenue(),
+    'orders' => $factory->totalOrders(),
+    // ...
+];
+```
+
+**After:** Uses `SalesMetrics` service for core business logic, factory for presentation
+```php
+$service = app(\App\Services\Metrics\Sales\SalesMetrics::class);
+
+// Core metrics from service
+$summary = $service->getMetricsSummary($this->period, $this->channel);
+$topChannels = $service->getTopChannels($this->period, $this->channel, 6);
+// ...
+
+// Chart.js formatting from factory (presentation logic)
+$factory = new SalesFactory($orders);
+return [
+    'revenue' => $summary['total_revenue'],
+    'chart_line' => $factory->getLineChartData($this->period),
+    // ...
+];
+```
+
+#### `app/Livewire/Dashboard/Concerns/UsesCachedMetrics.php`
+**Status:** DELETED ❌
+- Trait was NOT used by any Livewire components
+- Added complexity without providing value
+- Components call service directly instead
+
+### Architecture Decision:
+**Hybrid Approach:**
+- ✅ Core business metrics → Service (totalRevenue, topChannels, topProducts, etc.)
+- ✅ Chart.js formatting → Factory (presentation logic, not business logic)
+- ✅ Status counts → Factory (status-filtered aggregation)
+- ✅ ChunkedMetricsCalculator → Kept for large periods (365d, 730d)
+
+### Benefits:
+- Clean separation of concerns (business vs presentation)
+- Service stays focused on core metrics
+- No bloat (no MetricsCacheService created)
+- Removed 55 lines of unused code (-94 lines, +39 lines)
+- All 148 tests passing ✅
+
+### Results:
+- **Files Modified:** 1 (WarmPeriodCacheJob.php)
+- **Files Deleted:** 1 (UsesCachedMetrics.php)
+- **Net Lines:** -55 lines
+- **Tests:** 148 passing
+- **Performance:** Cache warming still efficient, now uses cleaner architecture
