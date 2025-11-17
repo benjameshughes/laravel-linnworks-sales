@@ -130,9 +130,30 @@ public function metrics(): Collection
 
 ---
 
-## Phase 3: Delete Old Files ⬅️ READY TO START
+## Phase 2.5: Update Remaining Dependencies ⬅️ IN PROGRESS
 
-### Files to Delete:
+**Discovery:** The 7 Livewire components are updated, but other parts still use old architecture!
+
+### Files to Update Before Deletion:
+- [ ] `app/Jobs/WarmPeriodCacheJob.php` - Update to use new SalesMetricsService
+- [ ] `app/Livewire/Dashboard/Concerns/UsesCachedMetrics.php` - Update trait to use new service
+- [ ] `app/Providers/AppServiceProvider.php` - Remove/update DashboardDataService singleton
+
+### Files to LEAVE ALONE (for now):
+- ⏸️ `app/Services/Analytics/AnalyticsService.php` - Separate system, refactor later
+- ⏸️ `app/Services/Analytics/ComparisonEngine.php` - Separate system, refactor later
+- ⏸️ Caching system - Needs architectural discussion first
+
+### Notes:
+- Caching works well (lazy, chunking, streaming) - keep the pattern, revisit implementation
+- Analytics/Comparisons could benefit from same Repo/Factory/Service pattern later
+- Focus: Make WarmPeriodCacheJob and UsesCachedMetrics use new architecture
+
+---
+
+## Phase 3: Delete Old Files (BLOCKED - waiting on Phase 2.5)
+
+### Files to Delete (after Phase 2.5):
 - [ ] `app/Services/Metrics/SalesMetrics.php` (old 975 line monster)
 - [ ] `app/Services/Dashboard/DashboardDataService.php`
 - [ ] `app/Services/Metrics/MetricBase.php` (if not used elsewhere)
@@ -143,7 +164,7 @@ public function metrics(): Collection
 ## Progress Tracking
 
 **Started:** 2025-01-17
-**Current Phase:** 3
+**Current Phase:** 2.5
 **Last Updated:** 2025-01-17
 **Phase 1 Completed:** 2025-01-17
 **Phase 2 Completed:** 2025-01-17
@@ -159,4 +180,4 @@ public function metrics(): Collection
 - ✅ **Removed 150+ lines of redundant code**
 
 ### Next Action:
-Delete old bloated files (Phase 3) - The cleansing begins! 🔥
+Update WarmPeriodCacheJob, UsesCachedMetrics, and AppServiceProvider to use new architecture (Phase 2.5)
