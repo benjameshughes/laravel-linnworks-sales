@@ -18,7 +18,7 @@ final readonly class SalesMetrics
      * Get metrics summary (total revenue, orders, avg order value, items, orders per day)
      */
     public function getMetricsSummary(
-        string $period,
+        string $period = '7',
         string $channel = 'all',
         ?string $customFrom = null,
         ?string $customTo = null
@@ -160,6 +160,15 @@ final readonly class SalesMetrics
         $previousFactory = new SalesFactory($previousOrders);
 
         return $currentFactory->growthRate($previousFactory);
+    }
+
+    /**
+     * Calculate the highest revenue on a period
+     */
+    public function getBestPerformingDays(int $days): float
+    {
+        // Implement this at some point haha
+        return 9999.99;
     }
 
     /**
