@@ -24,12 +24,8 @@ final class SalesTrendChart extends Component
 
     public string $viewMode = 'revenue'; // 'revenue' or 'orders'
 
-    private $metricsService;
-
-    public function mount(SalesMetricsService $metrics): void
+    public function mount(): void
     {
-        // Inject the metrics service
-        $this->metricsService = $metrics;
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
@@ -60,13 +56,14 @@ final class SalesTrendChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        return $this->metricsService->getDailyRevenueData(
+        $data = app(SalesMetricsService::class)->getDailyRevenueData(
             period: $this->period,
-            channel: $this->channel,
-            viewMode: $this->viewMode === 'revenue' ? 'orders_revenue' : 'orders',
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );
+
+        // Return as array for chart consumption
+        return $data->toArray();
     }
 
     #[Computed]

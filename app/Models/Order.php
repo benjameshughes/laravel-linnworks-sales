@@ -39,6 +39,7 @@ class Order extends Model
         'processed_date',
         'notes',
         'raw_data',
+        'items',
         'order_source',
         'subsource',
         'tax',
@@ -86,6 +87,7 @@ class Order extends Model
             'is_processed' => 'boolean',
             'has_refund' => 'boolean',
             'sync_metadata' => 'array',
+            'items' => 'array',
             // Extended order field casts
             'is_parked' => 'boolean',
             'despatch_by_date' => 'datetime',

@@ -22,12 +22,8 @@ final class TopProducts extends Component
 
     public ?string $customTo = null;
 
-    private $metricsService;
-
-    public function mount(SalesMetricsService $metrics): void
+    public function mount(): void
     {
-        // Inject the metrics service
-        $this->metricsService = $metrics;
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
@@ -51,7 +47,7 @@ final class TopProducts extends Component
     #[Computed]
     public function topProducts(): Collection
     {
-        return $this->metricsService->getTopProducts(
+        return app(SalesMetricsService::class)->getTopProducts(
             period: $this->period,
             channel: $this->channel,
             limit: 10,

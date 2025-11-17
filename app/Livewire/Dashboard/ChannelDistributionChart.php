@@ -23,12 +23,8 @@ final class ChannelDistributionChart extends Component
 
     public string $viewMode = 'detailed'; // 'detailed' (subsource breakdown) or 'grouped' (channel only)
 
-    private $metricsService;
-
-    public function mount(SalesMetricsService $metrics): void
+    public function mount(): void
     {
-        // Inject the metrics service
-        $this->metricsService = $metrics;
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
@@ -59,7 +55,7 @@ final class ChannelDistributionChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        $data = $this->metricsService->getChannelDistributionData(
+        $data = app(SalesMetricsService::class)->getChannelDistributionData(
             period: $this->period,
             channel: $this->channel,
             customFrom: $this->customFrom,

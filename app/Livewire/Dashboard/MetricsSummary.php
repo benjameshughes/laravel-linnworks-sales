@@ -22,13 +22,8 @@ final class MetricsSummary extends Component
 
     public ?string $customTo = null;
 
-    private $metricsService;
-
-    public function mount(SalesMetricsService $metrics): void
+    public function mount(): void
     {
-        // Inject the metrics service
-        $this->metricsService = $metrics;
-        // Initialize from query params if available
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
@@ -52,7 +47,7 @@ final class MetricsSummary extends Component
     #[Computed]
     public function metrics(): Collection
     {
-        return $this->metricsService->getMetricsSummary(
+        return app(SalesMetricsService::class)->getMetricsSummary(
             period: $this->period,
             channel: $this->channel,
             customFrom: $this->customFrom,
@@ -63,7 +58,7 @@ final class MetricsSummary extends Component
     #[Computed]
     public function dateRange(): Collection
     {
-        return $this->metricsService->getDateRange(
+        return app(SalesMetricsService::class)->getDateRange(
             period: $this->period,
             customFrom: $this->customFrom,
             customTo: $this->customTo
@@ -73,7 +68,7 @@ final class MetricsSummary extends Component
     #[Computed]
     public function bestDay(): Collection|array|null
     {
-        return $this->metricsService->getBestPerformingDay(
+        return app(SalesMetricsService::class)->getBestPerformingDay(
             period: $this->period,
             channel: $this->channel,
             customFrom: $this->customFrom,

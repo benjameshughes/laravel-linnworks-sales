@@ -23,7 +23,7 @@ final class SalesFactory
 
     public function averageOrderValue(): float
     {
-        return $this->orders->avg('total_charge');
+        return $this->orders->avg('total_charge') ?? 0.0;
     }
 
     public function averageOrderPrice(): float

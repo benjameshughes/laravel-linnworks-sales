@@ -22,12 +22,8 @@ final class RecentOrders extends Component
 
     public ?string $customTo = null;
 
-    private $metricsService;
-
-    public function mount(SalesMetricsService $metrics): void
+    public function mount(): void
     {
-        // Inject the metrics service
-        $this->metricsService = $metrics;
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
@@ -51,13 +47,13 @@ final class RecentOrders extends Component
     #[Computed]
     public function recentOrders(): Collection
     {
-        return $this->metricsService->getRecentOrders(limit: 15);
+        return app(SalesMetricsService::class)->getRecentOrders(limit: 15);
     }
 
     #[Computed]
     public function totalOrders(): int
     {
-        $metrics = $this->metricsService->getMetricsSummary(
+        $metrics = app(SalesMetricsService::class)->getMetricsSummary(
             period: $this->period,
             channel: $this->channel,
             customFrom: $this->customFrom,

@@ -22,12 +22,8 @@ final class TopChannels extends Component
 
     public ?string $customTo = null;
 
-    private $metricsService;
-
-    public function mount(SalesMetricsService $metrics): void
+    public function mount(): void
     {
-        // Inject the metrics service
-        $this->metricsService = $metrics;
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
@@ -51,7 +47,7 @@ final class TopChannels extends Component
     #[Computed]
     public function topChannels(): Collection
     {
-        return $this->metricsService->getTopChannels(
+        return app(SalesMetricsService::class)->getTopChannels(
             period: $this->period,
             channel: $this->channel,
             limit: 6,
