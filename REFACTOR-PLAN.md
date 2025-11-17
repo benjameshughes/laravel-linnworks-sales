@@ -130,14 +130,14 @@ public function metrics(): Collection
 
 ---
 
-## Phase 2.5: Update Remaining Dependencies ⬅️ IN PROGRESS
+## Phase 2.5: Update Remaining Dependencies ✅ COMPLETE
 
 **Discovery:** The 7 Livewire components are updated, but other parts still use old architecture!
 
-### Files to Update Before Deletion:
-- [ ] `app/Jobs/WarmPeriodCacheJob.php` - Update to use new SalesMetricsService
-- [ ] `app/Livewire/Dashboard/Concerns/UsesCachedMetrics.php` - Update trait to use new service
-- [ ] `app/Providers/AppServiceProvider.php` - Remove/update DashboardDataService singleton
+### Files Updated:
+- ✅ `app/Jobs/WarmPeriodCacheJob.php` - Now uses SalesRepository + SalesFactory
+- ✅ `app/Livewire/Dashboard/Concerns/UsesCachedMetrics.php` - Updated trait to use new architecture
+- ✅ `app/Providers/AppServiceProvider.php` - Removed DashboardDataService singleton registration
 
 ### Files to LEAVE ALONE (for now):
 - ⏸️ `app/Services/Analytics/AnalyticsService.php` - Separate system, refactor later
@@ -151,23 +151,26 @@ public function metrics(): Collection
 
 ---
 
-## Phase 3: Delete Old Files (BLOCKED - waiting on Phase 2.5)
+## Phase 3: Delete Old Files ⬅️ READY TO START
 
-### Files to Delete (after Phase 2.5):
-- [ ] `app/Services/Metrics/SalesMetrics.php` (old 975 line monster)
-- [ ] `app/Services/Dashboard/DashboardDataService.php`
-- [ ] `app/Services/Metrics/MetricBase.php` (if not used elsewhere)
-- [ ] `app/Services/Metrics/ChunkedMetricsCalculator.php` (if not used elsewhere)
+### Files to Verify and Delete:
+- [ ] `app/Services/Metrics/SalesMetrics.php` (old 975 line monster) - CHECK FOR REFERENCES
+- [ ] `app/Services/Dashboard/DashboardDataService.php` - CHECK FOR REFERENCES
+- [ ] `app/Services/Metrics/MetricBase.php` (if not used elsewhere) - CHECK FOR REFERENCES
+- [ ] `app/Services/Metrics/ChunkedMetricsCalculator.php` (if not used elsewhere) - CHECK FOR REFERENCES
+
+**Note:** Need to verify no remaining references before deletion.
 
 ---
 
 ## Progress Tracking
 
 **Started:** 2025-01-17
-**Current Phase:** 2.5
+**Current Phase:** 3
 **Last Updated:** 2025-01-17
 **Phase 1 Completed:** 2025-01-17
 **Phase 2 Completed:** 2025-01-17
+**Phase 2.5 Completed:** 2025-01-17
 
 ### Wins So Far:
 - ✅ Built Repository/Factory/Service architecture
@@ -178,6 +181,8 @@ public function metrics(): Collection
 - ✅ **Updated all 7 Livewire components (Phase 2)**
 - ✅ **Fixed OOM issues in MetricsSummary**
 - ✅ **Removed 150+ lines of redundant code**
+- ✅ **Updated WarmPeriodCacheJob, UsesCachedMetrics, AppServiceProvider (Phase 2.5)**
+- ✅ **Removed DashboardDataService singleton**
 
 ### Next Action:
-Update WarmPeriodCacheJob, UsesCachedMetrics, and AppServiceProvider to use new architecture (Phase 2.5)
+Verify old files have no remaining references, then delete them (Phase 3)
