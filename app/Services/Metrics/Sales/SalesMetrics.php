@@ -139,7 +139,7 @@ final readonly class SalesMetrics
     /**
      * Calculate the highest revenue on a period
      */
-    public function getBestPerformingDays(int $days): float
+    public function getBestPerformingDay(int $days): float
     {
         // TODO: Implement this at some point haha
         return 9999.99;
