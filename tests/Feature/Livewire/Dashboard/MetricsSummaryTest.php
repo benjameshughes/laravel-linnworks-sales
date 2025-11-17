@@ -123,7 +123,7 @@ describe('MetricsSummary Livewire Component', function () {
 
         $metrics = $component->get('metrics');
 
-        expect($metrics['total_revenue'])->toBe(0)
+        expect($metrics['total_revenue'])->toBe(0.0)
             ->and($metrics['total_orders'])->toBe(0)
             ->and($metrics['total_items'])->toBe(0);
     });

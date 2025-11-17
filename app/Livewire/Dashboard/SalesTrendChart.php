@@ -56,14 +56,28 @@ final class SalesTrendChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        $data = app(SalesMetricsService::class)->getDailyRevenueData(
+        $dailyBreakdown = app(SalesMetricsService::class)->getDailyRevenueData(
             period: $this->period,
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );
 
-        // Return as array for chart consumption
-        return $data->toArray();
+        // Transform daily breakdown into Chart.js format
+        $labels = $dailyBreakdown->pluck('date')->toArray();
+        $dataValues = $dailyBreakdown->pluck($this->viewMode === 'revenue' ? 'revenue' : 'orders')->toArray();
+
+        return [
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'label' => $this->viewMode === 'revenue' ? 'Revenue' : 'Orders',
+                    'data' => $dataValues,
+                    'borderColor' => 'rgb(59, 130, 246)',
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
+                    'fill' => true,
+                ],
+            ],
+        ];
     }
 
     #[Computed]

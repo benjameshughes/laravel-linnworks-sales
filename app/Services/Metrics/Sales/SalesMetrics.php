@@ -137,11 +137,102 @@ final readonly class SalesMetrics
     }
 
     /**
+     * Get the date range for the given period
+     */
+    public function getDateRange(
+        string $period,
+        ?string $customFrom = null,
+        ?string $customTo = null
+    ): Collection {
+        $dates = (new CalculatePeriodDates)($period, $customFrom, $customTo);
+
+        return collect([
+            'start' => $dates['start'],
+            'end' => $dates['end'],
+            'days' => $dates['days'],
+        ]);
+    }
+
+    /**
+     * Get channel distribution data formatted for doughnut chart
+     */
+    public function getChannelDistributionData(
+        string $period,
+        string $channel = 'all',
+        ?string $customFrom = null,
+        ?string $customTo = null
+    ): array {
+        $topChannels = $this->getTopChannels($period, $channel, 10, $customFrom, $customTo);
+
+        if ($topChannels->isEmpty()) {
+            return [
+                'labels' => [],
+                'datasets' => [
+                    [
+                        'label' => 'Revenue by Channel',
+                        'data' => [],
+                        'backgroundColor' => [],
+                        'borderWidth' => 2,
+                    ],
+                ],
+            ];
+        }
+
+        // Color palette for channels
+        $colors = [
+            '#3B82F6', // blue
+            '#10B981', // green
+            '#F59E0B', // amber
+            '#EF4444', // red
+            '#8B5CF6', // purple
+            '#EC4899', // pink
+            '#14B8A6', // teal
+            '#F97316', // orange
+            '#6366F1', // indigo
+            '#84CC16', // lime
+        ];
+
+        $labels = $topChannels->pluck('channel')->toArray();
+        $data = $topChannels->pluck('revenue')->toArray();
+        $backgroundColor = array_slice($colors, 0, count($labels));
+
+        return [
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'label' => 'Revenue by Channel',
+                    'data' => $data,
+                    'backgroundColor' => $backgroundColor,
+                    'borderWidth' => 2,
+                ],
+            ],
+        ];
+    }
+
+    /**
      * Calculate the highest revenue on a period
      */
-    public function getBestPerformingDay(int $days): float
-    {
-        // TODO: Implement this at some point haha
-        return 9999.99;
+    public function getBestPerformingDay(
+        string $period,
+        string $channel = 'all',
+        ?string $customFrom = null,
+        ?string $customTo = null
+    ): Collection|array|null {
+        $dates = (new CalculatePeriodDates)($period, $customFrom, $customTo);
+        $orders = $this->salesRepo->getOrdersForPeriod($dates['start'], $dates['end']);
+
+        // Filter by channel if not 'all'
+        if ($channel !== 'all') {
+            $orders = $orders->where('channel_name', $channel);
+        }
+
+        // Get daily breakdown
+        $dateRange = (new BuildDateRangeForPeriod)($period, $customFrom, $customTo);
+        $dailyBreakdown = (new BuildDailyBreakdown)($orders, $dateRange);
+
+        // Find the day with highest revenue
+        $bestDay = $dailyBreakdown->sortByDesc('revenue')->first();
+
+        return $bestDay ?: null;
     }
 }

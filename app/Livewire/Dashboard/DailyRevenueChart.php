@@ -56,14 +56,48 @@ final class DailyRevenueChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        $data = app(SalesMetricsService::class)->getDailyRevenueData(
+        $dailyBreakdown = app(SalesMetricsService::class)->getDailyRevenueData(
             period: $this->period,
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );
 
-        // Return as array for chart consumption
-        return $data->toArray();
+        // Transform daily breakdown into Chart.js format
+        $labels = $dailyBreakdown->pluck('date')->toArray();
+
+        if ($this->viewMode === 'orders_revenue') {
+            return [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => 'Orders',
+                        'data' => $dailyBreakdown->pluck('orders')->toArray(),
+                        'borderColor' => 'rgb(59, 130, 246)',
+                        'backgroundColor' => 'rgba(59, 130, 246, 0.8)',
+                        'type' => 'bar',
+                    ],
+                    [
+                        'label' => 'Revenue',
+                        'data' => $dailyBreakdown->pluck('revenue')->toArray(),
+                        'borderColor' => 'rgb(34, 197, 94)',
+                        'backgroundColor' => 'rgba(34, 197, 94, 0.8)',
+                        'type' => 'bar',
+                    ],
+                ],
+            ];
+        } else {
+            return [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => 'Items Sold',
+                        'data' => $dailyBreakdown->pluck('items')->toArray(),
+                        'borderColor' => 'rgb(168, 85, 247)',
+                        'backgroundColor' => 'rgba(168, 85, 247, 0.8)',
+                    ],
+                ],
+            ];
+        }
     }
 
     #[Computed]
