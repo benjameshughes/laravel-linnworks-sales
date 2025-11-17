@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Metrics\Sales;
 
+use App\Actions\Calculations\Sales\BuildDailyBreakdown;
+use App\Actions\Calculations\Sales\BuildDateRangeForPeriod;
+use App\Actions\Calculations\Sales\CalculatePeriodDates;
 use App\Factories\Metrics\Sales\SalesFactory;
 use App\Repositories\Metrics\Sales\SalesRepository;
 use Carbon\Carbon;
-use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
 
 final readonly class SalesMetrics
@@ -23,7 +25,7 @@ final readonly class SalesMetrics
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
-        $dates = $this->calculateDates($period, $customFrom, $customTo);
+        $dates = new CalculatePeriodDates($period, $customFrom, $customTo);
         $orders = $this->salesRepo->getOrdersForPeriod($dates['start'], $dates['end']);
 
         // Filter by channel if not 'all'
@@ -52,7 +54,7 @@ final readonly class SalesMetrics
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
-        $dates = $this->calculateDates($period, $customFrom, $customTo);
+        $dates = new CalculatePeriodDates($period, $customFrom, $customTo);
         $orders = $this->salesRepo->getOrdersForPeriod($dates['start'], $dates['end']);
 
         // Filter by channel if not 'all'
@@ -75,7 +77,7 @@ final readonly class SalesMetrics
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
-        $dates = $this->calculateDates($period, $customFrom, $customTo);
+        $dates = new CalculatePeriodDates($period, $customFrom, $customTo);
         $orders = $this->salesRepo->getOrdersForPeriod($dates['start'], $dates['end']);
 
         // Filter by channel if not 'all'
@@ -104,39 +106,11 @@ final readonly class SalesMetrics
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
-        $dates = $this->calculateDates($period, $customFrom, $customTo);
+        $dates = new CalculatePeriodDates($period, $customFrom, $customTo);
         $orders = $this->salesRepo->getOrdersForPeriod($dates['start'], $dates['end']);
+        $dateRange = new BuildDateRangeForPeriod($period, $customFrom, $customTo);
 
-        // Build date range for the period
-        if ($period === 'custom' && $customFrom && $customTo) {
-            $start = Carbon::parse($customFrom)->startOfDay();
-            $end = Carbon::parse($customTo)->startOfDay();
-            $dateRange = collect(CarbonPeriod::create($start, '1 day', $end));
-        } elseif ($period === '0') {
-            // Today - return 3 points to center the bar in charts
-            $today = Carbon::today();
-            $dateRange = collect([
-                $today->copy()->subDay(),
-                $today,
-                $today->copy()->addDay(),
-            ]);
-        } elseif ($period === '1') {
-            // Yesterday - return 3 points to center the bar in charts
-            $yesterday = Carbon::yesterday();
-            $dateRange = collect([
-                $yesterday->copy()->subDay(),
-                $yesterday,
-                $yesterday->copy()->addDay(),
-            ]);
-        } else {
-            // Last N days
-            $days = (int) max(1, $period);
-            $dateRange = collect(range($days - 1, 0))
-                ->map(fn (int $daysAgo) => Carbon::now()->subDays($daysAgo));
-        }
-
-        // Build daily breakdown
-        return $this->buildDailyBreakdown($orders, $dateRange, $period);
+        return new BuildDailyBreakdown($orders, $dateRange);
     }
 
     /**
@@ -169,91 +143,5 @@ final readonly class SalesMetrics
     {
         // TODO: Implement this at some point haha
         return 9999.99;
-    }
-
-    /**
-     * Calculate start/end dates and days for a given period
-     */
-    private function calculateDates(string $period, ?string $customFrom, ?string $customTo): array
-    {
-        if ($period === 'custom' && $customFrom && $customTo) {
-            $start = Carbon::parse($customFrom)->startOfDay();
-            $end = Carbon::parse($customTo)->endOfDay();
-            $days = max(1, $start->diffInDays($end) + 1);
-
-            return ['start' => $start, 'end' => $end, 'days' => $days];
-        }
-
-        if ($period === '1') {
-            // Yesterday
-            $start = Carbon::yesterday()->startOfDay();
-            $end = Carbon::yesterday()->endOfDay();
-
-            return ['start' => $start, 'end' => $end, 'days' => 1];
-        }
-
-        if ($period === '0') {
-            // Today
-            $start = Carbon::today()->startOfDay();
-            $end = Carbon::now();
-
-            return ['start' => $start, 'end' => $end, 'days' => 1];
-        }
-
-        // Last N days (e.g., "7", "30", "90")
-        $days = max(1, (int) $period);
-        $end = Carbon::now();
-        $start = Carbon::now()->subDays($days)->startOfDay();
-
-        return ['start' => $start, 'end' => $end, 'days' => $days];
-    }
-
-    /**
-     * Build daily breakdown for chart data
-     */
-    private function buildDailyBreakdown(Collection $orders, Collection $dateRange, string $period): Collection
-    {
-        // Initialize empty data structure for each date
-        $dailyData = [];
-
-        foreach ($dateRange as $date) {
-            $dailyData[$date->format('Y-m-d')] = [
-                'date' => $date->format('M j, Y'),
-                'iso_date' => $date->format('Y-m-d'),
-                'day' => $date->format('D'),
-                'revenue' => 0.0,
-                'orders' => 0,
-                'items' => 0,
-            ];
-        }
-
-        // Single pass through orders - bucket by date
-        foreach ($orders as $order) {
-            if (! $order->received_date) {
-                continue;
-            }
-
-            $dateKey = $order->received_date instanceof Carbon
-                ? $order->received_date->format('Y-m-d')
-                : Carbon::parse($order->received_date)->format('Y-m-d');
-
-            if (! isset($dailyData[$dateKey])) {
-                continue;
-            }
-
-            $revenue = (float) $order->total_charge;
-            $itemsCount = collect($order->items ?? [])->sum('quantity');
-
-            $dailyData[$dateKey]['revenue'] += $revenue;
-            $dailyData[$dateKey]['orders']++;
-            $dailyData[$dateKey]['items'] += $itemsCount;
-        }
-
-        // Convert to collection and calculate avg_order_value
-        return collect($dailyData)->map(function (array $day) {
-            $day['avg_order_value'] = $day['orders'] > 0 ? $day['revenue'] / $day['orders'] : 0;
-
-            return collect($day);
-        })->values();
     }
 }

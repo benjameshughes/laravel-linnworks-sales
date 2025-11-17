@@ -102,4 +102,10 @@ final class SalesFactory
 
         return (($currentRevenue - $previousRevenue) / $previousRevenue) * 100;
     }
+
+    public function getBestPerformingDay(string $period, ?string $customFrom, ?string $customTo): float
+    {
+        // TODO: implement this, for now return a float
+        return 9999.99;
+    }
 }
