@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Factories\Metrics\Sales;
@@ -8,9 +9,7 @@ use Illuminate\Support\Collection;
 
 final class SalesFactory
 {
-    public function __construct(private readonly Collection $orders)
-    {
-    }
+    public function __construct(private readonly Collection $orders) {}
 
     public function totalRevenue(): float
     {
@@ -44,7 +43,7 @@ final class SalesFactory
 
     public function totalItemsSold(): int
     {
-        return $this->orders->sum(fn($order) => collect($order->items)->sum('quantity'));
+        return $this->orders->sum(fn ($order) => collect($order->items)->sum('quantity'));
     }
 
     public function totalProcessedOrders(): float

@@ -28,7 +28,8 @@ final class ChannelDistributionChart extends Component
     public function mount(SalesMetricsService $metrics): void
     {
         // Inject the metrics service
-        $this->metricsService = $metrics;$this->period = request('period', '7');
+        $this->metricsService = $metrics;
+        $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
     }

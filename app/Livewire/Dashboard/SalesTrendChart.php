@@ -23,12 +23,14 @@ final class SalesTrendChart extends Component
     public ?string $customTo = null;
 
     public string $viewMode = 'revenue'; // 'revenue' or 'orders'
+
     private $metricsService;
 
     public function mount(SalesMetricsService $metrics): void
     {
         // Inject the metrics service
-        $this->metricsService = $metrics;$this->period = request('period', '7');
+        $this->metricsService = $metrics;
+        $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
     }

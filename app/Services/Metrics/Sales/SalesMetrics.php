@@ -25,7 +25,7 @@ final readonly class SalesMetrics
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
-        $dates = new CalculatePeriodDates($period, $customFrom, $customTo);
+        $dates = (new CalculatePeriodDates)($period, $customFrom, $customTo);
         $orders = $this->salesRepo->getOrdersForPeriod($dates['start'], $dates['end']);
 
         // Filter by channel if not 'all'
@@ -54,7 +54,7 @@ final readonly class SalesMetrics
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
-        $dates = new CalculatePeriodDates($period, $customFrom, $customTo);
+        $dates = (new CalculatePeriodDates)($period, $customFrom, $customTo);
         $orders = $this->salesRepo->getOrdersForPeriod($dates['start'], $dates['end']);
 
         // Filter by channel if not 'all'
@@ -77,7 +77,7 @@ final readonly class SalesMetrics
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
-        $dates = new CalculatePeriodDates($period, $customFrom, $customTo);
+        $dates = (new CalculatePeriodDates)($period, $customFrom, $customTo);
         $orders = $this->salesRepo->getOrdersForPeriod($dates['start'], $dates['end']);
 
         // Filter by channel if not 'all'
@@ -106,11 +106,11 @@ final readonly class SalesMetrics
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
-        $dates = new CalculatePeriodDates($period, $customFrom, $customTo);
+        $dates = (new CalculatePeriodDates)($period, $customFrom, $customTo);
         $orders = $this->salesRepo->getOrdersForPeriod($dates['start'], $dates['end']);
-        $dateRange = new BuildDateRangeForPeriod($period, $customFrom, $customTo);
+        $dateRange = (new BuildDateRangeForPeriod)($period, $customFrom, $customTo);
 
-        return new BuildDailyBreakdown($orders, $dateRange);
+        return (new BuildDailyBreakdown)($orders, $dateRange);
     }
 
     /**
