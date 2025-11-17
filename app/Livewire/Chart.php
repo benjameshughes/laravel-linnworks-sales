@@ -75,6 +75,9 @@ final class Chart extends Component
             'line' => [
                 'responsive' => true,
                 'maintainAspectRatio' => false,
+                'animation' => [
+                    'duration' => 300,
+                ],
                 'plugins' => [
                     'legend' => [
                         'display' => true,
@@ -126,6 +129,9 @@ final class Chart extends Component
             'area' => [
                 'responsive' => true,
                 'maintainAspectRatio' => false,
+                'animation' => [
+                    'duration' => 300,
+                ],
                 'plugins' => [
                     'legend' => [
                         'display' => true,
@@ -170,6 +176,9 @@ final class Chart extends Component
             'bar' => [
                 'responsive' => true,
                 'maintainAspectRatio' => false,
+                'animation' => [
+                    'duration' => 300,
+                ],
                 'plugins' => [
                     'legend' => [
                         'display' => true,
@@ -206,6 +215,9 @@ final class Chart extends Component
             'doughnut' => [
                 'responsive' => true,
                 'maintainAspectRatio' => false,
+                'animation' => [
+                    'duration' => 300,
+                ],
                 'cutout' => '60%',
                 'plugins' => [
                     'legend' => [
@@ -221,9 +233,6 @@ final class Chart extends Component
                     ],
                     'tooltip' => [
                         'enabled' => true,
-                        'callbacks' => [
-                            'label' => '__DOUGHNUT_LABEL_CALLBACK__',
-                        ],
                     ],
                 ],
             ],
@@ -231,6 +240,9 @@ final class Chart extends Component
             'pie' => [
                 'responsive' => true,
                 'maintainAspectRatio' => false,
+                'animation' => [
+                    'duration' => 300,
+                ],
                 'plugins' => [
                     'legend' => [
                         'display' => true,
@@ -245,9 +257,6 @@ final class Chart extends Component
                     ],
                     'tooltip' => [
                         'enabled' => true,
-                        'callbacks' => [
-                            'label' => '__PIE_LABEL_CALLBACK__',
-                        ],
                     ],
                 ],
             ],
@@ -255,6 +264,9 @@ final class Chart extends Component
             'mixed' => [
                 'responsive' => true,
                 'maintainAspectRatio' => false,
+                'animation' => [
+                    'duration' => 300,
+                ],
                 'plugins' => [
                     'legend' => [
                         'display' => true,
@@ -285,6 +297,9 @@ final class Chart extends Component
             default => [
                 'responsive' => true,
                 'maintainAspectRatio' => false,
+                'animation' => [
+                    'duration' => 300,
+                ],
                 'plugins' => [
                     'legend' => [
                         'display' => true,

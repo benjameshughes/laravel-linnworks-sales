@@ -8,12 +8,12 @@
                 <span class="text-zinc-400">•</span>
                 <span class="font-medium text-zinc-900 dark:text-zinc-100 transition-all duration-300"
                       x-data="{ orders: {{ $this->totalOrders }} }"
-                      x-init="$watch('orders', () => { $el.classList.add('scale-110', 'text-blue-600', 'dark:text-blue-400'); setTimeout(() => $el.classList.remove('scale-110', 'text-blue-600', 'dark:text-blue-400'), 500) })"
-                      x-effect="orders = {{ $this->totalOrders }}">
+                      x-init="$watch('orders', () => { $el.classList.add('scale-110', 'text-blue-600', 'dark:text-blue-400'); setTimeout(() => $el.classList.remove('scale-110', 'text-blue-600', 'dark:text-blue-400'), 500) })">
                     {{ number_format($this->totalOrders) }} orders
                 </span>
                 <span class="text-zinc-400">•</span>
                 <span class="flex items-center gap-1"
+                      wire:ignore
                       x-data="{
                           elapsed: {{ $this->lastSyncInfo->get('elapsed_seconds', 0) }},
                           interval: null,
