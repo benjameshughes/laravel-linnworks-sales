@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Dashboard\DashboardDataService;
+use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -56,25 +56,48 @@ final class DailyRevenueChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        // CACHE-ONLY MODE: No fallback to prevent OOM on large periods
-        $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
-            if ($cached) {
-                if ($this->viewMode === 'items' && isset($cached['chart_items'])) {
-                    return $cached['chart_items'];
-                }
-                if ($this->viewMode === 'orders_revenue' && isset($cached['chart_orders_revenue'])) {
-                    return $cached['chart_orders_revenue'];
-                }
-            }
-        }
+        $dailyBreakdown = app(SalesMetricsService::class)->getDailyRevenueData(
+            period: $this->period,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
 
-        // Return empty chart if cache unavailable (prevents OOM on large datasets)
-        return [
-            'labels' => [],
-            'datasets' => [],
-        ];
+        // Transform daily breakdown into Chart.js format
+        $labels = $dailyBreakdown->pluck('date')->toArray();
+
+        if ($this->viewMode === 'orders_revenue') {
+            return [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => 'Orders',
+                        'data' => $dailyBreakdown->pluck('orders')->toArray(),
+                        'borderColor' => 'rgb(59, 130, 246)',
+                        'backgroundColor' => 'rgba(59, 130, 246, 0.8)',
+                        'type' => 'bar',
+                    ],
+                    [
+                        'label' => 'Revenue',
+                        'data' => $dailyBreakdown->pluck('revenue')->toArray(),
+                        'borderColor' => 'rgb(34, 197, 94)',
+                        'backgroundColor' => 'rgba(34, 197, 94, 0.8)',
+                        'type' => 'bar',
+                    ],
+                ],
+            ];
+        } else {
+            return [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => 'Items Sold',
+                        'data' => $dailyBreakdown->pluck('items')->toArray(),
+                        'borderColor' => 'rgb(168, 85, 247)',
+                        'backgroundColor' => 'rgba(168, 85, 247, 0.8)',
+                    ],
+                ],
+            ];
+        }
     }
 
     #[Computed]

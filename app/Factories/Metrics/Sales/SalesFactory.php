@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Factories\Metrics\Sales;
@@ -8,9 +9,7 @@ use Illuminate\Support\Collection;
 
 final class SalesFactory
 {
-    public function __construct(private readonly Collection $orders)
-    {
-    }
+    public function __construct(private readonly Collection $orders) {}
 
     public function totalRevenue(): float
     {
@@ -24,7 +23,7 @@ final class SalesFactory
 
     public function averageOrderValue(): float
     {
-        return $this->orders->avg('total_charge');
+        return $this->orders->avg('total_charge') ?? 0.0;
     }
 
     public function averageOrderPrice(): float
@@ -44,7 +43,7 @@ final class SalesFactory
 
     public function totalItemsSold(): int
     {
-        return $this->orders->sum(fn($order) => collect($order->items)->sum('quantity'));
+        return $this->orders->sum(fn ($order) => collect($order->items)->sum('quantity'));
     }
 
     public function totalProcessedOrders(): float
@@ -101,5 +100,11 @@ final class SalesFactory
         }
 
         return (($currentRevenue - $previousRevenue) / $previousRevenue) * 100;
+    }
+
+    public function getBestPerformingDay(string $period, ?string $customFrom, ?string $customTo): float
+    {
+        // TODO: implement this, for now return a float
+        return 9999.99;
     }
 }

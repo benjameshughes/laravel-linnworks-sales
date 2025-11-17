@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Dashboard\DashboardDataService;
-use App\Services\Metrics\SalesMetrics;
+use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -46,53 +45,22 @@ final class RecentOrders extends Component
     }
 
     #[Computed]
-    public function orders(): Collection
-    {
-        return app(DashboardDataService::class)->getOrders(
-            period: $this->period,
-            channel: $this->channel,
-            status: $this->status,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
-    }
-
-    #[Computed]
-    public function salesMetrics(): SalesMetrics
-    {
-        return new SalesMetrics($this->orders);
-    }
-
-    #[Computed]
     public function recentOrders(): Collection
     {
-        // Try to use pre-warmed cache first (instant response)
-        $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
-            if ($cached && isset($cached['recent_orders'])) {
-                return collect($cached['recent_orders']);
-            }
-        }
-
-        // Fallback to live calculation
-        return $this->salesMetrics->recentOrders(15);
+        return app(SalesMetricsService::class)->getRecentOrders(limit: 15);
     }
 
     #[Computed]
     public function totalOrders(): int
     {
-        // Use cached metrics if available (memory efficient)
-        $service = app(DashboardDataService::class);
-        if ($service->canUseCachedMetrics($this->period, $this->channel, $this->status, $this->customFrom, $this->customTo)) {
-            $cached = $service->getCachedMetrics($this->period, $this->channel, $this->status);
-            if ($cached && isset($cached['orders'])) {
-                return $cached['orders'];
-            }
-        }
+        $metrics = app(SalesMetricsService::class)->getMetricsSummary(
+            period: $this->period,
+            channel: $this->channel,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
 
-        // Fallback to live count (loads all orders into memory)
-        return $this->orders->count();
+        return (int) $metrics->get('total_orders', 0);
     }
 
     public function render()
