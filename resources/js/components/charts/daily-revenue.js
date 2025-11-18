@@ -36,17 +36,21 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
             if (this.chart && newBreakdown && newBreakdown.length > 0) {
                 const newData = this.formatForChartJs(newBreakdown, this.viewMode);
                 const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
-                this.chart.data.labels = cleanData.labels;
-                // Handle multiple datasets (orders_revenue mode has 2 datasets)
-                cleanData.datasets.forEach((newDataset, index) => {
-                    if (this.chart.data.datasets[index]) {
-                        this.chart.data.datasets[index].data = newDataset.data;
-                        this.chart.data.datasets[index].label = newDataset.label;
-                        this.chart.data.datasets[index].backgroundColor = newDataset.backgroundColor;
-                        this.chart.data.datasets[index].borderColor = newDataset.borderColor;
-                    }
-                });
-                this.chart.update('none'); // Update without animation on data change
+
+                // Handle dataset count changes (filter might change data structure)
+                if (this.chart.data.datasets.length !== cleanData.datasets.length) {
+                    // Recreate chart when dataset count changes
+                    this.chart.destroy();
+                    this.chart = new Chart(this.$refs.canvas, {
+                        type: 'bar',
+                        data: cleanData,
+                        options: this.getChartOptions()
+                    });
+                } else {
+                    // Replace entire data object to avoid Chart.js internal state issues
+                    this.chart.data = cleanData;
+                    this.chart.update('active'); // Animate filter changes
+                }
             }
         });
 
@@ -67,14 +71,8 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
                         options: this.getChartOptions()
                     });
                 } else {
-                    // Same dataset count - update in place for animations
-                    this.chart.data.labels = cleanData.labels;
-                    cleanData.datasets.forEach((newDataset, index) => {
-                        this.chart.data.datasets[index].data = newDataset.data;
-                        this.chart.data.datasets[index].label = newDataset.label;
-                        this.chart.data.datasets[index].backgroundColor = newDataset.backgroundColor;
-                        this.chart.data.datasets[index].borderColor = newDataset.borderColor;
-                    });
+                    // Replace entire data object to avoid Chart.js internal state issues
+                    this.chart.data = cleanData;
                     this.chart.update('active'); // Animate the transition!
                 }
             }
