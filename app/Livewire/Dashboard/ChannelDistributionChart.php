@@ -66,12 +66,13 @@ final class ChannelDistributionChart extends Component
 
         // Can't cache custom periods
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            $this->channelData = app(SalesMetricsService::class)->getChannelDistributionData(
+            $this->channelData = app(SalesMetricsService::class)->getTopChannels(
                 period: $this->period,
                 channel: $this->channel,
+                limit: 6,
                 customFrom: $this->customFrom,
                 customTo: $this->customTo
-            );
+            )->toArray();
 
             return;
         }
@@ -80,14 +81,16 @@ final class ChannelDistributionChart extends Component
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 
-        if ($cached && isset($cached['chart_doughnut'])) {
-            $this->channelData = $cached['chart_doughnut'];
+        if ($cached && isset($cached['top_channels'])) {
+            $this->channelData = is_array($cached['top_channels'])
+                ? $cached['top_channels']
+                : $cached['top_channels']->toArray();
 
             return;
         }
 
         // Cache miss - return empty array to prevent OOM
-        $this->channelData = ['labels' => [], 'datasets' => []];
+        $this->channelData = [];
     }
 
     #[Computed]

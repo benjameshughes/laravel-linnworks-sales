@@ -168,13 +168,12 @@ final class WarmPeriodCacheJob implements ShouldQueue
 
         $service = app(\App\Services\Metrics\Sales\SalesMetrics::class);
 
-        // Get core business metrics from service
+        // Get core business metrics from service (RAW data only - Alpine formats for Chart.js)
         $summary = $service->getMetricsSummary($this->period, $this->channel);
         $topChannels = $service->getTopChannels($this->period, $this->channel, 6);
         $topProducts = $service->getTopProducts($this->period, $this->channel, 5);
         $recentOrders = $service->getRecentOrders(15);
         $bestDay = $service->getBestPerformingDay($this->period, $this->channel);
-        $doughnutData = $service->getChannelDistributionData($this->period, $this->channel);
 
         // Get raw daily breakdown data (NO Chart.js formatting - Alpine will handle)
         $dailyBreakdown = $service->getDailyRevenueData(
@@ -201,7 +200,6 @@ final class WarmPeriodCacheJob implements ShouldQueue
             'top_products' => $topProducts,
             'recent_orders' => $recentOrders,
             'best_day' => $bestDay,
-            'chart_doughnut' => $doughnutData,
 
             // Status counts from factory
             'processed_orders' => $factory->totalProcessedOrders(),

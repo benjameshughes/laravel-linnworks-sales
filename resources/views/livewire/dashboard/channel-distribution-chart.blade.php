@@ -37,11 +37,9 @@
             </div>
         @else
             <div
-                wire:ignore
                 x-data="channelDistributionChart(
-                    @entangle('channelData').live,
-                    @js($this->chartOptions),
-                    @entangle('viewMode').live
+                    @js($channelData),
+                    @js($this->chartOptions)
                 )"
                 class="relative"
                 style="height: 350px"
