@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Dashboard;
 
 use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -55,19 +56,42 @@ final class ChannelDistributionChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        $data = app(SalesMetricsService::class)->getChannelDistributionData(
-            period: $this->period,
-            channel: $this->channel,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // If grouped view requested, transform detailed data (memory efficient)
-        if ($this->viewMode === 'grouped') {
-            return $this->transformToGroupedView($data);
+        // Can't cache custom periods
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+            $data = app(SalesMetricsService::class)->getChannelDistributionData(
+                period: $this->period,
+                channel: $this->channel,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo
+            );
+
+            // If grouped view requested, transform detailed data (memory efficient)
+            if ($this->viewMode === 'grouped') {
+                return $this->transformToGroupedView($data);
+            }
+
+            return $data;
         }
 
-        return $data;
+        // Check cache
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        if ($cached && isset($cached['chart_doughnut'])) {
+            $data = $cached['chart_doughnut'];
+
+            // If grouped view requested, transform detailed data (memory efficient)
+            if ($this->viewMode === 'grouped') {
+                return $this->transformToGroupedView($data);
+            }
+
+            return $data;
+        }
+
+        // Cache miss - return empty array to prevent OOM
+        return ['labels' => [], 'datasets' => []];
     }
 
     /**

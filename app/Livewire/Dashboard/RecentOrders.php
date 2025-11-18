@@ -6,6 +6,7 @@ namespace App\Livewire\Dashboard;
 
 use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -47,20 +48,52 @@ final class RecentOrders extends Component
     #[Computed]
     public function recentOrders(): Collection
     {
-        return app(SalesMetricsService::class)->getRecentOrders(limit: 15);
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+
+        // Can't cache custom periods
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+            return app(SalesMetricsService::class)->getRecentOrders(limit: 15);
+        }
+
+        // Check cache
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        if ($cached && isset($cached['recent_orders'])) {
+            return $cached['recent_orders'];
+        }
+
+        // Cache miss - return empty collection to prevent OOM
+        return collect();
     }
 
     #[Computed]
     public function totalOrders(): int
     {
-        $metrics = app(SalesMetricsService::class)->getMetricsSummary(
-            period: $this->period,
-            channel: $this->channel,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        return (int) $metrics->get('total_orders', 0);
+        // Can't cache custom periods
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+            $metrics = app(SalesMetricsService::class)->getMetricsSummary(
+                period: $this->period,
+                channel: $this->channel,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo
+            );
+
+            return (int) $metrics->get('total_orders', 0);
+        }
+
+        // Check cache
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        if ($cached && isset($cached['orders'])) {
+            return (int) $cached['orders'];
+        }
+
+        // Cache miss - return zero to prevent OOM
+        return 0;
     }
 
     public function render()

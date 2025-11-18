@@ -6,6 +6,7 @@ namespace App\Livewire\Dashboard;
 
 use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -47,13 +48,29 @@ final class TopChannels extends Component
     #[Computed]
     public function topChannels(): Collection
     {
-        return app(SalesMetricsService::class)->getTopChannels(
-            period: $this->period,
-            channel: $this->channel,
-            limit: 6,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+
+        // Can't cache custom periods
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+            return app(SalesMetricsService::class)->getTopChannels(
+                period: $this->period,
+                channel: $this->channel,
+                limit: 6,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo
+            );
+        }
+
+        // Check cache
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        if ($cached && isset($cached['top_channels'])) {
+            return $cached['top_channels'];
+        }
+
+        // Cache miss - return empty collection to prevent OOM
+        return collect();
     }
 
     public function render()

@@ -6,6 +6,7 @@ namespace App\Livewire\Dashboard;
 
 use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -56,48 +57,69 @@ final class DailyRevenueChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        $dailyBreakdown = app(SalesMetricsService::class)->getDailyRevenueData(
-            period: $this->period,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Transform daily breakdown into Chart.js format
-        $labels = $dailyBreakdown->pluck('date')->toArray();
+        // Can't cache custom periods
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+            $dailyBreakdown = app(SalesMetricsService::class)->getDailyRevenueData(
+                period: $this->period,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo
+            );
 
-        if ($this->viewMode === 'orders_revenue') {
-            return [
-                'labels' => $labels,
-                'datasets' => [
-                    [
-                        'label' => 'Orders',
-                        'data' => $dailyBreakdown->pluck('orders')->toArray(),
-                        'borderColor' => 'rgb(59, 130, 246)',
-                        'backgroundColor' => 'rgba(59, 130, 246, 0.8)',
-                        'type' => 'bar',
+            // Transform daily breakdown into Chart.js format
+            $labels = $dailyBreakdown->pluck('date')->toArray();
+
+            if ($this->viewMode === 'orders_revenue') {
+                return [
+                    'labels' => $labels,
+                    'datasets' => [
+                        [
+                            'label' => 'Orders',
+                            'data' => $dailyBreakdown->pluck('orders')->toArray(),
+                            'borderColor' => 'rgb(59, 130, 246)',
+                            'backgroundColor' => 'rgba(59, 130, 246, 0.8)',
+                            'type' => 'bar',
+                        ],
+                        [
+                            'label' => 'Revenue',
+                            'data' => $dailyBreakdown->pluck('revenue')->toArray(),
+                            'borderColor' => 'rgb(34, 197, 94)',
+                            'backgroundColor' => 'rgba(34, 197, 94, 0.8)',
+                            'type' => 'bar',
+                        ],
                     ],
-                    [
-                        'label' => 'Revenue',
-                        'data' => $dailyBreakdown->pluck('revenue')->toArray(),
-                        'borderColor' => 'rgb(34, 197, 94)',
-                        'backgroundColor' => 'rgba(34, 197, 94, 0.8)',
-                        'type' => 'bar',
+                ];
+            } else {
+                return [
+                    'labels' => $labels,
+                    'datasets' => [
+                        [
+                            'label' => 'Items Sold',
+                            'data' => $dailyBreakdown->pluck('items')->toArray(),
+                            'borderColor' => 'rgb(168, 85, 247)',
+                            'backgroundColor' => 'rgba(168, 85, 247, 0.8)',
+                        ],
                     ],
-                ],
-            ];
-        } else {
-            return [
-                'labels' => $labels,
-                'datasets' => [
-                    [
-                        'label' => 'Items Sold',
-                        'data' => $dailyBreakdown->pluck('items')->toArray(),
-                        'borderColor' => 'rgb(168, 85, 247)',
-                        'backgroundColor' => 'rgba(168, 85, 247, 0.8)',
-                    ],
-                ],
-            ];
+                ];
+            }
         }
+
+        // Check cache
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        if ($cached && isset($cached['chart_orders_revenue']) && isset($cached['chart_items'])) {
+            // Return cached chart data based on viewMode
+            if ($this->viewMode === 'orders_revenue') {
+                return $cached['chart_orders_revenue'];
+            } else {
+                return $cached['chart_items'];
+            }
+        }
+
+        // Cache miss - return empty array to prevent OOM
+        return ['labels' => [], 'datasets' => []];
     }
 
     #[Computed]

@@ -6,6 +6,7 @@ namespace App\Livewire\Dashboard;
 
 use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -47,12 +48,39 @@ final class MetricsSummary extends Component
     #[Computed]
     public function metrics(): Collection
     {
-        return app(SalesMetricsService::class)->getMetricsSummary(
-            period: $this->period,
-            channel: $this->channel,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+
+        // Can't cache custom periods
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+            return app(SalesMetricsService::class)->getMetricsSummary(
+                period: $this->period,
+                channel: $this->channel,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo
+            );
+        }
+
+        // Check cache
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        if ($cached) {
+            // Extract needed data from cache array
+            return collect([
+                'total_revenue' => $cached['revenue'],
+                'total_orders' => $cached['orders'],
+                'total_items' => $cached['items'],
+                'average_order_value' => $cached['avg_order_value'],
+            ]);
+        }
+
+        // Cache miss - return empty collection to prevent OOM
+        return collect([
+            'total_revenue' => 0,
+            'total_orders' => 0,
+            'total_items' => 0,
+            'average_order_value' => 0,
+        ]);
     }
 
     #[Computed]
@@ -68,12 +96,28 @@ final class MetricsSummary extends Component
     #[Computed]
     public function bestDay(): Collection|array|null
     {
-        return app(SalesMetricsService::class)->getBestPerformingDay(
-            period: $this->period,
-            channel: $this->channel,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+
+        // Can't cache custom periods
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+            return app(SalesMetricsService::class)->getBestPerformingDay(
+                period: $this->period,
+                channel: $this->channel,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo
+            );
+        }
+
+        // Check cache
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        if ($cached && isset($cached['best_day'])) {
+            return $cached['best_day'];
+        }
+
+        // Cache miss - return empty array to prevent OOM
+        return [];
     }
 
     public function render()

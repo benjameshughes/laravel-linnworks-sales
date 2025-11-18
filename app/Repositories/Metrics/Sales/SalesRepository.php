@@ -55,7 +55,7 @@ final class SalesRepository
      */
     public function getOrdersBetweenDates(Carbon $start, Carbon $end): Collection
     {
-        return Order::whereBetween('created_at', [$start, $end])->get();
+        return Order::whereBetween('received_date', [$start, $end])->get();
     }
 
     /**
@@ -63,6 +63,6 @@ final class SalesRepository
      */
     public function getOrdersForPeriod(Carbon $start, Carbon $end): Collection
     {
-        return Order::whereBetween('created_at', [$start, $end])->get();
+        return Order::whereBetween('received_date', [$start, $end])->get();
     }
 }

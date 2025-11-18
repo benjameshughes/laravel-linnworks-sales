@@ -6,6 +6,7 @@ namespace App\Livewire\Dashboard;
 
 use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -56,28 +57,49 @@ final class SalesTrendChart extends Component
     #[Computed]
     public function chartData(): array
     {
-        $dailyBreakdown = app(SalesMetricsService::class)->getDailyRevenueData(
-            period: $this->period,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Transform daily breakdown into Chart.js format
-        $labels = $dailyBreakdown->pluck('date')->toArray();
-        $dataValues = $dailyBreakdown->pluck($this->viewMode === 'revenue' ? 'revenue' : 'orders')->toArray();
+        // Can't cache custom periods
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+            $dailyBreakdown = app(SalesMetricsService::class)->getDailyRevenueData(
+                period: $this->period,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo
+            );
 
-        return [
-            'labels' => $labels,
-            'datasets' => [
-                [
-                    'label' => $this->viewMode === 'revenue' ? 'Revenue' : 'Orders',
-                    'data' => $dataValues,
-                    'borderColor' => 'rgb(59, 130, 246)',
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
-                    'fill' => true,
+            // Transform daily breakdown into Chart.js format
+            $labels = $dailyBreakdown->pluck('date')->toArray();
+            $dataValues = $dailyBreakdown->pluck($this->viewMode === 'revenue' ? 'revenue' : 'orders')->toArray();
+
+            return [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => $this->viewMode === 'revenue' ? 'Revenue' : 'Orders',
+                        'data' => $dataValues,
+                        'borderColor' => 'rgb(59, 130, 246)',
+                        'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
+                        'fill' => true,
+                    ],
                 ],
-            ],
-        ];
+            ];
+        }
+
+        // Check cache
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        if ($cached && isset($cached['chart_line']) && isset($cached['chart_orders'])) {
+            // Return cached chart data based on viewMode
+            if ($this->viewMode === 'revenue') {
+                return $cached['chart_line'];
+            } else {
+                return $cached['chart_orders'];
+            }
+        }
+
+        // Cache miss - return empty array to prevent OOM
+        return ['labels' => [], 'datasets' => []];
     }
 
     #[Computed]
