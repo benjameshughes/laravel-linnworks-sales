@@ -88,14 +88,22 @@ Alpine.data('channelDistributionChart', (channelData, viewMode) => ({
     },
 
     /**
-     * Get Chart.js options with 3-second animations
+     * Get Chart.js options with animations enabled
      */
     getChartOptions() {
         return {
             responsive: true,
             maintainAspectRatio: false,
             animation: {
-                duration: 3000  // 3-second animations!
+                duration: 1000,
+                easing: 'easeInOutQuart'
+            },
+            transitions: {
+                active: {
+                    animation: {
+                        duration: 1000
+                    }
+                }
             },
             cutout: '60%',
             plugins: {
