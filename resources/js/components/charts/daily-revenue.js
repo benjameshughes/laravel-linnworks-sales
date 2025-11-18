@@ -35,10 +35,10 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
         this.$watch('dailyBreakdown', (newBreakdown) => {
             if (this.chart && newBreakdown && newBreakdown.length > 0) {
                 const newData = this.formatForChartJs(newBreakdown, this.viewMode);
-                // Update data in place (don't replace the object)
-                this.chart.data.labels = newData.labels;
+                const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
+                this.chart.data.labels = cleanData.labels;
                 // Handle multiple datasets (orders_revenue mode has 2 datasets)
-                newData.datasets.forEach((newDataset, index) => {
+                cleanData.datasets.forEach((newDataset, index) => {
                     if (this.chart.data.datasets[index]) {
                         this.chart.data.datasets[index].data = newDataset.data;
                         this.chart.data.datasets[index].label = newDataset.label;
@@ -54,21 +54,22 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
         this.$watch('viewMode', (newMode) => {
             if (this.chart && this.dailyBreakdown && this.dailyBreakdown.length > 0) {
                 const newData = this.formatForChartJs(this.dailyBreakdown, newMode);
+                const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
 
                 // Handle dataset count changes (1 dataset vs 2 datasets)
                 // When switching between 'items' (1 dataset) and 'orders_revenue' (2 datasets)
-                if (this.chart.data.datasets.length !== newData.datasets.length) {
+                if (this.chart.data.datasets.length !== cleanData.datasets.length) {
                     // Need to recreate when dataset count changes
                     this.chart.destroy();
                     this.chart = new Chart(this.$refs.canvas, {
                         type: 'bar',
-                        data: newData,
+                        data: cleanData,
                         options: this.getChartOptions()
                     });
                 } else {
                     // Same dataset count - update in place for animations
-                    this.chart.data.labels = newData.labels;
-                    newData.datasets.forEach((newDataset, index) => {
+                    this.chart.data.labels = cleanData.labels;
+                    cleanData.datasets.forEach((newDataset, index) => {
                         this.chart.data.datasets[index].data = newDataset.data;
                         this.chart.data.datasets[index].label = newDataset.label;
                         this.chart.data.datasets[index].backgroundColor = newDataset.backgroundColor;

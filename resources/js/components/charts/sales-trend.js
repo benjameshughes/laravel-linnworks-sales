@@ -35,10 +35,10 @@ Alpine.data('salesTrendChart', (dailyBreakdown, viewMode) => ({
         this.$watch('dailyBreakdown', (newBreakdown) => {
             if (this.chart && newBreakdown && newBreakdown.length > 0) {
                 const newData = this.formatForChartJs(newBreakdown, this.viewMode);
-                // Update data in place (don't replace the object)
-                this.chart.data.labels = newData.labels;
-                this.chart.data.datasets[0].data = newData.datasets[0].data;
-                this.chart.data.datasets[0].label = newData.datasets[0].label;
+                const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
+                this.chart.data.labels = cleanData.labels;
+                this.chart.data.datasets[0].data = cleanData.datasets[0].data;
+                this.chart.data.datasets[0].label = cleanData.datasets[0].label;
                 this.chart.update('none'); // Update without animation on data change
             }
         });
@@ -47,10 +47,10 @@ Alpine.data('salesTrendChart', (dailyBreakdown, viewMode) => ({
         this.$watch('viewMode', (newMode) => {
             if (this.chart && this.dailyBreakdown && this.dailyBreakdown.length > 0) {
                 const newData = this.formatForChartJs(this.dailyBreakdown, newMode);
-                // Update data in place (don't replace the object)
-                this.chart.data.labels = newData.labels;
-                this.chart.data.datasets[0].data = newData.datasets[0].data;
-                this.chart.data.datasets[0].label = newData.datasets[0].label;
+                const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
+                this.chart.data.labels = cleanData.labels;
+                this.chart.data.datasets[0].data = cleanData.datasets[0].data;
+                this.chart.data.datasets[0].label = cleanData.datasets[0].label;
                 this.chart.update('active'); // Animate the transition!
             }
         });
