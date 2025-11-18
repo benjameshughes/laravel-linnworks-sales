@@ -59,7 +59,7 @@ final class SalesFactory
     public function topChannels(int $limit = 3): Collection
     {
         // Get the channels for each order. Calculate the total revenue and amount of orders for each channel. Sort by largest first and take the top 3
-        return $this->orders->groupBy('source')->map(function ($sourceOrders, $sourceName) {
+        return $this->orders->groupBy('channel_name')->map(function ($sourceOrders, $sourceName) {
             return collect([
                 'source' => $sourceName,
                 'revenue' => $sourceOrders->sum('total_charge'),

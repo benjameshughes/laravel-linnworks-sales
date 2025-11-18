@@ -60,6 +60,11 @@ final class ChannelDistributionChart extends Component
         $this->calculateChartData();
     }
 
+    public function updatedViewMode(): void
+    {
+        $this->calculateChartData();
+    }
+
     private function calculateChartData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);

@@ -45,16 +45,18 @@
                 class="relative"
                 style="height: 350px"
             >
-                <!-- Loading skeleton (shown while Chart.js initializes) -->
-                <div x-show="loading" class="animate-pulse space-y-3">
-                    <div class="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-3/4"></div>
-                    <div class="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-5/6"></div>
-                    <div class="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-4/6"></div>
-                    <div class="h-32 bg-zinc-200 dark:bg-zinc-700 rounded mt-4"></div>
-                </div>
+                <!-- Chart canvas (always visible - Chart.js needs context) -->
+                <canvas x-ref="canvas" class="w-full h-full"></canvas>
 
-                <!-- Chart canvas (shown when ready) -->
-                <canvas x-show="!loading" x-ref="canvas" class="w-full h-full"></canvas>
+                <!-- Loading skeleton (overlays canvas while initializing) -->
+                <div x-show="loading" class="absolute inset-0 bg-white dark:bg-zinc-800 flex flex-col justify-center p-6">
+                    <div class="animate-pulse space-y-3">
+                        <div class="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-3/4"></div>
+                        <div class="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-5/6"></div>
+                        <div class="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-4/6"></div>
+                        <div class="h-32 bg-zinc-200 dark:bg-zinc-700 rounded mt-4"></div>
+                    </div>
+                </div>
             </div>
         @endif
     </div>
