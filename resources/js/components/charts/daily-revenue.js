@@ -19,7 +19,9 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
             return;
         }
 
-        const chartData = this.formatForChartJs(this.dailyBreakdown, this.viewMode);
+        const formattedData = this.formatForChartJs(this.dailyBreakdown, this.viewMode);
+        // Deep clone to strip Livewire proxies
+        const chartData = JSON.parse(JSON.stringify(formattedData));
 
         this.chart = new Chart(this.$refs.canvas, {
             type: 'bar',
