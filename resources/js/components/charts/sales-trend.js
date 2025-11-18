@@ -3,34 +3,125 @@
  *
  * Line chart (area) showing revenue or orders trend
  * Uses Chart.js for rendering
+ *
+ * Accepts raw daily breakdown data and formats it for Chart.js
  */
-Alpine.data('salesTrendChart', (initialData, initialOptions) => ({
+Alpine.data('salesTrendChart', (initialBreakdown, initialViewMode) => ({
     chart: null,
-    data: initialData,
-    options: initialOptions,
+    dailyBreakdown: initialBreakdown,
+    viewMode: initialViewMode,
     loading: true,
 
     init() {
-        if (!this.data || !this.data.labels || this.data.labels.length === 0) {
+        if (!this.dailyBreakdown || this.dailyBreakdown.length === 0) {
             console.log('SalesTrendChart: No data available');
             this.loading = false;
             return;
         }
 
+        const chartData = this.formatForChartJs(this.dailyBreakdown, this.viewMode);
+
         this.chart = new Chart(this.$refs.canvas, {
             type: 'line',
-            data: this.data,
-            options: this.options
+            data: chartData,
+            options: this.getChartOptions()
         });
 
         this.loading = false;
 
-        this.$watch('data', (newData) => {
-            if (this.chart && newData) {
-                this.chart.data = newData;
-                this.chart.update('none');
+        // Watch for data changes (from Livewire)
+        this.$watch('dailyBreakdown', (newBreakdown) => {
+            if (this.chart && newBreakdown && newBreakdown.length > 0) {
+                this.chart.data = this.formatForChartJs(newBreakdown, this.viewMode);
+                this.chart.update('none'); // Update without animation on data change
             }
         });
+
+        // Watch for view mode changes (revenue <-> orders)
+        this.$watch('viewMode', (newMode) => {
+            if (this.chart && this.dailyBreakdown && this.dailyBreakdown.length > 0) {
+                this.chart.data = this.formatForChartJs(this.dailyBreakdown, newMode);
+                this.chart.update('active'); // Animate the transition!
+            }
+        });
+    },
+
+    /**
+     * Transform raw daily breakdown into Chart.js format
+     */
+    formatForChartJs(breakdown, mode) {
+        const labels = breakdown.map(d => d.date);
+        const data = breakdown.map(d => d[mode]);
+
+        return {
+            labels: labels,
+            datasets: [{
+                label: mode === 'revenue' ? 'Revenue' : 'Orders',
+                data: data,
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+            }]
+        };
+    },
+
+    /**
+     * Get Chart.js options with 3-second animations
+     */
+    getChartOptions() {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 3000  // 3-second animations!
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                },
+                tooltip: {
+                    enabled: true,
+                    mode: 'index',
+                    intersect: false,
+                },
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grace: '10%',
+                    grid: {
+                        display: true,
+                        color: 'rgba(0, 0, 0, 0.05)',
+                    },
+                    ticks: {
+                        padding: 10,
+                    },
+                },
+                x: {
+                    grid: {
+                        display: false,
+                    },
+                    offset: true,
+                    ticks: {
+                        padding: 10,
+                        autoSkip: true,
+                        maxRotation: 0,
+                    },
+                },
+            },
+            elements: {
+                line: {
+                    tension: 0.4,
+                    borderWidth: 2,
+                },
+                point: {
+                    radius: 4,
+                    hoverRadius: 6,
+                    hitRadius: 10,
+                },
+            },
+        };
     },
 
     destroy() {

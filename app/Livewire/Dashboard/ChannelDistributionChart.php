@@ -24,8 +24,8 @@ final class ChannelDistributionChart extends Component
 
     public string $viewMode = 'detailed'; // 'detailed' (subsource breakdown) or 'grouped' (channel only)
 
-    // Public property for @entangle
-    public array $chartData = [];
+    // Public property for @entangle - channel distribution data
+    public array $channelData = [];
 
     public function mount(): void
     {
@@ -80,9 +80,9 @@ final class ChannelDistributionChart extends Component
 
             // If grouped view requested, transform detailed data (memory efficient)
             if ($this->viewMode === 'grouped') {
-                $this->chartData = $this->transformToGroupedView($data);
+                $this->channelData = $this->transformToGroupedView($data);
             } else {
-                $this->chartData = $data;
+                $this->channelData = $data;
             }
 
             return;
@@ -97,16 +97,16 @@ final class ChannelDistributionChart extends Component
 
             // If grouped view requested, transform detailed data (memory efficient)
             if ($this->viewMode === 'grouped') {
-                $this->chartData = $this->transformToGroupedView($data);
+                $this->channelData = $this->transformToGroupedView($data);
             } else {
-                $this->chartData = $data;
+                $this->channelData = $data;
             }
 
             return;
         }
 
         // Cache miss - return empty array to prevent OOM
-        $this->chartData = ['labels' => [], 'datasets' => []];
+        $this->channelData = ['labels' => [], 'datasets' => []];
     }
 
     /**

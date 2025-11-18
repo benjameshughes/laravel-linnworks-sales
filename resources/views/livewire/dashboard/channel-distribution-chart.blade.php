@@ -27,7 +27,7 @@
     </div>
 
     <div class="p-6">
-        @if(empty($this->chartData['labels']))
+        @if(empty($channelData['labels']))
             <div class="text-center text-zinc-500 dark:text-zinc-400 py-8">
                 <div class="animate-pulse space-y-4">
                     <div class="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-3/4 mx-auto"></div>
@@ -39,7 +39,7 @@
             <div
                 wire:ignore
                 x-data="channelDistributionChart(
-                    @entangle('chartData').live,
+                    @entangle('channelData').live,
                     @js($this->chartOptions)
                 )"
                 class="relative"

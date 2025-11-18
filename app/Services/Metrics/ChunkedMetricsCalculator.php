@@ -65,13 +65,10 @@ final readonly class ChunkedMetricsCalculator
             'open_orders' => $aggregates['open_orders'],
             'top_channels' => $topChannels,
             'top_products' => $topProducts,
-            'chart_line' => $this->buildLineChart($dailyData),
-            'chart_orders' => $this->buildOrderCountChart($dailyData),
             'chart_doughnut' => $this->buildDoughnutChart($topChannels),
-            'chart_items' => $this->buildItemsChart($dailyData),
-            'chart_orders_revenue' => $this->buildOrdersVsRevenueChart($dailyData),
             'recent_orders' => $recentOrders,
             'best_day' => $bestDay,
+            'daily_breakdown' => $dailyData->toArray(),
             'warmed_at' => now()->toISOString(),
         ];
     }

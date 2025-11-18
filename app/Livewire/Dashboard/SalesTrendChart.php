@@ -25,8 +25,8 @@ final class SalesTrendChart extends Component
 
     public string $viewMode = 'revenue'; // 'revenue' or 'orders'
 
-    // Public property for @entangle
-    public array $chartData = [];
+    // Public property for @entangle - raw daily breakdown data
+    public array $dailyBreakdown = [];
 
     public function mount(): void
     {
@@ -61,39 +61,20 @@ final class SalesTrendChart extends Component
         $this->calculateChartData();
     }
 
-    public function updatedViewMode(): void
-    {
-        $this->calculateChartData();
-    }
-
     private function calculateChartData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
         // Can't cache custom periods
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            $dailyBreakdown = app(SalesMetricsService::class)->getDailyRevenueData(
+            $dailyBreakdownCollection = app(SalesMetricsService::class)->getDailyRevenueData(
                 period: $this->period,
                 customFrom: $this->customFrom,
                 customTo: $this->customTo
             );
 
-            // Transform daily breakdown into Chart.js format
-            $labels = $dailyBreakdown->pluck('date')->toArray();
-            $dataValues = $dailyBreakdown->pluck($this->viewMode === 'revenue' ? 'revenue' : 'orders')->toArray();
-
-            $this->chartData = [
-                'labels' => $labels,
-                'datasets' => [
-                    [
-                        'label' => $this->viewMode === 'revenue' ? 'Revenue' : 'Orders',
-                        'data' => $dataValues,
-                        'borderColor' => 'rgb(59, 130, 246)',
-                        'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
-                        'fill' => true,
-                    ],
-                ],
-            ];
+            // Store raw data - Alpine will format for Chart.js
+            $this->dailyBreakdown = $dailyBreakdownCollection->toArray();
 
             return;
         }
@@ -102,77 +83,15 @@ final class SalesTrendChart extends Component
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 
-        if ($cached && isset($cached['chart_line']) && isset($cached['chart_orders'])) {
-            // Return cached chart data based on viewMode
-            if ($this->viewMode === 'revenue') {
-                $this->chartData = $cached['chart_line'];
-            } else {
-                $this->chartData = $cached['chart_orders'];
-            }
+        if ($cached && isset($cached['daily_breakdown'])) {
+            // Store raw cached data - Alpine will format for Chart.js
+            $this->dailyBreakdown = $cached['daily_breakdown'];
 
             return;
         }
 
         // Cache miss - return empty array to prevent OOM
-        $this->chartData = ['labels' => [], 'datasets' => []];
-    }
-
-    #[Computed]
-    public function chartOptions(): array
-    {
-        return [
-            'responsive' => true,
-            'maintainAspectRatio' => false,
-            'animation' => [
-                'duration' => 3000,
-            ],
-            'plugins' => [
-                'legend' => [
-                    'display' => true,
-                    'position' => 'top',
-                ],
-                'tooltip' => [
-                    'enabled' => true,
-                    'mode' => 'index',
-                    'intersect' => false,
-                ],
-            ],
-            'scales' => [
-                'y' => [
-                    'beginAtZero' => true,
-                    'grace' => '10%',
-                    'grid' => [
-                        'display' => true,
-                        'color' => 'rgba(0, 0, 0, 0.05)',
-                    ],
-                    'ticks' => [
-                        'padding' => 10,
-                    ],
-                ],
-                'x' => [
-                    'grid' => [
-                        'display' => false,
-                    ],
-                    'offset' => true,
-                    'ticks' => [
-                        'padding' => 10,
-                        'autoSkip' => true,
-                        'maxRotation' => 0,
-                    ],
-                ],
-            ],
-            'elements' => [
-                'line' => [
-                    'tension' => 0.4,
-                    'borderWidth' => 2,
-                ],
-                'point' => [
-                    'radius' => 4,
-                    'hoverRadius' => 6,
-                    'hitRadius' => 10,
-                ],
-            ],
-        ];
+        $this->dailyBreakdown = [];
     }
 
     #[Computed]
@@ -185,19 +104,6 @@ final class SalesTrendChart extends Component
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
         return $periodEnum?->label() ?? "Last {$this->period} days";
-    }
-
-    #[Computed]
-    public function chartKey(): string
-    {
-        // Include viewMode so changing tabs recreates the component
-        return "sales-trend-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->status}-{$this->customFrom}-{$this->customTo}";
-    }
-
-    public function setViewMode(string $mode): void
-    {
-        $this->viewMode = $mode;
-        $this->calculateChartData();
     }
 
     public function render()

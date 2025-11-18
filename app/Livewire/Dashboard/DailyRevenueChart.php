@@ -25,8 +25,8 @@ final class DailyRevenueChart extends Component
 
     public string $viewMode = 'orders_revenue'; // 'orders_revenue' or 'items'
 
-    // Public property for @entangle
-    public array $chartData = [];
+    // Public property for @entangle - raw daily breakdown data
+    public array $dailyBreakdown = [];
 
     public function mount(): void
     {
@@ -61,59 +61,20 @@ final class DailyRevenueChart extends Component
         $this->calculateChartData();
     }
 
-    public function updatedViewMode(): void
-    {
-        $this->calculateChartData();
-    }
-
     private function calculateChartData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
         // Can't cache custom periods
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            $dailyBreakdown = app(SalesMetricsService::class)->getDailyRevenueData(
+            $dailyBreakdownCollection = app(SalesMetricsService::class)->getDailyRevenueData(
                 period: $this->period,
                 customFrom: $this->customFrom,
                 customTo: $this->customTo
             );
 
-            // Transform daily breakdown into Chart.js format
-            $labels = $dailyBreakdown->pluck('date')->toArray();
-
-            if ($this->viewMode === 'orders_revenue') {
-                $this->chartData = [
-                    'labels' => $labels,
-                    'datasets' => [
-                        [
-                            'label' => 'Orders',
-                            'data' => $dailyBreakdown->pluck('orders')->toArray(),
-                            'borderColor' => 'rgb(59, 130, 246)',
-                            'backgroundColor' => 'rgba(59, 130, 246, 0.8)',
-                            'type' => 'bar',
-                        ],
-                        [
-                            'label' => 'Revenue',
-                            'data' => $dailyBreakdown->pluck('revenue')->toArray(),
-                            'borderColor' => 'rgb(34, 197, 94)',
-                            'backgroundColor' => 'rgba(34, 197, 94, 0.8)',
-                            'type' => 'bar',
-                        ],
-                    ],
-                ];
-            } else {
-                $this->chartData = [
-                    'labels' => $labels,
-                    'datasets' => [
-                        [
-                            'label' => 'Items Sold',
-                            'data' => $dailyBreakdown->pluck('items')->toArray(),
-                            'borderColor' => 'rgb(168, 85, 247)',
-                            'backgroundColor' => 'rgba(168, 85, 247, 0.8)',
-                        ],
-                    ],
-                ];
-            }
+            // Store raw data - Alpine will format for Chart.js
+            $this->dailyBreakdown = $dailyBreakdownCollection->toArray();
 
             return;
         }
@@ -122,62 +83,15 @@ final class DailyRevenueChart extends Component
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 
-        if ($cached && isset($cached['chart_orders_revenue']) && isset($cached['chart_items'])) {
-            // Return cached chart data based on viewMode
-            if ($this->viewMode === 'orders_revenue') {
-                $this->chartData = $cached['chart_orders_revenue'];
-            } else {
-                $this->chartData = $cached['chart_items'];
-            }
+        if ($cached && isset($cached['daily_breakdown'])) {
+            // Store raw cached data - Alpine will format for Chart.js
+            $this->dailyBreakdown = $cached['daily_breakdown'];
 
             return;
         }
 
         // Cache miss - return empty array to prevent OOM
-        $this->chartData = ['labels' => [], 'datasets' => []];
-    }
-
-    #[Computed]
-    public function chartOptions(): array
-    {
-        return [
-            'responsive' => true,
-            'maintainAspectRatio' => false,
-            'animation' => [
-                'duration' => 3000,
-            ],
-            'plugins' => [
-                'legend' => [
-                    'display' => true,
-                    'position' => 'top',
-                ],
-                'tooltip' => [
-                    'enabled' => true,
-                    'mode' => 'index',
-                    'intersect' => false,
-                ],
-            ],
-            'scales' => [
-                'y' => [
-                    'beginAtZero' => true,
-                    'grid' => [
-                        'display' => true,
-                        'color' => 'rgba(0, 0, 0, 0.05)',
-                    ],
-                ],
-                'x' => [
-                    'grid' => [
-                        'display' => false,
-                    ],
-                ],
-            ],
-            'elements' => [
-                'bar' => [
-                    'borderRadius' => 4,
-                    'borderWidth' => 0,
-                ],
-            ],
-        ];
+        $this->dailyBreakdown = [];
     }
 
     #[Computed]
@@ -190,19 +104,6 @@ final class DailyRevenueChart extends Component
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
         return $periodEnum?->label() ?? "Last {$this->period} days";
-    }
-
-    #[Computed]
-    public function chartKey(): string
-    {
-        // Include viewMode so changing tabs recreates the component
-        return "daily-bar-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->status}-{$this->customFrom}-{$this->customTo}";
-    }
-
-    public function setViewMode(string $mode): void
-    {
-        $this->viewMode = $mode;
-        $this->calculateChartData();
     }
 
     public function render()

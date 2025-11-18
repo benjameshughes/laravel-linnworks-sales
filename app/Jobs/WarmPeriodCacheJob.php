@@ -176,12 +176,12 @@ final class WarmPeriodCacheJob implements ShouldQueue
         $bestDay = $service->getBestPerformingDay($this->period, $this->channel);
         $doughnutData = $service->getChannelDistributionData($this->period, $this->channel);
 
-        // Get date range for chart formatters
-        $dateRange = $service->getDateRange($this->period);
-        $startDate = $dateRange['start']->format('Y-m-d');
-        $endDate = $dateRange['end']->format('Y-m-d');
+        // Get raw daily breakdown data (NO Chart.js formatting - Alpine will handle)
+        $dailyBreakdown = $service->getDailyRevenueData(
+            period: $this->period
+        );
 
-        // For chart formatting and status counts, use factory (presentation logic)
+        // For status counts, use factory
         $repository = app(SalesRepository::class);
         $orders = $repository->getOrdersForPeriodWithFilters(
             period: $this->period,
@@ -207,11 +207,8 @@ final class WarmPeriodCacheJob implements ShouldQueue
             'processed_orders' => $factory->totalProcessedOrders(),
             'open_orders' => $factory->totalOpenOrders(),
 
-            // Chart.js formatted data from factory (presentation logic)
-            'chart_line' => $factory->getLineChartData($this->period),
-            'chart_orders' => $factory->getOrderCountChartData($this->period),
-            'chart_items' => $factory->getItemsSoldChartData($this->period, $startDate, $endDate),
-            'chart_orders_revenue' => $factory->getOrdersVsRevenueChartData($this->period, $startDate, $endDate),
+            // Raw daily breakdown data (Alpine.js will format for Chart.js)
+            'daily_breakdown' => $dailyBreakdown->toArray(),
 
             'warmed_at' => now()->toISOString(),
         ];

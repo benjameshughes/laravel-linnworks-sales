@@ -3,6 +3,8 @@
  *
  * Doughnut chart showing revenue distribution by channel
  * Uses Chart.js for rendering
+ *
+ * Note: Channel data is pre-formatted by PHP (already in Chart.js format)
  */
 Alpine.data('channelDistributionChart', (initialData, initialOptions) => ({
     chart: null,
@@ -25,10 +27,11 @@ Alpine.data('channelDistributionChart', (initialData, initialOptions) => ({
 
         this.loading = false;
 
+        // Watch for data changes (from Livewire - happens when viewMode changes)
         this.$watch('data', (newData) => {
-            if (this.chart && newData) {
+            if (this.chart && newData && newData.labels && newData.labels.length > 0) {
                 this.chart.data = newData;
-                this.chart.update('none');
+                this.chart.update('active'); // Animate view mode transitions!
             }
         });
     },
