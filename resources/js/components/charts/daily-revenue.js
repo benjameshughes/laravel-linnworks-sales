@@ -32,16 +32,26 @@ Alpine.data('dailyRevenueChart', (initialBreakdown, initialViewMode) => ({
         // Watch for data changes (from Livewire)
         this.$watch('dailyBreakdown', (newBreakdown) => {
             if (this.chart && newBreakdown && newBreakdown.length > 0) {
-                this.chart.data = this.formatForChartJs(newBreakdown, this.viewMode);
-                this.chart.update('none'); // Update without animation on data change
+                // Destroy and recreate chart with new data
+                this.chart.destroy();
+                this.chart = new Chart(this.$refs.canvas, {
+                    type: 'bar',
+                    data: this.formatForChartJs(newBreakdown, this.viewMode),
+                    options: this.getChartOptions()
+                });
             }
         });
 
         // Watch for view mode changes (orders_revenue <-> items)
         this.$watch('viewMode', (newMode) => {
             if (this.chart && this.dailyBreakdown && this.dailyBreakdown.length > 0) {
-                this.chart.data = this.formatForChartJs(this.dailyBreakdown, newMode);
-                this.chart.update('active'); // Animate the transition!
+                // Destroy and recreate chart with new view mode
+                this.chart.destroy();
+                this.chart = new Chart(this.$refs.canvas, {
+                    type: 'bar',
+                    data: this.formatForChartJs(this.dailyBreakdown, newMode),
+                    options: this.getChartOptions()
+                });
             }
         });
     },

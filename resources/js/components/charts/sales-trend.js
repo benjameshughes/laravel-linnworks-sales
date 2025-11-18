@@ -32,7 +32,11 @@ Alpine.data('salesTrendChart', (initialBreakdown, initialViewMode) => ({
         // Watch for data changes (from Livewire)
         this.$watch('dailyBreakdown', (newBreakdown) => {
             if (this.chart && newBreakdown && newBreakdown.length > 0) {
-                this.chart.data = this.formatForChartJs(newBreakdown, this.viewMode);
+                const newData = this.formatForChartJs(newBreakdown, this.viewMode);
+                // Update data in place (don't replace the object)
+                this.chart.data.labels = newData.labels;
+                this.chart.data.datasets[0].data = newData.datasets[0].data;
+                this.chart.data.datasets[0].label = newData.datasets[0].label;
                 this.chart.update('none'); // Update without animation on data change
             }
         });
@@ -40,7 +44,11 @@ Alpine.data('salesTrendChart', (initialBreakdown, initialViewMode) => ({
         // Watch for view mode changes (revenue <-> orders)
         this.$watch('viewMode', (newMode) => {
             if (this.chart && this.dailyBreakdown && this.dailyBreakdown.length > 0) {
-                this.chart.data = this.formatForChartJs(this.dailyBreakdown, newMode);
+                const newData = this.formatForChartJs(this.dailyBreakdown, newMode);
+                // Update data in place (don't replace the object)
+                this.chart.data.labels = newData.labels;
+                this.chart.data.datasets[0].data = newData.datasets[0].data;
+                this.chart.data.datasets[0].label = newData.datasets[0].label;
                 this.chart.update('active'); // Animate the transition!
             }
         });

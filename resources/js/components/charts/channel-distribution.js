@@ -30,7 +30,10 @@ Alpine.data('channelDistributionChart', (initialData, initialOptions) => ({
         // Watch for data changes (from Livewire - happens when viewMode changes)
         this.$watch('data', (newData) => {
             if (this.chart && newData && newData.labels && newData.labels.length > 0) {
-                this.chart.data = newData;
+                // Update data in place (don't replace the object)
+                this.chart.data.labels = newData.labels;
+                this.chart.data.datasets[0].data = newData.datasets[0].data;
+                this.chart.data.datasets[0].backgroundColor = newData.datasets[0].backgroundColor;
                 this.chart.update('active'); // Animate view mode transitions!
             }
         });
