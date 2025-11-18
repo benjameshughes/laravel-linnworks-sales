@@ -226,7 +226,7 @@ final class WarmPeriodCacheJob implements ShouldQueue
     private function shouldUseChunkedCalculation(): bool
     {
         $periodDays = (int) $this->period;
-        $threshold = config('dashboard.chunked_calculation_threshold', 365);
+        $threshold = config('dashboard.chunked_calculation_threshold');
 
         return $periodDays >= $threshold;
     }

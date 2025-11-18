@@ -29,5 +29,5 @@ return [
     | With 253K orders, using 30 days for ultra-safe memory efficiency
     |
     */
-    'chunked_calculation_threshold' => 30,
+    'chunked_calculation_threshold' => 0,
 ];

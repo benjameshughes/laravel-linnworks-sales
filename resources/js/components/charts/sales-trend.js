@@ -8,10 +8,12 @@ Alpine.data('salesTrendChart', (initialData, initialOptions) => ({
     chart: null,
     data: initialData,
     options: initialOptions,
+    loading: true,
 
     init() {
         if (!this.data || !this.data.labels || this.data.labels.length === 0) {
             console.log('SalesTrendChart: No data available');
+            this.loading = false;
             return;
         }
 
@@ -20,6 +22,8 @@ Alpine.data('salesTrendChart', (initialData, initialOptions) => ({
             data: this.data,
             options: this.options
         });
+
+        this.loading = false;
 
         this.$watch('data', (newData) => {
             if (this.chart && newData) {

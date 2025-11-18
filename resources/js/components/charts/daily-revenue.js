@@ -8,10 +8,12 @@ Alpine.data('dailyRevenueChart', (initialData, initialOptions) => ({
     chart: null,
     data: initialData,
     options: initialOptions,
+    loading: true,
 
     init() {
         if (!this.data || !this.data.labels || this.data.labels.length === 0) {
             console.log('DailyRevenueChart: No data available');
+            this.loading = false;
             return;
         }
 
@@ -20,6 +22,8 @@ Alpine.data('dailyRevenueChart', (initialData, initialOptions) => ({
             data: this.data,
             options: this.options
         });
+
+        this.loading = false;
 
         // Watch for data updates from Livewire
         this.$watch('data', (newData) => {
