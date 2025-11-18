@@ -4,16 +4,22 @@
  * Doughnut chart showing revenue distribution by channel
  * Uses Chart.js for rendering
  *
- * Note: Channel data is pre-formatted by PHP (already in Chart.js format)
+ * Handles client-side view mode transformations:
+ * - 'detailed': Show all subsources (e.g., "FBA (AMAZON)", "FBM (AMAZON)")
+ * - 'grouped': Aggregate by channel (e.g., "AMAZON")
  */
-Alpine.data('channelDistributionChart', (data, options) => ({
+Alpine.data('channelDistributionChart', (data, options, viewMode) => ({
     chart: null,
     data,
     options,
+    viewMode,
     loading: true,
 
     init() {
-        if (!this.data || !this.data.labels || this.data.labels.length === 0) {
+        // Transform data based on view mode before creating chart
+        const chartData = this.transformDataForViewMode(this.data, this.viewMode);
+
+        if (!chartData || !chartData.labels || chartData.labels.length === 0) {
             console.log('ChannelDistributionChart: No data available');
             this.loading = false;
             return;
@@ -21,22 +27,84 @@ Alpine.data('channelDistributionChart', (data, options) => ({
 
         this.chart = new Chart(this.$refs.canvas, {
             type: 'doughnut',
-            data: this.data,
+            data: chartData,
             options: this.options
         });
 
         this.loading = false;
 
-        // Watch for data changes (from Livewire - happens when viewMode changes)
+        // Watch for data changes (from Livewire - happens when filters change)
         this.$watch('data', (newData) => {
-            if (this.chart && newData && newData.labels && newData.labels.length > 0) {
-                // Update data in place (don't replace the object)
-                this.chart.data.labels = newData.labels;
-                this.chart.data.datasets[0].data = newData.datasets[0].data;
-                this.chart.data.datasets[0].backgroundColor = newData.datasets[0].backgroundColor;
-                this.chart.update('active'); // Animate view mode transitions!
+            if (this.chart && newData) {
+                const transformed = this.transformDataForViewMode(newData, this.viewMode);
+                if (transformed && transformed.labels && transformed.labels.length > 0) {
+                    this.chart.data.labels = transformed.labels;
+                    this.chart.data.datasets[0].data = transformed.datasets[0].data;
+                    this.chart.data.datasets[0].backgroundColor = transformed.datasets[0].backgroundColor;
+                    this.chart.update('none');
+                }
             }
         });
+
+        // Watch for view mode changes (detailed <-> grouped)
+        this.$watch('viewMode', (newMode) => {
+            if (this.chart && this.data) {
+                const transformed = this.transformDataForViewMode(this.data, newMode);
+                if (transformed && transformed.labels && transformed.labels.length > 0) {
+                    this.chart.data.labels = transformed.labels;
+                    this.chart.data.datasets[0].data = transformed.datasets[0].data;
+                    this.chart.data.datasets[0].backgroundColor = transformed.datasets[0].backgroundColor;
+                    this.chart.update('active'); // Animate the transition!
+                }
+            }
+        });
+    },
+
+    /**
+     * Transform data based on view mode
+     * - 'detailed': Show all subsources (e.g., "FBA (AMAZON)", "FBM (AMAZON)")
+     * - 'grouped': Aggregate by channel (e.g., "AMAZON")
+     */
+    transformDataForViewMode(rawData, mode) {
+        if (!rawData || !rawData.labels || rawData.labels.length === 0) {
+            return rawData;
+        }
+
+        if (mode === 'detailed') {
+            return rawData; // Return as-is for detailed view
+        }
+
+        // Grouped view: Extract channel from "Subsource (CHANNEL)" format
+        const grouped = {};
+
+        rawData.labels.forEach((label, index) => {
+            // Extract channel from parentheses, or use full label if no parentheses
+            let channel = label;
+            const match = label.match(/\(([^)]+)\)$/);
+            if (match) {
+                channel = match[1]; // Extract "AMAZON" from "FBA (AMAZON)"
+            }
+
+            if (!grouped[channel]) {
+                grouped[channel] = {
+                    value: 0,
+                    color: rawData.datasets[0].backgroundColor[index] || '#3B82F6'
+                };
+            }
+
+            grouped[channel].value += rawData.datasets[0].data[index];
+        });
+
+        // Rebuild chart data structure
+        return {
+            labels: Object.keys(grouped),
+            datasets: [{
+                label: 'Revenue by Channel',
+                data: Object.values(grouped).map(g => g.value),
+                backgroundColor: Object.values(grouped).map(g => g.color),
+                borderWidth: 2
+            }]
+        };
     },
 
     destroy() {

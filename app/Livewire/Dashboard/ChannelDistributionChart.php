@@ -60,30 +60,18 @@ final class ChannelDistributionChart extends Component
         $this->calculateChartData();
     }
 
-    public function updatedViewMode(): void
-    {
-        $this->calculateChartData();
-    }
-
     private function calculateChartData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
         // Can't cache custom periods
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            $data = app(SalesMetricsService::class)->getChannelDistributionData(
+            $this->channelData = app(SalesMetricsService::class)->getChannelDistributionData(
                 period: $this->period,
                 channel: $this->channel,
                 customFrom: $this->customFrom,
                 customTo: $this->customTo
             );
-
-            // If grouped view requested, transform detailed data (memory efficient)
-            if ($this->viewMode === 'grouped') {
-                $this->channelData = $this->transformToGroupedView($data);
-            } else {
-                $this->channelData = $data;
-            }
 
             return;
         }
@@ -93,68 +81,12 @@ final class ChannelDistributionChart extends Component
         $cached = Cache::get($cacheKey);
 
         if ($cached && isset($cached['chart_doughnut'])) {
-            $data = $cached['chart_doughnut'];
-
-            // If grouped view requested, transform detailed data (memory efficient)
-            if ($this->viewMode === 'grouped') {
-                $this->channelData = $this->transformToGroupedView($data);
-            } else {
-                $this->channelData = $data;
-            }
-
+            $this->channelData = $cached['chart_doughnut'];
             return;
         }
 
         // Cache miss - return empty array to prevent OOM
         $this->channelData = ['labels' => [], 'datasets' => []];
-    }
-
-    /**
-     * Transform detailed view (with subsources) into grouped view (channel-only)
-     *
-     * Aggregates subsources into their parent channels
-     * Example: "FBA (AMAZON)" + "FBM (AMAZON)" → "AMAZON"
-     */
-    private function transformToGroupedView(array $detailedData): array
-    {
-        if (empty($detailedData['labels']) || empty($detailedData['datasets'][0]['data'])) {
-            return $detailedData;
-        }
-
-        $labels = $detailedData['labels'];
-        $data = $detailedData['datasets'][0]['data'];
-        $colors = $detailedData['datasets'][0]['backgroundColor'] ?? [];
-
-        // Group by extracting channel from "Subsource (CHANNEL)" format
-        $grouped = [];
-        foreach ($labels as $index => $label) {
-            // Extract channel from parentheses, or use full label if no parentheses
-            if (preg_match('/\(([^)]+)\)$/', $label, $matches)) {
-                $channel = $matches[1]; // Extract "AMAZON" from "FBA (AMAZON)"
-            } else {
-                $channel = $label; // No parentheses, use as-is
-            }
-
-            if (! isset($grouped[$channel])) {
-                $grouped[$channel] = [
-                    'value' => 0,
-                    'color' => $colors[$index] ?? '#3B82F6',
-                ];
-            }
-
-            $grouped[$channel]['value'] += $data[$index];
-        }
-
-        // Rebuild chart data structure
-        return [
-            'labels' => array_keys($grouped),
-            'datasets' => [[
-                'label' => 'Revenue by Channel',
-                'data' => array_column($grouped, 'value'),
-                'backgroundColor' => array_column($grouped, 'color'),
-                'borderWidth' => 2,
-            ]],
-        ];
     }
 
     #[Computed]
@@ -191,12 +123,6 @@ final class ChannelDistributionChart extends Component
     {
         // Include viewMode so changing tabs recreates the component
         return "channel-doughnut-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->status}-{$this->customFrom}-{$this->customTo}";
-    }
-
-    public function setViewMode(string $mode): void
-    {
-        $this->viewMode = $mode;
-        $this->calculateChartData();
     }
 
     public function render()

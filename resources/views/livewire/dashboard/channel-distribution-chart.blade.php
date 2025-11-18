@@ -40,7 +40,8 @@
                 wire:ignore
                 x-data="channelDistributionChart(
                     @entangle('channelData').live,
-                    @js($this->chartOptions)
+                    @js($this->chartOptions),
+                    @entangle('viewMode').live
                 )"
                 class="relative"
                 style="height: 350px"
