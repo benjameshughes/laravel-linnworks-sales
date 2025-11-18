@@ -17,13 +17,16 @@ Alpine.data('channelDistributionChart', (data, options, viewMode) => ({
 
     init() {
         // Transform data based on view mode before creating chart
-        const chartData = this.transformDataForViewMode(this.data, this.viewMode);
+        const transformedData = this.transformDataForViewMode(this.data, this.viewMode);
 
-        if (!chartData || !chartData.labels || chartData.labels.length === 0) {
+        if (!transformedData || !transformedData.labels || transformedData.labels.length === 0) {
             console.log('ChannelDistributionChart: No data available');
             this.loading = false;
             return;
         }
+
+        // Deep clone to remove Livewire's reactive proxies before passing to Chart.js
+        const chartData = JSON.parse(JSON.stringify(transformedData));
 
         this.chart = new Chart(this.$refs.canvas, {
             type: 'doughnut',
@@ -38,9 +41,11 @@ Alpine.data('channelDistributionChart', (data, options, viewMode) => ({
             if (this.chart && newData) {
                 const transformed = this.transformDataForViewMode(newData, this.viewMode);
                 if (transformed && transformed.labels && transformed.labels.length > 0) {
-                    this.chart.data.labels = transformed.labels;
-                    this.chart.data.datasets[0].data = transformed.datasets[0].data;
-                    this.chart.data.datasets[0].backgroundColor = transformed.datasets[0].backgroundColor;
+                    // Deep clone to strip Livewire proxies
+                    const cleanData = JSON.parse(JSON.stringify(transformed));
+                    this.chart.data.labels = cleanData.labels;
+                    this.chart.data.datasets[0].data = cleanData.datasets[0].data;
+                    this.chart.data.datasets[0].backgroundColor = cleanData.datasets[0].backgroundColor;
                     this.chart.update('none');
                 }
             }
@@ -51,9 +56,11 @@ Alpine.data('channelDistributionChart', (data, options, viewMode) => ({
             if (this.chart && this.data) {
                 const transformed = this.transformDataForViewMode(this.data, newMode);
                 if (transformed && transformed.labels && transformed.labels.length > 0) {
-                    this.chart.data.labels = transformed.labels;
-                    this.chart.data.datasets[0].data = transformed.datasets[0].data;
-                    this.chart.data.datasets[0].backgroundColor = transformed.datasets[0].backgroundColor;
+                    // Deep clone to strip Livewire proxies
+                    const cleanData = JSON.parse(JSON.stringify(transformed));
+                    this.chart.data.labels = cleanData.labels;
+                    this.chart.data.datasets[0].data = cleanData.datasets[0].data;
+                    this.chart.data.datasets[0].backgroundColor = cleanData.datasets[0].backgroundColor;
                     this.chart.update('active'); // Animate the transition!
                 }
             }
