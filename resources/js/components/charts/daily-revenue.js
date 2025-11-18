@@ -23,11 +23,13 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
         // Deep clone to strip Livewire proxies
         const chartData = JSON.parse(JSON.stringify(formattedData));
 
-        this.chart = new Chart(this.$refs.canvas, {
+        // Store chart as raw object to prevent Alpine reactivity
+        const chartInstance = new Chart(this.$refs.canvas, {
             type: 'bar',
             data: chartData,
             options: this.getChartOptions()
         });
+        this.chart = Alpine.raw(chartInstance);
 
         this.loading = false;
 
@@ -41,13 +43,14 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
                 if (this.chart.data.datasets.length !== cleanData.datasets.length) {
                     // Recreate chart when dataset count changes
                     this.chart.destroy();
-                    this.chart = new Chart(this.$refs.canvas, {
+                    const newChartInstance = new Chart(this.$refs.canvas, {
                         type: 'bar',
                         data: cleanData,
                         options: this.getChartOptions()
                     });
+                    this.chart = Alpine.raw(newChartInstance);
                 } else {
-                    // Replace entire data object to avoid Chart.js internal state issues
+                    // Replace entire data object (chart is raw, so data won't be wrapped in proxy)
                     this.chart.data = cleanData;
                     this.chart.update('active'); // Animate filter changes
                 }
@@ -65,13 +68,14 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
                 if (this.chart.data.datasets.length !== cleanData.datasets.length) {
                     // Need to recreate when dataset count changes
                     this.chart.destroy();
-                    this.chart = new Chart(this.$refs.canvas, {
+                    const newChartInstance = new Chart(this.$refs.canvas, {
                         type: 'bar',
                         data: cleanData,
                         options: this.getChartOptions()
                     });
+                    this.chart = Alpine.raw(newChartInstance);
                 } else {
-                    // Replace entire data object to avoid Chart.js internal state issues
+                    // Replace entire data object (chart is raw, so data won't be wrapped in proxy)
                     this.chart.data = cleanData;
                     this.chart.update('active'); // Animate the transition!
                 }

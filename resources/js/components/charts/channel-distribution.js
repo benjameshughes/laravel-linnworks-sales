@@ -23,11 +23,13 @@ Alpine.data('channelDistributionChart', (channelData, viewMode) => ({
         // Deep clone to strip Livewire proxies
         const chartData = JSON.parse(JSON.stringify(formattedData));
 
-        this.chart = new Chart(this.$refs.canvas, {
+        // Store chart as raw object to prevent Alpine reactivity
+        const chartInstance = new Chart(this.$refs.canvas, {
             type: 'doughnut',
             data: chartData,
             options: this.getChartOptions()
         });
+        this.chart = Alpine.raw(chartInstance);
 
         this.loading = false;
 
@@ -37,7 +39,7 @@ Alpine.data('channelDistributionChart', (channelData, viewMode) => ({
                 const newData = this.formatForChartJs(newChannelData, this.viewMode);
                 const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
 
-                // Replace entire data object to avoid Chart.js internal state issues
+                // Replace entire data object (chart is raw, so data won't be wrapped in proxy)
                 this.chart.data = cleanData;
                 this.chart.update('active'); // Animate filter changes
             }
@@ -49,7 +51,7 @@ Alpine.data('channelDistributionChart', (channelData, viewMode) => ({
                 const newData = this.formatForChartJs(this.channelData, newMode);
                 const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
 
-                // Replace entire data object to avoid Chart.js internal state issues
+                // Replace entire data object (chart is raw, so data won't be wrapped in proxy)
                 this.chart.data = cleanData;
                 this.chart.update('active'); // Animate the transition!
             }
