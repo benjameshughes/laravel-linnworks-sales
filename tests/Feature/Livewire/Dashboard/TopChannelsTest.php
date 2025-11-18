@@ -41,18 +41,21 @@ describe('TopChannels Livewire Component', function () {
 
     it('computes top channels correctly', function () {
         Order::factory()->count(3)->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'Amazon',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(2)->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'eBay',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'eBay',
             'total_charge' => 150.00,
         ]);
 
-        $component = Livewire::test(TopChannels::class);
+        $component = Livewire::test(TopChannels::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'));
 
         $topChannels = $component->get('topChannels');
 
@@ -68,13 +71,16 @@ describe('TopChannels Livewire Component', function () {
     it('limits results to 6 channels', function () {
         foreach (['Amazon', 'eBay', 'Website', 'Etsy', 'Facebook', 'Instagram', 'TikTok'] as $channel) {
             Order::factory()->create([
-                'created_at' => now()->subDays(3),
-                'source' => $channel,
+                'received_date' => now()->subDays(3),
+                'channel_name' => $channel,
                 'total_charge' => 100.00,
             ]);
         }
 
-        $component = Livewire::test(TopChannels::class);
+        $component = Livewire::test(TopChannels::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'));
 
         $topChannels = $component->get('topChannels');
 
@@ -93,14 +99,14 @@ describe('TopChannels Livewire Component', function () {
 
     it('handles custom date range', function () {
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-05'),
-            'source' => 'Amazon',
+            'received_date' => Carbon::parse('2025-01-05'),
+            'channel_name' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-20'),
-            'source' => 'eBay',
+            'received_date' => Carbon::parse('2025-01-20'),
+            'channel_name' => 'eBay',
             'total_charge' => 200.00,
         ]);
 
@@ -117,24 +123,27 @@ describe('TopChannels Livewire Component', function () {
 
     it('sorts channels by revenue descending', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'Amazon',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'Amazon',
             'total_charge' => 500.00,
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'eBay',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'eBay',
             'total_charge' => 800.00,
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'Website',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'Website',
             'total_charge' => 200.00,
         ]);
 
-        $component = Livewire::test(TopChannels::class);
+        $component = Livewire::test(TopChannels::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'));
 
         $topChannels = $component->get('topChannels');
 

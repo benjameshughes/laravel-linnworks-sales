@@ -47,45 +47,23 @@ describe('DailyRevenueChart Livewire Component', function () {
             'items' => [['sku' => 'ABC', 'quantity' => 2]],
         ]);
 
-        $component = Livewire::test(DailyRevenueChart::class);
+        $component = Livewire::test(DailyRevenueChart::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'));
 
-        $chartData = $component->get('chartData');
+        $dailyBreakdown = $component->get('dailyBreakdown');
 
-        expect($chartData)
-            ->toBeArray()
-            ->toHaveKey('labels')
-            ->toHaveKey('datasets');
+        expect($dailyBreakdown)
+            ->toBeArray();
     });
 
     it('handles empty data gracefully', function () {
         $component = Livewire::test(DailyRevenueChart::class);
 
-        $chartData = $component->get('chartData');
+        $dailyBreakdown = $component->get('dailyBreakdown');
 
-        expect($chartData)->toBeArray();
-    });
-
-    it('can switch view mode', function () {
-        Livewire::test(DailyRevenueChart::class)
-            ->assertSet('viewMode', 'orders_revenue')
-            ->call('setViewMode', 'items')
-            ->assertSet('viewMode', 'items');
-    });
-
-    it('generates unique chart key based on filters', function () {
-        $component = Livewire::test(DailyRevenueChart::class)
-            ->set('period', '7')
-            ->set('channel', 'Amazon')
-            ->set('viewMode', 'orders_revenue');
-
-        $chartKey = $component->get('chartKey');
-
-        expect($chartKey)
-            ->toBeString()
-            ->toContain('daily-bar')
-            ->toContain('orders_revenue')
-            ->toContain('7')
-            ->toContain('Amazon');
+        expect($dailyBreakdown)->toBeArray();
     });
 
     it('generates period label for numeric periods', function () {
@@ -128,11 +106,14 @@ describe('DailyRevenueChart Livewire Component', function () {
         ]);
 
         $component = Livewire::test(DailyRevenueChart::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'))
             ->set('channel', 'Amazon');
 
-        $chartData = $component->get('chartData');
+        $dailyBreakdown = $component->get('dailyBreakdown');
 
-        expect($chartData)->toBeArray();
+        expect($dailyBreakdown)->toBeArray();
     });
 
     it('handles custom date range', function () {
@@ -153,8 +134,8 @@ describe('DailyRevenueChart Livewire Component', function () {
             ->set('customFrom', '2025-01-01')
             ->set('customTo', '2025-01-10');
 
-        $chartData = $component->get('chartData');
+        $dailyBreakdown = $component->get('dailyBreakdown');
 
-        expect($chartData)->toBeArray();
+        expect($dailyBreakdown)->toBeArray();
     });
 });

@@ -41,7 +41,7 @@ describe('TopProducts Livewire Component', function () {
 
     it('computes top products correctly', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'items' => [
                 ['sku' => 'ABC123', 'quantity' => 10],
                 ['sku' => 'DEF456', 'quantity' => 5],
@@ -49,14 +49,17 @@ describe('TopProducts Livewire Component', function () {
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'items' => [
                 ['sku' => 'ABC123', 'quantity' => 5],
                 ['sku' => 'GHI789', 'quantity' => 3],
             ],
         ]);
 
-        $component = Livewire::test(TopProducts::class);
+        $component = Livewire::test(TopProducts::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'));
 
         $topProducts = $component->get('topProducts');
 
@@ -76,11 +79,14 @@ describe('TopProducts Livewire Component', function () {
         ])->toArray();
 
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'items' => $items,
         ]);
 
-        $component = Livewire::test(TopProducts::class);
+        $component = Livewire::test(TopProducts::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'));
 
         $topProducts = $component->get('topProducts');
 
@@ -99,7 +105,7 @@ describe('TopProducts Livewire Component', function () {
 
     it('filters by channel', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'channel_name' => 'Amazon',
             'items' => [
                 ['sku' => 'ABC123', 'quantity' => 10],
@@ -107,7 +113,7 @@ describe('TopProducts Livewire Component', function () {
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'channel_name' => 'eBay',
             'items' => [
                 ['sku' => 'DEF456', 'quantity' => 20],
@@ -115,6 +121,9 @@ describe('TopProducts Livewire Component', function () {
         ]);
 
         $component = Livewire::test(TopProducts::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'))
             ->set('channel', 'Amazon');
 
         $topProducts = $component->get('topProducts');
@@ -125,14 +134,14 @@ describe('TopProducts Livewire Component', function () {
 
     it('handles custom date range', function () {
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-05'),
+            'received_date' => Carbon::parse('2025-01-05'),
             'items' => [
                 ['sku' => 'ABC123', 'quantity' => 10],
             ],
         ]);
 
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-20'),
+            'received_date' => Carbon::parse('2025-01-20'),
             'items' => [
                 ['sku' => 'DEF456', 'quantity' => 20],
             ],
@@ -151,7 +160,7 @@ describe('TopProducts Livewire Component', function () {
 
     it('sorts products by quantity descending', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'items' => [
                 ['sku' => 'LOW', 'quantity' => 5],
                 ['sku' => 'HIGH', 'quantity' => 50],
@@ -159,7 +168,10 @@ describe('TopProducts Livewire Component', function () {
             ],
         ]);
 
-        $component = Livewire::test(TopProducts::class);
+        $component = Livewire::test(TopProducts::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'));
 
         $topProducts = $component->get('topProducts');
 

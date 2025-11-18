@@ -20,7 +20,7 @@ afterEach(function () {
 describe('SalesMetrics', function () {
     it('returns metrics summary with correct structure', function () {
         Order::factory()->count(5)->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'total_charge' => 100.00,
             'items' => [
                 ['sku' => 'ABC123', 'quantity' => 2],
@@ -47,13 +47,13 @@ describe('SalesMetrics', function () {
 
     it('filters metrics by channel', function () {
         Order::factory()->count(3)->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'channel_name' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(2)->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'channel_name' => 'eBay',
             'total_charge' => 50.00,
         ]);
@@ -67,7 +67,7 @@ describe('SalesMetrics', function () {
 
     it('calculates orders per day correctly', function () {
         Order::factory()->count(10)->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
         ]);
 
         $service = app(SalesMetrics::class);
@@ -78,12 +78,12 @@ describe('SalesMetrics', function () {
 
     it('handles custom date range in metrics summary', function () {
         Order::factory()->count(5)->create([
-            'created_at' => Carbon::parse('2025-01-05'),
+            'received_date' => Carbon::parse('2025-01-05'),
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(3)->create([
-            'created_at' => Carbon::parse('2025-01-20'),
+            'received_date' => Carbon::parse('2025-01-20'),
             'total_charge' => 100.00,
         ]);
 
@@ -96,20 +96,20 @@ describe('SalesMetrics', function () {
 
     it('returns top channels sorted by revenue', function () {
         Order::factory()->count(3)->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'Amazon',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(2)->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'eBay',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'eBay',
             'total_charge' => 150.00,
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'Website',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'Website',
             'total_charge' => 50.00,
         ]);
 
@@ -130,20 +130,20 @@ describe('SalesMetrics', function () {
 
     it('limits top channels correctly', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'Amazon',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'eBay',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'eBay',
             'total_charge' => 90.00,
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
-            'source' => 'Website',
+            'received_date' => now()->subDays(3),
+            'channel_name' => 'Website',
             'total_charge' => 80.00,
         ]);
 
@@ -155,7 +155,7 @@ describe('SalesMetrics', function () {
 
     it('returns top products sorted by quantity', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'items' => [
                 ['sku' => 'ABC123', 'quantity' => 10],
                 ['sku' => 'DEF456', 'quantity' => 5],
@@ -163,7 +163,7 @@ describe('SalesMetrics', function () {
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'items' => [
                 ['sku' => 'ABC123', 'quantity' => 5],
                 ['sku' => 'GHI789', 'quantity' => 3],
@@ -187,7 +187,7 @@ describe('SalesMetrics', function () {
 
     it('filters top products by channel', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'channel_name' => 'Amazon',
             'items' => [
                 ['sku' => 'ABC123', 'quantity' => 10],
@@ -195,7 +195,7 @@ describe('SalesMetrics', function () {
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'channel_name' => 'eBay',
             'items' => [
                 ['sku' => 'DEF456', 'quantity' => 20],
@@ -213,7 +213,7 @@ describe('SalesMetrics', function () {
 
     it('gets recent orders with default limit', function () {
         Order::factory()->count(20)->create([
-            'created_at' => now()->subHour(),
+            'received_date' => now()->subHour(),
         ]);
 
         $service = app(SalesMetrics::class);
@@ -226,7 +226,7 @@ describe('SalesMetrics', function () {
 
     it('gets recent orders with custom limit', function () {
         Order::factory()->count(20)->create([
-            'created_at' => now()->subHour(),
+            'received_date' => now()->subHour(),
         ]);
 
         $service = app(SalesMetrics::class);
@@ -237,7 +237,7 @@ describe('SalesMetrics', function () {
 
     it('returns daily revenue data with correct structure', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(2),
+            'received_date' => now()->subDays(2),
             'received_date' => now()->subDays(2),
             'total_charge' => 100.00,
             'items' => [['sku' => 'ABC', 'quantity' => 2]],
@@ -257,12 +257,12 @@ describe('SalesMetrics', function () {
 
     it('calculates positive growth rate', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'total_charge' => 200.00,
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(10),
+            'received_date' => now()->subDays(10),
             'total_charge' => 100.00,
         ]);
 
@@ -274,12 +274,12 @@ describe('SalesMetrics', function () {
 
     it('calculates negative growth rate', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'total_charge' => 50.00,
         ]);
 
         Order::factory()->create([
-            'created_at' => now()->subDays(10),
+            'received_date' => now()->subDays(10),
             'total_charge' => 100.00,
         ]);
 
@@ -291,7 +291,7 @@ describe('SalesMetrics', function () {
 
     it('handles zero previous revenue in growth rate', function () {
         Order::factory()->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'total_charge' => 100.00,
         ]);
 
@@ -312,14 +312,14 @@ describe('SalesMetrics', function () {
 
     it('handles custom period in top channels', function () {
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-05'),
-            'source' => 'Amazon',
+            'received_date' => Carbon::parse('2025-01-05'),
+            'channel_name' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-20'),
-            'source' => 'Amazon',
+            'received_date' => Carbon::parse('2025-01-20'),
+            'channel_name' => 'Amazon',
             'total_charge' => 200.00,
         ]);
 

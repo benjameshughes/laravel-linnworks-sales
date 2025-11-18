@@ -47,37 +47,15 @@ describe('SalesTrendChart Livewire Component', function () {
             'items' => [['sku' => 'ABC', 'quantity' => 2]],
         ]);
 
-        $component = Livewire::test(SalesTrendChart::class);
-
-        $chartData = $component->get('chartData');
-
-        expect($chartData)
-            ->toBeArray()
-            ->toHaveKey('labels')
-            ->toHaveKey('datasets');
-    });
-
-    it('can switch between revenue and orders view mode', function () {
-        Livewire::test(SalesTrendChart::class)
-            ->assertSet('viewMode', 'revenue')
-            ->call('setViewMode', 'orders')
-            ->assertSet('viewMode', 'orders');
-    });
-
-    it('generates unique chart key based on filters and view mode', function () {
         $component = Livewire::test(SalesTrendChart::class)
-            ->set('period', '7')
-            ->set('channel', 'Amazon')
-            ->set('viewMode', 'revenue');
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'));
 
-        $chartKey = $component->get('chartKey');
+        $dailyBreakdown = $component->get('dailyBreakdown');
 
-        expect($chartKey)
-            ->toBeString()
-            ->toContain('sales-trend')
-            ->toContain('revenue')
-            ->toContain('7')
-            ->toContain('Amazon');
+        expect($dailyBreakdown)
+            ->toBeArray();
     });
 
     it('generates period label correctly', function () {
@@ -105,9 +83,9 @@ describe('SalesTrendChart Livewire Component', function () {
     it('handles empty data gracefully', function () {
         $component = Livewire::test(SalesTrendChart::class);
 
-        $chartData = $component->get('chartData');
+        $dailyBreakdown = $component->get('dailyBreakdown');
 
-        expect($chartData)->toBeArray();
+        expect($dailyBreakdown)->toBeArray();
     });
 
     it('filters data by channel', function () {
@@ -126,10 +104,13 @@ describe('SalesTrendChart Livewire Component', function () {
         ]);
 
         $component = Livewire::test(SalesTrendChart::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'))
             ->set('channel', 'Amazon');
 
-        $chartData = $component->get('chartData');
+        $dailyBreakdown = $component->get('dailyBreakdown');
 
-        expect($chartData)->toBeArray();
+        expect($dailyBreakdown)->toBeArray();
     });
 });

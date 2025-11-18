@@ -46,21 +46,15 @@ describe('ChannelDistributionChart Livewire Component', function () {
             'total_charge' => 100.00,
         ]);
 
-        $component = Livewire::test(ChannelDistributionChart::class);
+        $component = Livewire::test(ChannelDistributionChart::class)
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'));
 
-        $chartData = $component->get('chartData');
+        $channelData = $component->get('channelData');
 
-        expect($chartData)
-            ->toBeArray()
-            ->toHaveKey('labels')
-            ->toHaveKey('datasets');
-    });
-
-    it('can switch between detailed and grouped view modes', function () {
-        Livewire::test(ChannelDistributionChart::class)
-            ->assertSet('viewMode', 'detailed')
-            ->call('setViewMode', 'grouped')
-            ->assertSet('viewMode', 'grouped');
+        expect($channelData)
+            ->toBeArray();
     });
 
     it('generates unique chart key based on filters and view mode', function () {
@@ -82,9 +76,9 @@ describe('ChannelDistributionChart Livewire Component', function () {
     it('handles empty data gracefully', function () {
         $component = Livewire::test(ChannelDistributionChart::class);
 
-        $chartData = $component->get('chartData');
+        $channelData = $component->get('channelData');
 
-        expect($chartData)->toBeArray();
+        expect($channelData)->toBeArray();
     });
 
     it('filters data by period', function () {
@@ -101,11 +95,13 @@ describe('ChannelDistributionChart Livewire Component', function () {
         ]);
 
         $component = Livewire::test(ChannelDistributionChart::class)
-            ->set('period', '7');
+            ->set('period', 'custom')
+            ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
+            ->set('customTo', now()->format('Y-m-d'));
 
-        $chartData = $component->get('chartData');
+        $channelData = $component->get('channelData');
 
-        expect($chartData)->toBeArray();
+        expect($channelData)->toBeArray();
     });
 
     it('handles custom date range', function () {
@@ -126,20 +122,8 @@ describe('ChannelDistributionChart Livewire Component', function () {
             ->set('customFrom', '2025-01-01')
             ->set('customTo', '2025-01-10');
 
-        $chartData = $component->get('chartData');
+        $channelData = $component->get('channelData');
 
-        expect($chartData)->toBeArray();
-    });
-
-    it('grouped view transforms detailed data correctly', function () {
-        $component = Livewire::test(ChannelDistributionChart::class)
-            ->set('viewMode', 'grouped');
-
-        $chartData = $component->get('chartData');
-
-        expect($chartData)
-            ->toBeArray()
-            ->toHaveKey('labels')
-            ->toHaveKey('datasets');
+        expect($channelData)->toBeArray();
     });
 });

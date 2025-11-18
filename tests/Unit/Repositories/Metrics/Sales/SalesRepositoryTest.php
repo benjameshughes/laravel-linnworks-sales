@@ -117,15 +117,15 @@ describe('SalesRepository', function () {
 
     it('gets orders between dates', function () {
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-05 10:00:00'),
+            'received_date' => Carbon::parse('2025-01-05 10:00:00'),
         ]);
 
         Order::factory()->count(3)->create([
-            'created_at' => Carbon::parse('2025-01-10 10:00:00'),
+            'received_date' => Carbon::parse('2025-01-10 10:00:00'),
         ]);
 
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-20 10:00:00'),
+            'received_date' => Carbon::parse('2025-01-20 10:00:00'),
         ]);
 
         $repository = new SalesRepository;
@@ -141,15 +141,15 @@ describe('SalesRepository', function () {
 
     it('includes orders on boundary dates', function () {
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-10 00:00:00'),
+            'received_date' => Carbon::parse('2025-01-10 00:00:00'),
         ]);
 
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-15 23:59:59'),
+            'received_date' => Carbon::parse('2025-01-15 23:59:59'),
         ]);
 
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-09 23:59:59'),
+            'received_date' => Carbon::parse('2025-01-09 23:59:59'),
         ]);
 
         $repository = new SalesRepository;
@@ -165,15 +165,15 @@ describe('SalesRepository', function () {
 
     it('gets orders for period', function () {
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-05 10:00:00'),
+            'received_date' => Carbon::parse('2025-01-05 10:00:00'),
         ]);
 
         Order::factory()->count(3)->create([
-            'created_at' => Carbon::parse('2025-01-10 10:00:00'),
+            'received_date' => Carbon::parse('2025-01-10 10:00:00'),
         ]);
 
         Order::factory()->create([
-            'created_at' => Carbon::parse('2025-01-20 10:00:00'),
+            'received_date' => Carbon::parse('2025-01-20 10:00:00'),
         ]);
 
         $repository = new SalesRepository;

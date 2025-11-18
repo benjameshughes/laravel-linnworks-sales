@@ -51,7 +51,7 @@ describe('MetricsSummary Livewire Component', function () {
 
     it('computes metrics correctly with real data', function () {
         Order::factory()->count(5)->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'total_charge' => 100.00,
             'items' => [
                 ['sku' => 'ABC123', 'quantity' => 2],
@@ -78,13 +78,13 @@ describe('MetricsSummary Livewire Component', function () {
 
     it('filters metrics by channel', function () {
         Order::factory()->count(3)->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'channel_name' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(2)->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'channel_name' => 'eBay',
             'total_charge' => 50.00,
         ]);
@@ -104,12 +104,12 @@ describe('MetricsSummary Livewire Component', function () {
 
     it('handles custom date range', function () {
         Order::factory()->count(3)->create([
-            'created_at' => Carbon::parse('2025-01-05'),
+            'received_date' => Carbon::parse('2025-01-05'),
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(2)->create([
-            'created_at' => Carbon::parse('2025-01-20'),
+            'received_date' => Carbon::parse('2025-01-20'),
             'total_charge' => 100.00,
         ]);
 
@@ -137,12 +137,12 @@ describe('MetricsSummary Livewire Component', function () {
 
     it('updates metrics when filters change', function () {
         Order::factory()->count(5)->create([
-            'created_at' => now()->subDays(3),
+            'received_date' => now()->subDays(3),
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(3)->create([
-            'created_at' => now()->subDays(20),
+            'received_date' => now()->subDays(20),
             'total_charge' => 100.00,
         ]);
 

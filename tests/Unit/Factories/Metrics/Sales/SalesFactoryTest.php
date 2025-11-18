@@ -91,11 +91,11 @@ describe('SalesFactory', function () {
 
     it('groups and sorts top channels correctly', function () {
         $orders = collect([
-            (object) ['source' => 'Amazon', 'total_charge' => 500.00],
-            (object) ['source' => 'eBay', 'total_charge' => 200.00],
-            (object) ['source' => 'Amazon', 'total_charge' => 300.00],
-            (object) ['source' => 'Website', 'total_charge' => 150.00],
-            (object) ['source' => 'eBay', 'total_charge' => 100.00],
+            (object) ['channel_name' => 'Amazon', 'total_charge' => 500.00],
+            (object) ['channel_name' => 'eBay', 'total_charge' => 200.00],
+            (object) ['channel_name' => 'Amazon', 'total_charge' => 300.00],
+            (object) ['channel_name' => 'Website', 'total_charge' => 150.00],
+            (object) ['channel_name' => 'eBay', 'total_charge' => 100.00],
         ]);
 
         $factory = new SalesFactory($orders);
@@ -125,10 +125,10 @@ describe('SalesFactory', function () {
 
     it('limits top channels correctly', function () {
         $orders = collect([
-            (object) ['source' => 'Amazon', 'total_charge' => 500.00],
-            (object) ['source' => 'eBay', 'total_charge' => 400.00],
-            (object) ['source' => 'Website', 'total_charge' => 300.00],
-            (object) ['source' => 'Etsy', 'total_charge' => 200.00],
+            (object) ['channel_name' => 'Amazon', 'total_charge' => 500.00],
+            (object) ['channel_name' => 'eBay', 'total_charge' => 400.00],
+            (object) ['channel_name' => 'Website', 'total_charge' => 300.00],
+            (object) ['channel_name' => 'Etsy', 'total_charge' => 200.00],
         ]);
 
         $factory = new SalesFactory($orders);
