@@ -6,7 +6,6 @@ namespace App\Livewire\Dashboard;
 
 use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Illuminate\Support\Facades\Cache;
-use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -91,42 +90,6 @@ final class ChannelDistributionChart extends Component
 
         // Cache miss - return empty array to prevent OOM
         $this->channelData = [];
-    }
-
-    #[Computed]
-    public function chartOptions(): array
-    {
-        return [
-            'responsive' => true,
-            'maintainAspectRatio' => false,
-            'animation' => [
-                'duration' => 3000,
-            ],
-            'cutout' => '60%',
-            'plugins' => [
-                'legend' => [
-                    'display' => true,
-                    'position' => 'bottom',
-                    'labels' => [
-                        'padding' => 15,
-                        'usePointStyle' => true,
-                        'font' => [
-                            'size' => 12,
-                        ],
-                    ],
-                ],
-                'tooltip' => [
-                    'enabled' => true,
-                ],
-            ],
-        ];
-    }
-
-    #[Computed]
-    public function chartKey(): string
-    {
-        // Include viewMode so changing tabs recreates the component
-        return "channel-doughnut-{$this->viewMode}-{$this->period}-{$this->channel}-{$this->status}-{$this->customFrom}-{$this->customTo}";
     }
 
     public function render()

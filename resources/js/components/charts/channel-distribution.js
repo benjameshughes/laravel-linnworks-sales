@@ -1,37 +1,67 @@
 /**
  * Channel Distribution Chart - Alpine.js Component
  *
- * Takes raw top_channels data and transforms it for Chart.js
+ * Doughnut chart showing revenue distribution by channel
+ * Uses Chart.js for rendering
+ *
+ * Accepts raw channel data and formats it for Chart.js
  */
-Alpine.data('channelDistributionChart', (rawChannelsData, options) => ({
+Alpine.data('channelDistributionChart', (channelData, viewMode) => ({
     chart: null,
+    channelData,
+    viewMode,
     loading: true,
 
     init() {
-        if (!rawChannelsData || rawChannelsData.length === 0) {
+        if (!this.channelData || this.channelData.length === 0) {
             console.log('ChannelDistributionChart: No data available');
             this.loading = false;
             return;
         }
 
-        // Transform raw channels data to Chart.js format
-        const chartData = this.transformToChartFormat(rawChannelsData);
+        const formattedData = this.formatForChartJs(this.channelData, this.viewMode);
+        // Deep clone to strip Livewire proxies
+        const chartData = JSON.parse(JSON.stringify(formattedData));
 
         this.chart = new Chart(this.$refs.canvas, {
             type: 'doughnut',
             data: chartData,
-            options: options
+            options: this.getChartOptions()
         });
 
         this.loading = false;
+
+        // Watch for data changes (from Livewire)
+        this.$watch('channelData', (newChannelData) => {
+            if (this.chart && newChannelData && newChannelData.length > 0) {
+                const newData = this.formatForChartJs(newChannelData, this.viewMode);
+                const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
+                this.chart.data.labels = cleanData.labels;
+                this.chart.data.datasets[0].data = cleanData.datasets[0].data;
+                this.chart.data.datasets[0].backgroundColor = cleanData.datasets[0].backgroundColor;
+                this.chart.update('none'); // Update without animation on data change
+            }
+        });
+
+        // Watch for view mode changes (detailed <-> grouped)
+        this.$watch('viewMode', (newMode) => {
+            if (this.chart && this.channelData && this.channelData.length > 0) {
+                const newData = this.formatForChartJs(this.channelData, newMode);
+                const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
+                this.chart.data.labels = cleanData.labels;
+                this.chart.data.datasets[0].data = cleanData.datasets[0].data;
+                this.chart.data.datasets[0].backgroundColor = cleanData.datasets[0].backgroundColor;
+                this.chart.update('active'); // Animate the transition!
+            }
+        });
     },
 
     /**
-     * Transform raw channels array to Chart.js doughnut format
+     * Transform raw channel data into Chart.js doughnut format
      * Input: [{source: 'Amazon', revenue: 28732.76}, {source: 'eBay', revenue: 20156.42}]
      * Output: {labels: ['Amazon', 'eBay'], datasets: [{data: [28732.76, 20156.42], backgroundColor: [...]}]}
      */
-    transformToChartFormat(channels) {
+    formatForChartJs(channels, mode) {
         const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
         return {
@@ -42,6 +72,36 @@ Alpine.data('channelDistributionChart', (rawChannelsData, options) => ({
                 backgroundColor: channels.map((_, i) => colors[i % colors.length]),
                 borderWidth: 2
             }]
+        };
+    },
+
+    /**
+     * Get Chart.js options with 3-second animations
+     */
+    getChartOptions() {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 3000  // 3-second animations!
+            },
+            cutout: '60%',
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        font: {
+                            size: 12,
+                        },
+                    },
+                },
+                tooltip: {
+                    enabled: true,
+                },
+            },
         };
     },
 
