@@ -39,21 +39,14 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
                 const newData = this.formatForChartJs(newBreakdown, this.viewMode);
                 const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
 
-                // Handle dataset count changes (filter might change data structure)
-                if (this.chart.data.datasets.length !== cleanData.datasets.length) {
-                    // Recreate chart when dataset count changes
-                    this.chart.destroy();
-                    const newChartInstance = new Chart(this.$refs.canvas, {
-                        type: 'bar',
-                        data: cleanData,
-                        options: this.getChartOptions()
-                    });
-                    this.chart = Alpine.raw(newChartInstance);
-                } else {
-                    // Replace entire data object (chart is raw, so data won't be wrapped in proxy)
-                    this.chart.data = cleanData;
-                    this.chart.update('active'); // Animate filter changes
-                }
+                // Destroy and recreate to avoid proxy issues
+                this.chart.destroy();
+                const newChartInstance = new Chart(this.$refs.canvas, {
+                    type: 'bar',
+                    data: cleanData,
+                    options: this.getChartOptions()
+                });
+                this.chart = Alpine.raw(newChartInstance);
             }
         });
 
@@ -63,22 +56,14 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
                 const newData = this.formatForChartJs(this.dailyBreakdown, newMode);
                 const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
 
-                // Handle dataset count changes (1 dataset vs 2 datasets)
-                // When switching between 'items' (1 dataset) and 'orders_revenue' (2 datasets)
-                if (this.chart.data.datasets.length !== cleanData.datasets.length) {
-                    // Need to recreate when dataset count changes
-                    this.chart.destroy();
-                    const newChartInstance = new Chart(this.$refs.canvas, {
-                        type: 'bar',
-                        data: cleanData,
-                        options: this.getChartOptions()
-                    });
-                    this.chart = Alpine.raw(newChartInstance);
-                } else {
-                    // Replace entire data object (chart is raw, so data won't be wrapped in proxy)
-                    this.chart.data = cleanData;
-                    this.chart.update('active'); // Animate the transition!
-                }
+                // Destroy and recreate to avoid proxy issues
+                this.chart.destroy();
+                const newChartInstance = new Chart(this.$refs.canvas, {
+                    type: 'bar',
+                    data: cleanData,
+                    options: this.getChartOptions()
+                });
+                this.chart = Alpine.raw(newChartInstance);
             }
         });
     },

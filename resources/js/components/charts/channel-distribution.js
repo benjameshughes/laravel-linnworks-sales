@@ -39,9 +39,14 @@ Alpine.data('channelDistributionChart', (channelData, viewMode) => ({
                 const newData = this.formatForChartJs(newChannelData, this.viewMode);
                 const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
 
-                // Replace entire data object (chart is raw, so data won't be wrapped in proxy)
-                this.chart.data = cleanData;
-                this.chart.update('active'); // Animate filter changes
+                // Destroy and recreate to avoid proxy issues
+                this.chart.destroy();
+                const newChartInstance = new Chart(this.$refs.canvas, {
+                    type: 'doughnut',
+                    data: cleanData,
+                    options: this.getChartOptions()
+                });
+                this.chart = Alpine.raw(newChartInstance);
             }
         });
 
@@ -51,9 +56,14 @@ Alpine.data('channelDistributionChart', (channelData, viewMode) => ({
                 const newData = this.formatForChartJs(this.channelData, newMode);
                 const cleanData = JSON.parse(JSON.stringify(newData)); // Strip proxies
 
-                // Replace entire data object (chart is raw, so data won't be wrapped in proxy)
-                this.chart.data = cleanData;
-                this.chart.update('active'); // Animate the transition!
+                // Destroy and recreate to avoid proxy issues
+                this.chart.destroy();
+                const newChartInstance = new Chart(this.$refs.canvas, {
+                    type: 'doughnut',
+                    data: cleanData,
+                    options: this.getChartOptions()
+                });
+                this.chart = Alpine.raw(newChartInstance);
             }
         });
     },
