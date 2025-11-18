@@ -25,11 +25,16 @@ final class DailyRevenueChart extends Component
 
     public string $viewMode = 'orders_revenue'; // 'orders_revenue' or 'items'
 
+    // Public property for @entangle
+    public array $chartData = [];
+
     public function mount(): void
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
+
+        $this->calculateChartData();
     }
 
     #[On('filters-updated')]
@@ -45,17 +50,18 @@ final class DailyRevenueChart extends Component
         $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
+
+        $this->calculateChartData();
     }
 
     #[On('echo:cache-management,CacheWarmingCompleted')]
     public function refreshAfterCacheWarming(): void
     {
-        // Trigger re-render - computed properties will fetch fresh cache
-        // No manual cache clearing needed - service always reads fresh from cache store
+        // Trigger re-render - recalculate chart data with fresh cache
+        $this->calculateChartData();
     }
 
-    #[Computed]
-    public function chartData(): array
+    private function calculateChartData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
@@ -71,7 +77,7 @@ final class DailyRevenueChart extends Component
             $labels = $dailyBreakdown->pluck('date')->toArray();
 
             if ($this->viewMode === 'orders_revenue') {
-                return [
+                $this->chartData = [
                     'labels' => $labels,
                     'datasets' => [
                         [
@@ -91,7 +97,7 @@ final class DailyRevenueChart extends Component
                     ],
                 ];
             } else {
-                return [
+                $this->chartData = [
                     'labels' => $labels,
                     'datasets' => [
                         [
@@ -103,6 +109,8 @@ final class DailyRevenueChart extends Component
                     ],
                 ];
             }
+
+            return;
         }
 
         // Check cache
@@ -112,23 +120,59 @@ final class DailyRevenueChart extends Component
         if ($cached && isset($cached['chart_orders_revenue']) && isset($cached['chart_items'])) {
             // Return cached chart data based on viewMode
             if ($this->viewMode === 'orders_revenue') {
-                return $cached['chart_orders_revenue'];
+                $this->chartData = $cached['chart_orders_revenue'];
             } else {
-                return $cached['chart_items'];
+                $this->chartData = $cached['chart_items'];
             }
+
+            return;
         }
 
         // Cache miss - return empty array to prevent OOM
-        return ['labels' => [], 'datasets' => []];
+        $this->chartData = ['labels' => [], 'datasets' => []];
     }
 
     #[Computed]
     public function chartOptions(): array
     {
-        // Extract options from cached chart data (for single-day padding)
-        $data = $this->chartData;
-
-        return $data['options'] ?? [];
+        return [
+            'responsive' => true,
+            'maintainAspectRatio' => false,
+            'animation' => [
+                'duration' => 3000,
+            ],
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                    'position' => 'top',
+                ],
+                'tooltip' => [
+                    'enabled' => true,
+                    'mode' => 'index',
+                    'intersect' => false,
+                ],
+            ],
+            'scales' => [
+                'y' => [
+                    'beginAtZero' => true,
+                    'grid' => [
+                        'display' => true,
+                        'color' => 'rgba(0, 0, 0, 0.05)',
+                    ],
+                ],
+                'x' => [
+                    'grid' => [
+                        'display' => false,
+                    ],
+                ],
+            ],
+            'elements' => [
+                'bar' => [
+                    'borderRadius' => 4,
+                    'borderWidth' => 0,
+                ],
+            ],
+        ];
     }
 
     #[Computed]
@@ -153,6 +197,7 @@ final class DailyRevenueChart extends Component
     public function setViewMode(string $mode): void
     {
         $this->viewMode = $mode;
+        $this->calculateChartData();
     }
 
     public function render()

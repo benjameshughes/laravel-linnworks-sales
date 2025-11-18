@@ -25,11 +25,16 @@ final class SalesTrendChart extends Component
 
     public string $viewMode = 'revenue'; // 'revenue' or 'orders'
 
+    // Public property for @entangle
+    public array $chartData = [];
+
     public function mount(): void
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
+
+        $this->calculateChartData();
     }
 
     #[On('filters-updated')]
@@ -45,17 +50,18 @@ final class SalesTrendChart extends Component
         $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
+
+        $this->calculateChartData();
     }
 
     #[On('echo:cache-management,CacheWarmingCompleted')]
     public function refreshAfterCacheWarming(): void
     {
-        // Trigger re-render - computed properties will fetch fresh cache
-        // No manual cache clearing needed - service always reads fresh from cache store
+        // Trigger re-render - recalculate chart data with fresh cache
+        $this->calculateChartData();
     }
 
-    #[Computed]
-    public function chartData(): array
+    private function calculateChartData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
@@ -71,7 +77,7 @@ final class SalesTrendChart extends Component
             $labels = $dailyBreakdown->pluck('date')->toArray();
             $dataValues = $dailyBreakdown->pluck($this->viewMode === 'revenue' ? 'revenue' : 'orders')->toArray();
 
-            return [
+            $this->chartData = [
                 'labels' => $labels,
                 'datasets' => [
                     [
@@ -83,6 +89,8 @@ final class SalesTrendChart extends Component
                     ],
                 ],
             ];
+
+            return;
         }
 
         // Check cache
@@ -92,23 +100,74 @@ final class SalesTrendChart extends Component
         if ($cached && isset($cached['chart_line']) && isset($cached['chart_orders'])) {
             // Return cached chart data based on viewMode
             if ($this->viewMode === 'revenue') {
-                return $cached['chart_line'];
+                $this->chartData = $cached['chart_line'];
             } else {
-                return $cached['chart_orders'];
+                $this->chartData = $cached['chart_orders'];
             }
+
+            return;
         }
 
         // Cache miss - return empty array to prevent OOM
-        return ['labels' => [], 'datasets' => []];
+        $this->chartData = ['labels' => [], 'datasets' => []];
     }
 
     #[Computed]
     public function chartOptions(): array
     {
-        // Extract options from cached chart data (for single-day padding)
-        $data = $this->chartData;
-
-        return $data['options'] ?? [];
+        return [
+            'responsive' => true,
+            'maintainAspectRatio' => false,
+            'animation' => [
+                'duration' => 3000,
+            ],
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                    'position' => 'top',
+                ],
+                'tooltip' => [
+                    'enabled' => true,
+                    'mode' => 'index',
+                    'intersect' => false,
+                ],
+            ],
+            'scales' => [
+                'y' => [
+                    'beginAtZero' => true,
+                    'grace' => '10%',
+                    'grid' => [
+                        'display' => true,
+                        'color' => 'rgba(0, 0, 0, 0.05)',
+                    ],
+                    'ticks' => [
+                        'padding' => 10,
+                    ],
+                ],
+                'x' => [
+                    'grid' => [
+                        'display' => false,
+                    ],
+                    'offset' => true,
+                    'ticks' => [
+                        'padding' => 10,
+                        'autoSkip' => true,
+                        'maxRotation' => 0,
+                    ],
+                ],
+            ],
+            'elements' => [
+                'line' => [
+                    'tension' => 0.4,
+                    'borderWidth' => 2,
+                ],
+                'point' => [
+                    'radius' => 4,
+                    'hoverRadius' => 6,
+                    'hitRadius' => 10,
+                ],
+            ],
+        ];
     }
 
     #[Computed]
@@ -133,6 +192,7 @@ final class SalesTrendChart extends Component
     public function setViewMode(string $mode): void
     {
         $this->viewMode = $mode;
+        $this->calculateChartData();
     }
 
     public function render()

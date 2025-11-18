@@ -21,3 +21,10 @@ import './alpine-store';
  * Alpine.js animated counter components
  */
 import './alpine-counter';
+
+/**
+ * Alpine.js chart components (islands pattern)
+ */
+import './components/charts/daily-revenue';
+import './components/charts/sales-trend';
+import './components/charts/channel-distribution';

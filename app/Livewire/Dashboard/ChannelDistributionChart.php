@@ -24,11 +24,16 @@ final class ChannelDistributionChart extends Component
 
     public string $viewMode = 'detailed'; // 'detailed' (subsource breakdown) or 'grouped' (channel only)
 
+    // Public property for @entangle
+    public array $chartData = [];
+
     public function mount(): void
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
+
+        $this->calculateChartData();
     }
 
     #[On('filters-updated')]
@@ -44,17 +49,18 @@ final class ChannelDistributionChart extends Component
         $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
+
+        $this->calculateChartData();
     }
 
     #[On('echo:cache-management,CacheWarmingCompleted')]
     public function refreshAfterCacheWarming(): void
     {
-        // Trigger re-render - computed properties will fetch fresh cache
-        // No manual cache clearing needed - service always reads fresh from cache store
+        // Trigger re-render - recalculate chart data with fresh cache
+        $this->calculateChartData();
     }
 
-    #[Computed]
-    public function chartData(): array
+    private function calculateChartData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
@@ -69,10 +75,12 @@ final class ChannelDistributionChart extends Component
 
             // If grouped view requested, transform detailed data (memory efficient)
             if ($this->viewMode === 'grouped') {
-                return $this->transformToGroupedView($data);
+                $this->chartData = $this->transformToGroupedView($data);
+            } else {
+                $this->chartData = $data;
             }
 
-            return $data;
+            return;
         }
 
         // Check cache
@@ -84,14 +92,16 @@ final class ChannelDistributionChart extends Component
 
             // If grouped view requested, transform detailed data (memory efficient)
             if ($this->viewMode === 'grouped') {
-                return $this->transformToGroupedView($data);
+                $this->chartData = $this->transformToGroupedView($data);
+            } else {
+                $this->chartData = $data;
             }
 
-            return $data;
+            return;
         }
 
         // Cache miss - return empty array to prevent OOM
-        return ['labels' => [], 'datasets' => []];
+        $this->chartData = ['labels' => [], 'datasets' => []];
     }
 
     /**
@@ -143,6 +153,35 @@ final class ChannelDistributionChart extends Component
     }
 
     #[Computed]
+    public function chartOptions(): array
+    {
+        return [
+            'responsive' => true,
+            'maintainAspectRatio' => false,
+            'animation' => [
+                'duration' => 3000,
+            ],
+            'cutout' => '60%',
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                    'position' => 'bottom',
+                    'labels' => [
+                        'padding' => 15,
+                        'usePointStyle' => true,
+                        'font' => [
+                            'size' => 12,
+                        ],
+                    ],
+                ],
+                'tooltip' => [
+                    'enabled' => true,
+                ],
+            ],
+        ];
+    }
+
+    #[Computed]
     public function chartKey(): string
     {
         // Include viewMode so changing tabs recreates the component
@@ -152,6 +191,7 @@ final class ChannelDistributionChart extends Component
     public function setViewMode(string $mode): void
     {
         $this->viewMode = $mode;
+        $this->calculateChartData();
     }
 
     public function render()
