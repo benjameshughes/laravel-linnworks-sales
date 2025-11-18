@@ -6,10 +6,10 @@
  *
  * Note: Channel data is pre-formatted by PHP (already in Chart.js format)
  */
-Alpine.data('channelDistributionChart', (initialData, initialOptions) => ({
+Alpine.data('channelDistributionChart', (data, options) => ({
     chart: null,
-    data: initialData,
-    options: initialOptions,
+    data,
+    options,
     loading: true,
 
     init() {

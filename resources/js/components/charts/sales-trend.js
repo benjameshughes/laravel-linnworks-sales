@@ -6,10 +6,10 @@
  *
  * Accepts raw daily breakdown data and formats it for Chart.js
  */
-Alpine.data('salesTrendChart', (initialBreakdown, initialViewMode) => ({
+Alpine.data('salesTrendChart', (dailyBreakdown, viewMode) => ({
     chart: null,
-    dailyBreakdown: initialBreakdown,
-    viewMode: initialViewMode,
+    dailyBreakdown,
+    viewMode,
     loading: true,
 
     init() {
