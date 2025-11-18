@@ -82,6 +82,7 @@ final class ChannelDistributionChart extends Component
 
         if ($cached && isset($cached['chart_doughnut'])) {
             $this->channelData = $cached['chart_doughnut'];
+
             return;
         }
 
