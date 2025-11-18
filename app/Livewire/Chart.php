@@ -76,7 +76,7 @@ final class Chart extends Component
                 'responsive' => true,
                 'maintainAspectRatio' => false,
                 'animation' => [
-                    'duration' => 300,
+                    'duration' => 3000,
                 ],
                 'plugins' => [
                     'legend' => [
@@ -130,7 +130,7 @@ final class Chart extends Component
                 'responsive' => true,
                 'maintainAspectRatio' => false,
                 'animation' => [
-                    'duration' => 300,
+                    'duration' => 3000,
                 ],
                 'plugins' => [
                     'legend' => [
@@ -177,7 +177,7 @@ final class Chart extends Component
                 'responsive' => true,
                 'maintainAspectRatio' => false,
                 'animation' => [
-                    'duration' => 300,
+                    'duration' => 3000,
                 ],
                 'plugins' => [
                     'legend' => [
@@ -216,7 +216,7 @@ final class Chart extends Component
                 'responsive' => true,
                 'maintainAspectRatio' => false,
                 'animation' => [
-                    'duration' => 300,
+                    'duration' => 3000,
                 ],
                 'cutout' => '60%',
                 'plugins' => [
@@ -241,7 +241,7 @@ final class Chart extends Component
                 'responsive' => true,
                 'maintainAspectRatio' => false,
                 'animation' => [
-                    'duration' => 300,
+                    'duration' => 3000,
                 ],
                 'plugins' => [
                     'legend' => [
@@ -265,7 +265,7 @@ final class Chart extends Component
                 'responsive' => true,
                 'maintainAspectRatio' => false,
                 'animation' => [
-                    'duration' => 300,
+                    'duration' => 3000,
                 ],
                 'plugins' => [
                     'legend' => [
@@ -298,7 +298,7 @@ final class Chart extends Component
                 'responsive' => true,
                 'maintainAspectRatio' => false,
                 'animation' => [
-                    'duration' => 300,
+                    'duration' => 3000,
                 ],
                 'plugins' => [
                     'legend' => [
