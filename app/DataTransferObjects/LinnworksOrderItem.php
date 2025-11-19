@@ -220,7 +220,7 @@ readonly class LinnworksOrderItem implements Arrayable
     public function toDatabaseFormat(): array
     {
         return [
-            // Note: order_id will be set by OrderBulkWriter
+            // Note: order_id will be set by BulkImportOrders
             'item_id' => $this->itemId,
             'stock_item_id' => $this->stockItemId,
             'stock_item_int_id' => $this->stockItemIntId,

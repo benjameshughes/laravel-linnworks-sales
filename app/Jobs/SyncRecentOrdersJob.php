@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Actions\Sync\Orders\ImportInBulk;
+use App\Actions\Sync\Orders\BulkImportOrders;
 use App\Actions\Sync\TrackSyncProgress;
 use App\DataTransferObjects\ProcessedOrderFilters;
 use App\Events\OrdersSynced;
@@ -81,7 +81,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(
         LinnworksApiService $api,
-        ImportInBulk $importer,
+        BulkImportOrders $importer,
         OrderSyncOrchestrator $sync
     ): void {
         // Get or create checkpoint for incremental sync
@@ -320,7 +320,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
      */
     protected function processBatch(
         LinnworksApiService $api,
-        ImportInBulk $importer,
+        BulkImportOrders $importer,
         TrackSyncProgress $progressTracker,
         \Illuminate\Support\Collection $orderIds,
         int $currentBatch,
@@ -484,7 +484,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
     protected function markMissingOrdersAsClosed(
         \Illuminate\Support\Collection $currentOpenOrderIds,
         LinnworksApiService $api,
-        ImportInBulk $importer
+        BulkImportOrders $importer
     ): void {
         // Find orders in DB that are no longer in the open list
         $missingOrderIds = Order::where('is_open', true)

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Actions\Sync\Orders\ImportInBulk;
+use App\Actions\Sync\Orders\BulkImportOrders;
 use App\Actions\Sync\TrackSyncProgress;
 use App\DataTransferObjects\ProcessedOrderFilters;
 use App\Events\OrdersSynced;
@@ -72,7 +72,7 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
 
     public function handle(
         LinnworksApiService $api,
-        ImportInBulk $importer,
+        BulkImportOrders $importer,
         OrderSyncOrchestrator $sync
     ): void {
         // Start sync log with proper type
@@ -342,7 +342,7 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
      */
     protected function processBatch(
         LinnworksApiService $api,
-        ImportInBulk $importer,
+        BulkImportOrders $importer,
         TrackSyncProgress $progressTracker,
         \Illuminate\Support\Collection $orderIds,
         int $currentBatch,
