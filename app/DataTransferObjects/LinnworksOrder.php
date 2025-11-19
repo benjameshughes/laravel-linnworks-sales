@@ -9,11 +9,11 @@ use Illuminate\Support\Collection;
 readonly class LinnworksOrder implements Arrayable
 {
     public function __construct(
-        public ?string $orderId,
-        public ?int $orderNumber,
+        public ?string $id,
+        public ?int $number,
         public ?Carbon $receivedDate,
         public ?Carbon $processedDate,
-        public ?string $orderSource,
+        public ?string $source,
         public ?string $subsource,
         public string $currency,
         public float $totalCharge,
@@ -22,7 +22,7 @@ readonly class LinnworksOrder implements Arrayable
         public float $tax,
         public float $profitMargin,
         public float $totalDiscount,
-        public int $orderStatus,
+        public int $status,
         public ?string $locationId,
         public bool $isPaid,
         public ?Carbon $paidDate,
@@ -77,8 +77,8 @@ readonly class LinnworksOrder implements Arrayable
         $paidDate = self::parseDate($data['PaidDateTime'] ?? $data['PaidDate'] ?? $data['dPaidDate'] ?? $data['paid_date'] ?? null);
 
         return new self(
-            orderId: $data['OrderId'] ?? $data['pkOrderID'] ?? $data['order_id'] ?? null,
-            orderNumber: isset($data['NumOrderId']) ? (int) $data['NumOrderId'] : (
+            id: $data['OrderId'] ?? $data['pkOrderID'] ?? $data['order_id'] ?? null,
+            number: isset($data['NumOrderId']) ? (int) $data['NumOrderId'] : (
                 isset($data['ReferenceNum']) ? (int) $data['ReferenceNum'] : (      // ProcessedOrders endpoint
                     isset($data['nOrderId']) ? (int) $data['nOrderId'] : (
                         isset($data['order_number']) ? (int) $data['order_number'] : null
@@ -87,7 +87,7 @@ readonly class LinnworksOrder implements Arrayable
             ),
             receivedDate: self::parseDate($generalInfo['ReceivedDate'] ?? $data['dReceivedDate'] ?? $data['received_date'] ?? null),
             processedDate: self::determineProcessedDate($data, $generalInfo),
-            orderSource: $generalInfo['Source'] ?? $data['Source'] ?? $data['order_source'] ?? null,
+            source: $generalInfo['Source'] ?? $data['Source'] ?? $data['order_source'] ?? null,
             subsource: $generalInfo['SubSource'] ?? $data['SubSource'] ?? $data['subsource'] ?? null,
             currency: $totalsInfo['Currency'] ?? $data['cCurrency'] ?? $data['currency'] ?? 'GBP',
             totalCharge: (float) ($totalsInfo['TotalCharge'] ?? $data['fTotalCharge'] ?? $data['total_charge'] ?? 0),
@@ -96,7 +96,7 @@ readonly class LinnworksOrder implements Arrayable
             tax: (float) ($totalsInfo['Tax'] ?? $data['fTax'] ?? $data['tax'] ?? 0),
             profitMargin: (float) ($totalsInfo['ProfitMargin'] ?? $data['ProfitMargin'] ?? $data['profit_margin'] ?? 0),
             totalDiscount: (float) ($totalsInfo['TotalDiscount'] ?? $data['total_discount'] ?? 0),
-            orderStatus: (int) ($generalInfo['Status'] ?? $data['nStatus'] ?? $data['order_status'] ?? 0),
+            status: (int) ($generalInfo['Status'] ?? $data['nStatus'] ?? $data['order_status'] ?? 0),
             locationId: $data['FulfilmentLocationId'] ?? $data['fkOrderLocationID'] ?? $data['location_id'] ?? null,
             // Check PaidDateTime first (source of truth), then fall back to nStatus === 1
             isPaid: $paidDate !== null || ($generalInfo['Status'] ?? $data['nStatus'] ?? $data['order_status'] ?? 0) === 1,
@@ -156,18 +156,18 @@ readonly class LinnworksOrder implements Arrayable
     public function toArray(): array
     {
         return [
-            'order_id' => $this->orderId,
-            'order_number' => $this->orderNumber,
+            'id' => $this->orderId,
+            'number' => $this->orderNumber,
             'received_date' => $this->receivedDate?->toISOString(),
             'processed_date' => $this->processedDate?->toISOString(),
-            'order_source' => $this->orderSource,
+            'source' => $this->orderSource,
             'subsource' => $this->subsource,
             'currency' => $this->currency,
             'total_charge' => $this->totalCharge,
             'postage_cost' => $this->postageCost,
             'tax' => $this->tax,
             'profit_margin' => $this->profitMargin,
-            'order_status' => $this->orderStatus,
+            'status' => $this->orderStatus,
             'location_id' => $this->locationId,
             'is_paid' => $this->isPaid,
             'paid_date' => $this->paidDate?->toISOString(),

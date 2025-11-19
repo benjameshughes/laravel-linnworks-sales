@@ -21,77 +21,94 @@ class Order extends Model
     use HasFactory;
 
     protected $fillable = [
-        'linnworks_order_id',
-        'order_id',
-        'order_number',
-        'channel_name',
-        'channel_reference_number',
-        'external_reference',
-        'total_charge',
-        'total_discount',
-        'postage_cost',
-        'total_paid',
-        'profit_margin',
-        'currency',
-        'status',
-        'addresses',
-        'received_date',
-        'processed_date',
-        'notes',
-        'raw_data',
-        'items',
-        'order_source',
+        // Linnworks identifiers
+        'linnworks_id',
+        'number',
+
+        // Order dates
+        'received_at',
+        'processed_at',
+        'paid_at',
+        'despatch_by_at',
+
+        // Channel information
+        'source',
         'subsource',
+
+        // Financial information
+        'currency',
+        'total_charge',
+        'postage_cost',
+        'postage_cost_ex_tax',
         'tax',
-        'order_status',
-        'location_id',
-        'last_synced_at',
+        'profit_margin',
+        'total_discount',
+        'country_tax_rate',
+        'conversion_rate',
+
+        // Order status
+        'status',
         'is_paid',
-        'paid_date',
-        'is_open',
-        'is_processed',
-        'has_refund',
         'is_cancelled',
-        'status_reason',
-        'cancelled_at',
-        'dispatched_at',
-        'sync_status',
-        'sync_metadata',
-        // Extended order fields
+
+        // Location
+        'location_id',
+
+        // Payment information
+        'payment_method',
+        'payment_method_id',
+
+        // Reference numbers
+        'channel_reference_number',
+        'secondary_reference',
+        'external_reference_num',
+
+        // Order flags
         'marker',
         'is_parked',
-        'despatch_by_date',
+        'label_printed',
+        'label_error',
+        'invoice_printed',
+        'pick_list_printed',
+        'is_rule_run',
+        'part_shipped',
+        'has_scheduled_delivery',
+        'pickwave_ids',
         'num_items',
-        'payment_method',
     ];
 
     protected function casts(): array
     {
         return [
+            // Dates
+            'received_at' => 'datetime',
+            'processed_at' => 'datetime',
+            'paid_at' => 'datetime',
+            'despatch_by_at' => 'datetime',
+
+            // Financial
             'total_charge' => 'decimal:2',
-            'total_discount' => 'decimal:2',
             'postage_cost' => 'decimal:2',
-            'total_paid' => 'decimal:2',
-            'profit_margin' => 'decimal:2',
+            'postage_cost_ex_tax' => 'decimal:2',
             'tax' => 'decimal:2',
-            'addresses' => 'array',
-            'received_date' => 'datetime',
-            'processed_date' => 'datetime',
-            'cancelled_at' => 'datetime',
-            'dispatched_at' => 'datetime',
-            'is_cancelled' => 'boolean',
+            'profit_margin' => 'decimal:2',
+            'total_discount' => 'decimal:2',
+            'country_tax_rate' => 'decimal:4',
+            'conversion_rate' => 'decimal:6',
+
+            // Booleans
             'is_paid' => 'boolean',
-            'raw_data' => 'array',
-            'last_synced_at' => 'datetime',
-            'is_open' => 'boolean',
-            'is_processed' => 'boolean',
-            'has_refund' => 'boolean',
-            'sync_metadata' => 'array',
-            'items' => 'array',
-            // Extended order field casts
+            'is_cancelled' => 'boolean',
             'is_parked' => 'boolean',
-            'despatch_by_date' => 'datetime',
-            'paid_date' => 'datetime',
+            'label_printed' => 'boolean',
+            'invoice_printed' => 'boolean',
+            'pick_list_printed' => 'boolean',
+            'is_rule_run' => 'boolean',
+            'part_shipped' => 'boolean',
+            'has_scheduled_delivery' => 'boolean',
+
+            // JSON
+            'pickwave_ids' => 'array',
         ];
     }
 
