@@ -315,11 +315,14 @@ final class BulkImportOrders
      */
     private function syncAllRelationships(Collection $dtos): void
     {
+        // Sync the MEAT first 🥩
         $this->syncItems($dtos);
-        $this->syncShipping($dtos);
-        $this->syncNotes($dtos);
-        $this->syncProperties($dtos);
-        $this->syncIdentifiers($dtos);
+
+        // TODO: Potatoes for later - need proper DTOs and field mapping
+        // $this->syncShipping($dtos);
+        // $this->syncNotes($dtos);
+        // $this->syncProperties($dtos);
+        // $this->syncIdentifiers($dtos);
     }
 
     /**
@@ -541,11 +544,20 @@ final class BulkImportOrders
 
             return $dto->notes->map(function ($note) use ($orderId) {
                 $data = is_array($note) ? $note : (array) $note;
-                $data['order_id'] = $orderId;
-                $data['created_at'] = $data['created_at'] ?? now()->toDateTimeString();
-                $data['updated_at'] = $data['updated_at'] ?? now()->toDateTimeString();
 
-                return $data;
+                // Map Linnworks fields to our database columns
+                return [
+                    'order_id' => $orderId,
+                    'note' => $data['Note'] ?? $data['note'] ?? null,
+                    'note_type' => $data['NoteType'] ?? $data['note_type'] ?? 'general',
+                    'is_internal' => (bool) ($data['IsInternal'] ?? $data['is_internal'] ?? false),
+                    'note_date' => isset($data['NoteDateTime']) ? \Carbon\Carbon::parse($data['NoteDateTime'])->toDateTimeString() : (
+                        isset($data['note_date']) ? \Carbon\Carbon::parse($data['note_date'])->toDateTimeString() : now()->toDateTimeString()
+                    ),
+                    'noted_by' => $data['CreatedBy'] ?? $data['noted_by'] ?? 'system',
+                    'created_at' => now()->toDateTimeString(),
+                    'updated_at' => now()->toDateTimeString(),
+                ];
             });
         })->toArray();
 
