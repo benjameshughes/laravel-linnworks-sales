@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
 
             // Linnworks identifiers
-            $table->string('linnworks_id')->unique()->nullable()->index();
+            $table->string('order_id')->unique()->nullable()->index();
             $table->unsignedBigInteger('number')->nullable()->index();
 
             // Order dates

@@ -9,7 +9,7 @@ use Illuminate\Support\Collection;
 readonly class LinnworksOrder implements Arrayable
 {
     public function __construct(
-        public ?string $id,
+        public ?string $orderId,
         public ?int $number,
         public ?Carbon $receivedDate,
         public ?Carbon $processedDate,
@@ -77,7 +77,7 @@ readonly class LinnworksOrder implements Arrayable
         $paidDate = self::parseDate($data['PaidDateTime'] ?? $data['PaidDate'] ?? $data['dPaidDate'] ?? $data['paid_date'] ?? null);
 
         return new self(
-            id: $data['OrderId'] ?? $data['pkOrderID'] ?? $data['order_id'] ?? null,
+            orderId: $data['OrderId'] ?? $data['pkOrderID'] ?? $data['order_id'] ?? null,
             number: isset($data['NumOrderId']) ? (int) $data['NumOrderId'] : (
                 isset($data['ReferenceNum']) ? (int) $data['ReferenceNum'] : (      // ProcessedOrders endpoint
                     isset($data['nOrderId']) ? (int) $data['nOrderId'] : (
@@ -174,6 +174,73 @@ readonly class LinnworksOrder implements Arrayable
             'is_cancelled' => $this->isCancelled,
             'channel_reference_number' => $this->channelReferenceNumber,
             'items' => $this->items->toArray(),
+        ];
+    }
+
+    /**
+     * Convert to database-ready format for bulk insert/update
+     */
+    public function toDatabaseFormat(): array
+    {
+        return [
+            // Linnworks identifiers
+            'order_id' => $this->orderId,
+            'number' => $this->number,
+
+            // Order dates
+            'received_at' => $this->receivedDate?->setTimezone(config('app.timezone'))->toDateTimeString(),
+            'processed_at' => $this->processedDate?->setTimezone(config('app.timezone'))->toDateTimeString(),
+            'paid_at' => $this->paidDate?->setTimezone(config('app.timezone'))->toDateTimeString(),
+            'despatch_by_at' => $this->despatchByDate?->setTimezone(config('app.timezone'))->toDateTimeString(),
+
+            // Channel information
+            'source' => $this->source,
+            'subsource' => $this->subsource,
+
+            // Financial information
+            'currency' => $this->currency,
+            'total_charge' => $this->totalCharge,
+            'postage_cost' => $this->postageCost,
+            'postage_cost_ex_tax' => $this->postageCostExTax,
+            'tax' => $this->tax,
+            'profit_margin' => $this->profitMargin,
+            'total_discount' => $this->totalDiscount,
+            'country_tax_rate' => $this->countryTaxRate,
+            'conversion_rate' => $this->conversionRate,
+
+            // Order status
+            'status' => $this->status,
+            'is_paid' => $this->isPaid,
+            'is_cancelled' => $this->isCancelled,
+
+            // Location
+            'location_id' => $this->locationId,
+
+            // Payment information
+            'payment_method' => $this->paymentMethod,
+            'payment_method_id' => $this->paymentMethodId,
+
+            // Reference numbers
+            'channel_reference_number' => $this->channelReferenceNumber,
+            'secondary_reference' => $this->secondaryReference,
+            'external_reference_num' => $this->externalReferenceNum,
+
+            // Order flags
+            'marker' => $this->marker,
+            'is_parked' => $this->isParked,
+            'label_printed' => $this->labelPrinted,
+            'label_error' => $this->labelError,
+            'invoice_printed' => $this->invoicePrinted,
+            'pick_list_printed' => $this->pickListPrinted,
+            'is_rule_run' => $this->isRuleRun,
+            'part_shipped' => $this->partShipped,
+            'has_scheduled_delivery' => $this->hasScheduledDelivery,
+            'pickwave_ids' => $this->pickwaveIds ? json_encode($this->pickwaveIds) : null,
+            'num_items' => $this->numItems,
+
+            // Laravel timestamps
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
         ];
     }
 

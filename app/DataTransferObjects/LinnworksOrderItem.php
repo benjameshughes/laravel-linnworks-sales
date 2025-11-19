@@ -214,6 +214,67 @@ readonly class LinnworksOrderItem implements Arrayable
         ];
     }
 
+    /**
+     * Convert to database-ready format for bulk insert/update
+     */
+    public function toDatabaseFormat(): array
+    {
+        return [
+            // Note: order_id will be set by OrderBulkWriter
+            'item_id' => $this->itemId,
+            'stock_item_id' => $this->stockItemId,
+            'stock_item_int_id' => $this->stockItemIntId,
+            'row_id' => $this->rowId,
+            'item_number' => $this->itemNumber,
+            'sku' => $this->sku,
+            'item_title' => $this->itemTitle,
+            'item_source' => $this->itemSource,
+            'channel_sku' => $this->channelSku,
+            'channel_title' => $this->channelTitle,
+            'barcode_number' => $this->barcodeNumber,
+            'quantity' => $this->quantity,
+            'part_shipped_qty' => $this->partShippedQty,
+            'category_name' => $this->categoryName,
+            'price_per_unit' => $this->pricePerUnit,
+            'unit_cost' => $this->unitCost,
+            'line_total' => $this->lineTotal,
+            'cost' => $this->cost,
+            'cost_inc_tax' => $this->costIncTax,
+            'despatch_stock_unit_cost' => $this->despatchStockUnitCost,
+            'discount' => $this->discount,
+            'discount_value' => $this->discountValue,
+            'tax' => $this->tax,
+            'tax_rate' => $this->taxRate,
+            'sales_tax' => $this->salesTax,
+            'tax_cost_inclusive' => $this->taxCostInclusive,
+            'stock_levels_specified' => $this->stockLevelsSpecified,
+            'stock_level' => $this->stockLevel,
+            'available_stock' => $this->availableStock,
+            'on_order' => $this->onOrder,
+            'stock_level_indicator' => $this->stockLevelIndicator,
+            'inventory_tracking_type' => $this->inventoryTrackingType,
+            'is_batched_stock_item' => $this->isBatchedStockItem,
+            'is_warehouse_managed' => $this->isWarehouseManaged,
+            'is_unlinked' => $this->isUnlinked,
+            'batch_number_scan_required' => $this->batchNumberScanRequired,
+            'serial_number_scan_required' => $this->serialNumberScanRequired,
+            'part_shipped' => $this->partShipped,
+            'weight' => $this->weight,
+            'shipping_cost' => $this->shippingCost,
+            'bin_rack' => $this->binRack,
+            'bin_racks' => $this->binRacks ? json_encode($this->binRacks) : null,
+            'is_service' => $this->isService,
+            'has_image' => $this->hasImage,
+            'image_id' => $this->imageId,
+            'market' => $this->market,
+            'composite_sub_items' => $this->compositeSubItems ? json_encode($this->compositeSubItems) : null,
+            'additional_info' => $this->additionalInfo ? json_encode($this->additionalInfo) : null,
+            'added_at' => $this->addedDate ? \Carbon\Carbon::parse($this->addedDate)->setTimezone(config('app.timezone'))->toDateTimeString() : null,
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ];
+    }
+
     public function totalValue(): float
     {
         return $this->quantity * $this->pricePerUnit;
