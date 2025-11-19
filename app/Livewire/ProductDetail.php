@@ -40,7 +40,7 @@ class ProductDetail extends Component
         $fromDate = Carbon::now()->subDays($this->period);
         $toDate = Carbon::now();
 
-        $orders = Order::whereBetween('received_date', [$fromDate, $toDate])
+        $orders = Order::whereBetween('received_at', [$fromDate, $toDate])
             ->whereHas('orderItems', function ($query) {
                 $query->where('sku', $this->sku);
             })
@@ -65,7 +65,7 @@ class ProductDetail extends Component
 
             $dayData = OrderItem::where('sku', $this->sku)
                 ->whereHas('order', function ($query) use ($dayStart, $dayEnd) {
-                    $query->whereBetween('received_date', [$dayStart, $dayEnd]);
+                    $query->whereBetween('received_at', [$dayStart, $dayEnd]);
                 })
                 ->selectRaw('
                     SUM(quantity) as total_quantity,
@@ -94,11 +94,11 @@ class ProductDetail extends Component
 
         return OrderItem::where('sku', $this->sku)
             ->whereHas('order', function ($query) use ($fromDate, $toDate) {
-                $query->whereBetween('received_date', [$fromDate, $toDate]);
+                $query->whereBetween('received_at', [$fromDate, $toDate]);
             })
             ->with('order')
             ->get()
-            ->groupBy('order.channel_name')
+            ->groupBy('order.source')
             ->map(function ($items, $channel) {
                 return [
                     'channel' => $channel ?? 'Unknown',
@@ -121,18 +121,18 @@ class ProductDetail extends Component
         return Order::whereHas('orderItems', function ($query) {
             $query->where('sku', $this->sku);
         })
-            ->whereBetween('received_date', [$fromDate, $toDate])
+            ->whereBetween('received_at', [$fromDate, $toDate])
             ->with(['orderItems' => function ($query) {
                 $query->where('sku', $this->sku);
             }])
-            ->orderByDesc('received_date')
+            ->orderByDesc('received_at')
             ->limit(10)
             ->get()
             ->map(function ($order) {
                 $item = $order->orderItems->first();
 
                 return [
-                    'order_number' => $order->order_number,
+                    'number' => $order->order_number,
                     'date' => $order->received_date->format('M j, Y'),
                     'channel' => $order->channel_name,
                     'quantity' => $item->quantity,
@@ -150,7 +150,7 @@ class ProductDetail extends Component
 
         $items = OrderItem::where('sku', $this->sku)
             ->whereHas('order', function ($query) use ($fromDate, $toDate) {
-                $query->whereBetween('received_date', [$fromDate, $toDate]);
+                $query->whereBetween('received_at', [$fromDate, $toDate]);
             })
             ->get();
 

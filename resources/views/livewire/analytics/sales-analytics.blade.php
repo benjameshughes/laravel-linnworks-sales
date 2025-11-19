@@ -402,9 +402,9 @@
                 <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
                     <thead class="bg-zinc-50 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
                         <tr>
-                            <th class="px-6 py-3 text-left cursor-pointer" wire:click="setSortBy('order_number')">Order #</th>
-                            <th class="px-6 py-3 text-left cursor-pointer" wire:click="setSortBy('received_date')">Date</th>
-                            <th class="px-6 py-3 text-left cursor-pointer" wire:click="setSortBy('channel_name')">Channel</th>
+                            <th class="px-6 py-3 text-left cursor-pointer" wire:click="setSortBy('number')">Order #</th>
+                            <th class="px-6 py-3 text-left cursor-pointer" wire:click="setSortBy('received_at')">Date</th>
+                            <th class="px-6 py-3 text-left cursor-pointer" wire:click="setSortBy('source')">Channel</th>
                             <th class="px-6 py-3 text-right cursor-pointer" wire:click="setSortBy('total_charge')">Total</th>
                             <th class="px-6 py-3 text-right">Status</th>
                         </tr>
@@ -413,16 +413,16 @@
                         @forelse($this->paginatedOrders as $order)
                             <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800">
                                 <td class="px-6 py-4">
-                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">#{{ $order->order_number }}</div>
-                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ Str::limit($order->linnworks_order_id, 10) }}</div>
+                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">#{{ $order->number }}</div>
+                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ Str::limit($order->order_id, 10) }}</div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ Carbon::parse($order->received_date)->format('M j, Y') }}</div>
-                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ Carbon::parse($order->received_date)->format('H:i') }}</div>
+                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ Carbon::parse($order->received_at)->format('M j, Y') }}</div>
+                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ Carbon::parse($order->received_at)->format('H:i') }}</div>
                                 </td>
                                 <td class="px-6 py-4">
                                     <span class="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                                        {{ $order->channel_name }}
+                                        {{ $order->source }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($order->total_charge, 2) }}</td>

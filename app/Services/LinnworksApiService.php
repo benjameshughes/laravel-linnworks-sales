@@ -688,7 +688,7 @@ class LinnworksApiService
      */
     public function checkAndUpdateProcessedOrders(?int $userId = null): bool
     {
-        $orders = \App\Models\Order::where('received_date', '>=', Carbon::now()->subDays(90))
+        $orders = \App\Models\Order::where('received_at', '>=', Carbon::now()->subDays(90))
             ->whereNotNull('linnworks_order_id')
             ->pluck('linnworks_order_id')
             ->filter()

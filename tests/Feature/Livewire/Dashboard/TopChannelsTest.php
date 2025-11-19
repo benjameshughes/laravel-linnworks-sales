@@ -41,14 +41,14 @@ describe('TopChannels Livewire Component', function () {
 
     it('computes top channels correctly', function () {
         Order::factory()->count(3)->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'Amazon',
+            'received_at' => now()->subDays(3),
+            'source' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(2)->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'eBay',
+            'received_at' => now()->subDays(3),
+            'source' => 'eBay',
             'total_charge' => 150.00,
         ]);
 
@@ -71,8 +71,8 @@ describe('TopChannels Livewire Component', function () {
     it('limits results to 6 channels', function () {
         foreach (['Amazon', 'eBay', 'Website', 'Etsy', 'Facebook', 'Instagram', 'TikTok'] as $channel) {
             Order::factory()->create([
-                'received_date' => now()->subDays(3),
-                'channel_name' => $channel,
+                'received_at' => now()->subDays(3),
+                'source' => $channel,
                 'total_charge' => 100.00,
             ]);
         }
@@ -99,14 +99,14 @@ describe('TopChannels Livewire Component', function () {
 
     it('handles custom date range', function () {
         Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-05'),
-            'channel_name' => 'Amazon',
+            'received_at' => Carbon::parse('2025-01-05'),
+            'source' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-20'),
-            'channel_name' => 'eBay',
+            'received_at' => Carbon::parse('2025-01-20'),
+            'source' => 'eBay',
             'total_charge' => 200.00,
         ]);
 
@@ -123,20 +123,20 @@ describe('TopChannels Livewire Component', function () {
 
     it('sorts channels by revenue descending', function () {
         Order::factory()->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'Amazon',
+            'received_at' => now()->subDays(3),
+            'source' => 'Amazon',
             'total_charge' => 500.00,
         ]);
 
         Order::factory()->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'eBay',
+            'received_at' => now()->subDays(3),
+            'source' => 'eBay',
             'total_charge' => 800.00,
         ]);
 
         Order::factory()->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'Website',
+            'received_at' => now()->subDays(3),
+            'source' => 'Website',
             'total_charge' => 200.00,
         ]);
 

@@ -238,9 +238,9 @@ class ProductAnalytics extends Component
         // Invalidate all product analytics caches
         app(ProductAnalyticsService::class)->invalidateCache();
 
-        // Dispatch a product sync job
-        \App\Jobs\GetAllProductsJob::dispatch('ui');
-        session()->flash('message', 'Product sync initiated! Check back in a few minutes.');
+        // TODO: Product sync jobs removed during refactoring
+        // \App\Jobs\GetAllProductsJob::dispatch('ui');
+        session()->flash('message', 'Product analytics cache cleared. (Product sync not yet implemented)');
         $this->dispatch('product-sync-started');
     }
 

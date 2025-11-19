@@ -58,7 +58,7 @@ class TopProductsReport extends AbstractReport
 
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd])
+            ->whereBetween('o.received_at', [$dateStart, $dateEnd])
             ->where('o.status', '!=', 'cancelled')
             ->select([
                 DB::raw('ROW_NUMBER() OVER (ORDER BY SUM(oi.quantity * oi.unit_price) DESC) as product_rank'),
@@ -72,7 +72,7 @@ class TopProductsReport extends AbstractReport
                     SELECT SUM(oi2.quantity * oi2.unit_price)
                     FROM order_items as oi2
                     JOIN orders as o2 ON o2.id = oi2.order_id
-                    WHERE o2.received_date BETWEEN ? AND ?
+                    WHERE o2.received_at BETWEEN ? AND ?
                       AND o2.status != ?
                 )) * 100, 2) as revenue_percent'),
             ])

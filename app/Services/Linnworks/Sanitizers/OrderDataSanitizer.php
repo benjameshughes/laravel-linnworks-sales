@@ -27,17 +27,17 @@ class OrderDataSanitizer
         return [
             // Order identifiers
             'order_id' => $this->sanitizeOrderId($orderData),
-            'order_number' => $this->sanitizeString($orderData['OrderNumber'] ?? $orderData['nOrderId'] ?? null),
+            'number' => $this->sanitizeString($orderData['OrderNumber'] ?? $orderData['nOrderId'] ?? null),
             'linnworks_order_id' => $this->sanitizeString($orderData['pkOrderID'] ?? $orderData['OrderId'] ?? null),
 
             // Dates
-            'received_date' => $this->sanitizeDateTime($orderData['ReceivedDate'] ?? $generalInfo['ReceivedDate'] ?? null),
+            'received_at' => $this->sanitizeDateTime($orderData['ReceivedDate'] ?? $generalInfo['ReceivedDate'] ?? null),
             'processed_date' => $this->sanitizeDateTime($orderData['ProcessedDateTime'] ?? $orderData['ProcessedOn'] ?? null),
 
             // Channel information
-            'channel_name' => $this->sanitizeString($orderData['Source'] ?? $generalInfo['Source'] ?? null),
+            'source' => $this->sanitizeString($orderData['Source'] ?? $generalInfo['Source'] ?? null),
             'channel_reference_id' => $this->sanitizeString($orderData['ReferenceNum'] ?? $generalInfo['ReferenceNum'] ?? null),
-            'sub_source' => $this->sanitizeString($orderData['SubSource'] ?? $generalInfo['SubSource'] ?? null),
+            'subsource' => $this->sanitizeString($orderData['SubSource'] ?? $generalInfo['SubSource'] ?? null),
 
             // Totals
             'total_charge' => $this->sanitizeDecimal($orderData['TotalCharge'] ?? $totalsInfo['TotalCharge'] ?? 0),
@@ -245,7 +245,7 @@ class OrderDataSanitizer
     public function validate(array $sanitizedData): bool
     {
         // Must have either order_id or order_number
-        if (empty($sanitizedData['order_id']) && empty($sanitizedData['order_number'])) {
+        if (empty($sanitizedData['order_id']) && empty($sanitizedData['number'])) {
             return false;
         }
 
@@ -281,7 +281,7 @@ class OrderDataSanitizer
             'null_fields' => count(array_filter($sanitized, fn ($v) => $v === null)),
             'items_sanitized' => count($sanitized['items'] ?? []),
             'has_order_id' => ! empty($sanitized['order_id']),
-            'has_order_number' => ! empty($sanitized['order_number']),
+            'has_order_number' => ! empty($sanitized['number']),
             'is_valid' => $this->validate($sanitized),
         ];
     }

@@ -254,11 +254,11 @@ describe('SalesFactory', function () {
 
     it('calculates total processed orders correctly', function () {
         $orders = collect([
-            (object) ['is_processed' => 1],
-            (object) ['is_processed' => 0],
-            (object) ['is_processed' => true],
-            (object) ['is_processed' => false],
-            (object) ['is_processed' => 1],
+            (object) ['status' => 1],
+            (object) ['status' => 0],
+            (object) ['status' => 1],
+            (object) ['status' => 0],
+            (object) ['status' => 1],
         ]);
 
         $factory = new SalesFactory($orders);
@@ -268,11 +268,11 @@ describe('SalesFactory', function () {
 
     it('calculates total open orders correctly', function () {
         $orders = collect([
-            (object) ['is_processed' => 0],
-            (object) ['is_processed' => 1],
-            (object) ['is_processed' => false],
-            (object) ['is_processed' => true],
-            (object) ['is_processed' => 0],
+            (object) ['status' => 0],
+            (object) ['status' => 1],
+            (object) ['status' => 0],
+            (object) ['status' => 1],
+            (object) ['status' => 0],
         ]);
 
         $factory = new SalesFactory($orders);
@@ -282,9 +282,9 @@ describe('SalesFactory', function () {
 
     it('calculates processed orders revenue correctly', function () {
         $orders = collect([
-            (object) ['is_processed' => 1, 'total_charge' => 100.00],
-            (object) ['is_processed' => 0, 'total_charge' => 50.00],
-            (object) ['is_processed' => 1, 'total_charge' => 200.00],
+            (object) ['status' => 1, 'total_charge' => 100.00],
+            (object) ['status' => 0, 'total_charge' => 50.00],
+            (object) ['status' => 1, 'total_charge' => 200.00],
         ]);
 
         $factory = new SalesFactory($orders);

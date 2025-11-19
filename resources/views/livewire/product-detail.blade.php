@@ -230,7 +230,7 @@
                         @foreach($this->recentOrders as $order)
                             <div class="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600">
                                 <div>
-                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $order['order_number'] }}</div>
+                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $order['number'] }}</div>
                                     <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $order['date'] }} • {{ $order['channel'] }}</div>
                                 </div>
                                 <div class="text-right">

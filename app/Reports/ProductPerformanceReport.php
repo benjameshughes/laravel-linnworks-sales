@@ -62,7 +62,7 @@ class ProductPerformanceReport extends AbstractReport
 
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd]);
+            ->whereBetween('o.received_at', [$dateStart, $dateEnd]);
 
         // Apply status filter if provided
         if (! empty($filters['statuses'])) {

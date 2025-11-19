@@ -30,20 +30,20 @@ final readonly class BuildDailyBreakdown
 
         // Single pass through orders - bucket by date
         foreach ($orders as $order) {
-            if (! $order->received_date) {
+            if (! $order->received_at) {
                 continue;
             }
 
-            $dateKey = $order->received_date instanceof Carbon
-                ? $order->received_date->format('Y-m-d')
-                : Carbon::parse($order->received_date)->format('Y-m-d');
+            $dateKey = $order->received_at instanceof Carbon
+                ? $order->received_at->format('Y-m-d')
+                : Carbon::parse($order->received_at)->format('Y-m-d');
 
             if (! isset($dailyData[$dateKey])) {
                 continue;
             }
 
             $revenue = (float) $order->total_charge;
-            $itemsCount = collect($order->items ?? [])->sum('quantity');
+            $itemsCount = $order->orderItems->sum('quantity');
 
             $dailyData[$dateKey]['revenue'] += $revenue;
             $dailyData[$dateKey]['orders']++;

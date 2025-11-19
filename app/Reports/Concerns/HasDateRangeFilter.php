@@ -14,7 +14,7 @@ trait HasDateRangeFilter
         ];
     }
 
-    protected function applyDateRangeFilter($query, array $filters, string $column = 'received_date', string $table = 'o'): void
+    protected function applyDateRangeFilter($query, array $filters, string $column = 'received_at', string $table = 'o'): void
     {
         $dates = $this->parseDateRange($filters);
         $query->whereBetween("{$table}.{$column}", [$dates['start'], $dates['end']]);

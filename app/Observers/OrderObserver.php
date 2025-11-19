@@ -39,7 +39,7 @@ final class OrderObserver
 
         Log::info('[OrderObserver] Order created - cache warming queued', [
             'order_id' => $order->id,
-            'order_number' => $order->order_number,
+            'number' => $order->number,
         ]);
     }
 
@@ -56,7 +56,7 @@ final class OrderObserver
 
             Log::info('[OrderObserver] Order updated - cache warming queued', [
                 'order_id' => $order->id,
-                'order_number' => $order->order_number,
+                'number' => $order->number,
                 'changed' => array_keys($order->getDirty()),
             ]);
         }
@@ -73,7 +73,7 @@ final class OrderObserver
 
         Log::info('[OrderObserver] Order deleted - cache warming queued', [
             'order_id' => $order->id,
-            'order_number' => $order->order_number,
+            'number' => $order->number,
         ]);
     }
 
@@ -86,13 +86,10 @@ final class OrderObserver
     {
         $significantFields = [
             'total_charge',
-            'total_paid',
-            'is_paid',
-            'is_open',
-            'is_processed',
-            'channel_name',
-            'received_date',
-            'processed_date',
+            'source',
+            'received_at',
+            'processed_at',
+            'status',
         ];
 
         return collect($significantFields)

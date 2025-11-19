@@ -183,8 +183,8 @@ class ProductMetrics extends MetricBase
             ->map(function (int $daysAgo) {
                 $date = Carbon::now()->subDays($daysAgo);
                 $dayItems = $this->data->filter(function ($item) use ($date) {
-                    return isset($item['received_date']) &&
-                           Carbon::parse($item['received_date'])->isSameDay($date);
+                    return isset($item['received_at']) &&
+                           Carbon::parse($item['received_at'])->isSameDay($date);
                 });
 
                 return collect([

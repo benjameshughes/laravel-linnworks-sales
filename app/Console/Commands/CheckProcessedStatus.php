@@ -29,14 +29,13 @@ class CheckProcessedStatus extends Command
             $this->warn('🔍 DRY RUN MODE - No database changes will be made');
         }
 
-        // Get oldest open orders
-        $openOrders = Order::where('is_open', true)
-            ->where('is_processed', false)
+        // Get oldest open/pending orders (status = 0)
+        $openOrders = Order::where('status', 0)
             ->whereNotNull('order_id')
-            ->where('received_date', '>=', now()->subDays(30)) // Only check orders from last 30 days
-            ->orderBy('received_date', 'asc') // Oldest first!
+            ->where('received_at', '>=', now()->subDays(30)) // Only check orders from last 30 days
+            ->orderBy('received_at', 'asc') // Oldest first!
             ->limit($limit)
-            ->get(['id', 'order_id', 'order_number', 'received_date', 'channel_name']);
+            ->get(['id', 'order_id', 'number', 'received_at', 'source']);
 
         if ($openOrders->isEmpty()) {
             $this->info('✨ No open orders to check');
@@ -50,10 +49,10 @@ class CheckProcessedStatus extends Command
             $this->table(
                 ['Order Number', 'Order ID', 'Received', 'Channel'],
                 $openOrders->map(fn ($o) => [
-                    $o->order_number,
+                    $o->number,
                     substr($o->order_id, 0, 8).'...',
-                    $o->received_date->format('Y-m-d H:i'),
-                    $o->channel_name,
+                    $o->received_at->format('Y-m-d H:i'),
+                    $o->source,
                 ])->toArray()
             );
 
@@ -93,22 +92,18 @@ class CheckProcessedStatus extends Command
 
                 // Update the order with processed data
                 $order->update([
-                    'is_open' => false,
-                    'is_processed' => true,
-                    'status' => 'processed',
-                    'processed_date' => now(),
+                    'status' => 1, // processed
+                    'processed_at' => now(),
                     'total_charge' => $processedData['TotalValue'] ?? 0,
-                    'total_paid' => $processedData['TotalValue'] ?? 0,
                     'postage_cost' => $processedData['PostageCost'] ?? 0,
                     'tax' => $processedData['Tax'] ?? 0,
                     'profit_margin' => $processedData['Profit'] ?? 0,
-                    'last_synced_at' => now(),
                 ]);
 
                 $updatedCount++;
 
                 Log::info('Order transitioned to processed', [
-                    'order_number' => $order->order_number,
+                    'number' => $order->number,
                     'order_id' => $order->order_id,
                     'total_charge' => $processedData['TotalValue'] ?? 0,
                 ]);

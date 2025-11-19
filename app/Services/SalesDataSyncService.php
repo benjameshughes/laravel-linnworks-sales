@@ -97,11 +97,11 @@ class SalesDataSyncService
             // Prepare order data
             $orderAttributes = [
                 'linnworks_order_id' => $orderData['pkOrderID'],
-                'order_number' => $orderData['nOrderId'] ?? $orderData['OrderNumber'] ?? '',
-                'channel_name' => $orderData['Source'] ?? 'unknown',
+                'number' => $orderData['nOrderId'] ?? $orderData['OrderNumber'] ?? '',
+                'source' => $orderData['Source'] ?? 'unknown',
                 'channel_reference_number' => $orderData['ExternalReference'] ?? null,
                 'source' => $orderData['Source'] ?? null,
-                'sub_source' => $orderData['SubSource'] ?? null,
+                'subsource' => $orderData['SubSource'] ?? null,
                 'external_reference' => $orderData['ExternalReference'] ?? null,
                 'total_value' => $orderData['TotalValue'] ?? 0,
                 'total_discount' => $orderData['TotalDiscount'] ?? 0,
@@ -111,7 +111,7 @@ class SalesDataSyncService
                 'currency' => $orderData['Currency'] ?? 'GBP',
                 'status' => $this->mapOrderStatus($orderData['OrderStatus'] ?? 'pending'),
                 'addresses' => $this->processAddresses($orderData),
-                'received_date' => $this->parseDate($orderData['dReceivedDate'] ?? $orderData['ReceivedDate'] ?? now()),
+                'received_at' => $this->parseDate($orderData['dReceivedDate'] ?? $orderData['ReceivedDate'] ?? now()),
                 'processed_date' => $this->parseDate($orderData['dProcessedOn'] ?? $orderData['ProcessedDate'] ?? null),
                 'dispatched_date' => $this->parseDate($orderData['dDispatchedDate'] ?? $orderData['DispatchedDate'] ?? null),
                 'is_resend' => $orderData['bIsResend'] ?? false,

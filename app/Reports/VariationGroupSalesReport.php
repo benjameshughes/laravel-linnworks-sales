@@ -59,7 +59,7 @@ class VariationGroupSalesReport extends AbstractReport
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
             ->whereNotNull('oi.parent_sku')
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd])
+            ->whereBetween('o.received_at', [$dateStart, $dateEnd])
             ->where('o.status', '!=', 'cancelled');
 
         if (! empty($filters['skus'])) {
@@ -251,7 +251,7 @@ class VariationGroupSalesReport extends AbstractReport
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
             ->where('oi.parent_sku', '=', $parentSku)
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd])
+            ->whereBetween('o.received_at', [$dateStart, $dateEnd])
             ->where('o.status', '!=', 'cancelled');
 
         if (! empty($filters['subsources'])) {
@@ -288,7 +288,7 @@ class VariationGroupSalesReport extends AbstractReport
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
             ->whereNotNull('oi.parent_sku')
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd])
+            ->whereBetween('o.received_at', [$dateStart, $dateEnd])
             ->where('o.status', '!=', 'cancelled');
 
         if (! empty($filters['skus'])) {

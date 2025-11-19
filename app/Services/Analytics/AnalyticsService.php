@@ -24,7 +24,7 @@ final class AnalyticsService
      */
     public function getOrders(AnalyticsFilter $filter): Collection
     {
-        $query = Order::query()->where('channel_name', '!=', 'DIRECT');
+        $query = Order::query()->where('source', '!=', 'DIRECT');
 
         return $filter->applyToQuery($query)->get();
     }
@@ -115,9 +115,9 @@ final class AnalyticsService
     {
         return Cache::remember('analytics:available_channels', now()->addHour(), function () {
             return Order::query()
-                ->where('channel_name', '!=', 'DIRECT')
+                ->where('source', '!=', 'DIRECT')
                 ->distinct()
-                ->pluck('channel_name')
+                ->pluck('source')
                 ->filter()
                 ->sort()
                 ->values();

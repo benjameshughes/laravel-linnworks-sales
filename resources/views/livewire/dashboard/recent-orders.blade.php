@@ -24,17 +24,17 @@
                     @forelse($this->recentOrders as $order)
                         <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">#{{ $order->order_number }}</div>
-                                <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ Str::limit($order->linnworks_order_id, 8) }}</div>
+                                <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">#{{ $order->number }}</div>
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ Str::limit($order->order_id, 8) }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-zinc-900 dark:text-zinc-100">{{ $order->received_date?->format('M j, Y') }}</div>
-                                <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $order->received_date?->format('g:i A') }}</div>
+                                <div class="text-sm text-zinc-900 dark:text-zinc-100">{{ $order->received_at?->format('M j, Y') }}</div>
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $order->received_at?->format('g:i A') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex flex-col gap-1">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-600 text-zinc-800 dark:text-zinc-200">
-                                        {{ $order->channel_name }}
+                                        {{ $order->source }}
                                     </span>
                                     @if($order->subsource)
                                         <span class="text-xs text-zinc-500 dark:text-zinc-400">

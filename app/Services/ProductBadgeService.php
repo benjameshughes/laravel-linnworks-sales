@@ -66,7 +66,7 @@ readonly class ProductBadgeService
     {
         return OrderItem::query()
             ->where('sku', $sku)
-            ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_date', [$dateRange->from, $dateRange->to])
+            ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_at', [$dateRange->from, $dateRange->to])
             )
             ->with('order:id,received_date')
             ->get();
@@ -114,7 +114,7 @@ readonly class ProductBadgeService
     {
         return OrderItem::query()
             ->where('sku', $sku)
-            ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_date', [$dateRange->from, $dateRange->to])
+            ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_at', [$dateRange->from, $dateRange->to])
             )
             ->sum('quantity');
     }
@@ -228,7 +228,7 @@ readonly class ProductBadgeService
         $dateRange = $this->createDateRange($period);
 
         $quantities = OrderItem::query()
-            ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_date', [$dateRange->from, $dateRange->to])
+            ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_at', [$dateRange->from, $dateRange->to])
             )
             ->selectRaw('sku, SUM(quantity) as total_quantity')
             ->groupBy('sku')
@@ -262,7 +262,7 @@ readonly class ProductBadgeService
 
             $hasSales = OrderItem::query()
                 ->where('sku', $sku)
-                ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_date', [$weekStart, $weekEnd])
+                ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_at', [$weekStart, $weekEnd])
                 )
                 ->exists();
 

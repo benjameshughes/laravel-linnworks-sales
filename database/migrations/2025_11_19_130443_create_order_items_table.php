@@ -27,6 +27,7 @@ return new class extends Migration
 
             // SKU & Titles
             $table->string('sku')->nullable()->index();
+            $table->string('parent_sku', 50)->nullable();
             $table->text('item_title')->nullable();
             $table->string('item_source')->nullable();
             $table->string('channel_sku')->nullable();

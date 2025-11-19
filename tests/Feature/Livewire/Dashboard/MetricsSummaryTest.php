@@ -50,13 +50,15 @@ describe('MetricsSummary Livewire Component', function () {
     });
 
     it('computes metrics correctly with real data', function () {
-        Order::factory()->count(5)->create([
-            'received_date' => now()->subDays(3),
-            'total_charge' => 100.00,
-            'items' => [
+        Order::factory()
+            ->count(5)
+            ->withItems([
                 ['sku' => 'ABC123', 'quantity' => 2],
-            ],
-        ]);
+            ])
+            ->create([
+                'received_at' => now()->subDays(3),
+                'total_charge' => 100.00,
+            ]);
 
         // Use custom period to bypass cache and calculate live
         $component = Livewire::test(MetricsSummary::class)
@@ -78,14 +80,14 @@ describe('MetricsSummary Livewire Component', function () {
 
     it('filters metrics by channel', function () {
         Order::factory()->count(3)->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'Amazon',
+            'received_at' => now()->subDays(3),
+            'source' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(2)->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'eBay',
+            'received_at' => now()->subDays(3),
+            'source' => 'eBay',
             'total_charge' => 50.00,
         ]);
 
@@ -104,12 +106,12 @@ describe('MetricsSummary Livewire Component', function () {
 
     it('handles custom date range', function () {
         Order::factory()->count(3)->create([
-            'received_date' => Carbon::parse('2025-01-05'),
+            'received_at' => Carbon::parse('2025-01-05'),
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(2)->create([
-            'received_date' => Carbon::parse('2025-01-20'),
+            'received_at' => Carbon::parse('2025-01-20'),
             'total_charge' => 100.00,
         ]);
 
@@ -137,12 +139,12 @@ describe('MetricsSummary Livewire Component', function () {
 
     it('updates metrics when filters change', function () {
         Order::factory()->count(5)->create([
-            'received_date' => now()->subDays(3),
+            'received_at' => now()->subDays(3),
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(3)->create([
-            'received_date' => now()->subDays(20),
+            'received_at' => now()->subDays(20),
             'total_charge' => 100.00,
         ]);
 

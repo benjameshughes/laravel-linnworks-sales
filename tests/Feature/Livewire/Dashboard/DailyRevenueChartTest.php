@@ -42,9 +42,8 @@ describe('DailyRevenueChart Livewire Component', function () {
     it('returns chart data with correct structure', function () {
         Order::factory()->create([
             'created_at' => now()->subDays(2),
-            'received_date' => now()->subDays(2),
+            'received_at' => now()->subDays(2),
             'total_charge' => 100.00,
-            'items' => [['sku' => 'ABC', 'quantity' => 2]],
         ]);
 
         $component = Livewire::test(DailyRevenueChart::class)
@@ -91,18 +90,16 @@ describe('DailyRevenueChart Livewire Component', function () {
     it('filters chart data by channel', function () {
         Order::factory()->create([
             'created_at' => now()->subDays(2),
-            'received_date' => now()->subDays(2),
-            'channel_name' => 'Amazon',
+            'received_at' => now()->subDays(2),
+            'source' => 'amazon',
             'total_charge' => 100.00,
-            'items' => [['sku' => 'ABC', 'quantity' => 2]],
         ]);
 
         Order::factory()->create([
             'created_at' => now()->subDays(2),
-            'received_date' => now()->subDays(2),
-            'channel_name' => 'eBay',
+            'received_at' => now()->subDays(2),
+            'source' => 'ebay',
             'total_charge' => 200.00,
-            'items' => [['sku' => 'DEF', 'quantity' => 3]],
         ]);
 
         $component = Livewire::test(DailyRevenueChart::class)
@@ -119,13 +116,13 @@ describe('DailyRevenueChart Livewire Component', function () {
     it('handles custom date range', function () {
         Order::factory()->create([
             'created_at' => Carbon::parse('2025-01-05'),
-            'received_date' => Carbon::parse('2025-01-05'),
+            'received_at' => Carbon::parse('2025-01-05'),
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->create([
             'created_at' => Carbon::parse('2025-01-20'),
-            'received_date' => Carbon::parse('2025-01-20'),
+            'received_at' => Carbon::parse('2025-01-20'),
             'total_charge' => 200.00,
         ]);
 

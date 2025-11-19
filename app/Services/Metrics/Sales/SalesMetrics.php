@@ -30,7 +30,7 @@ final readonly class SalesMetrics
 
         // Filter by channel if not 'all'
         if ($channel !== 'all') {
-            $orders = $orders->where('channel_name', $channel);
+            $orders = $orders->where('source', $channel);
         }
 
         $factory = new SalesFactory($orders);
@@ -59,7 +59,7 @@ final readonly class SalesMetrics
 
         // Filter by channel if not 'all'
         if ($channel !== 'all') {
-            $orders = $orders->where('channel_name', $channel);
+            $orders = $orders->where('source', $channel);
         }
 
         $factory = new SalesFactory($orders);
@@ -82,7 +82,7 @@ final readonly class SalesMetrics
 
         // Filter by channel if not 'all'
         if ($channel !== 'all') {
-            $orders = $orders->where('channel_name', $channel);
+            $orders = $orders->where('source', $channel);
         }
 
         $factory = new SalesFactory($orders);
@@ -223,7 +223,7 @@ final readonly class SalesMetrics
 
         // Filter by channel if not 'all'
         if ($channel !== 'all') {
-            $orders = $orders->where('channel_name', $channel);
+            $orders = $orders->where('source', $channel);
         }
 
         // Get daily breakdown

@@ -55,7 +55,7 @@ class OrderStatusReport extends AbstractReport
         $dateEnd = Carbon::parse($filters['date_range']['end'])->endOfDay();
 
         $query = DB::table('orders as o')
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd])
+            ->whereBetween('o.received_at', [$dateStart, $dateEnd])
             ->select([
                 'o.status',
                 DB::raw('COUNT(*) as order_count'),

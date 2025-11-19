@@ -157,8 +157,8 @@ final class DashboardFilters extends Component
     #[Computed]
     public function availableChannels(): Collection
     {
-        return Order::select('channel_name')
-            ->where('channel_name', '!=', 'DIRECT')
+        return Order::select('source')
+            ->where('source', '!=', 'DIRECT')
             ->distinct()
             ->get()
             ->map(fn ($order) => collect([
@@ -209,12 +209,12 @@ final class DashboardFilters extends Component
     #[Computed]
     public function totalOrders(): int
     {
-        return Order::whereBetween('received_date', [
+        return Order::whereBetween('received_at', [
             $this->dateRange->get('start'),
             $this->dateRange->get('end'),
         ])
-            ->where('channel_name', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn ($query) => $query->where('channel_name', $this->channel)
+            ->where('source', '!=', 'DIRECT')
+            ->when($this->channel !== 'all', fn ($query) => $query->where('source', $this->channel)
             )
             ->when($this->status !== 'all', function ($query) {
                 if ($this->status === 'open_paid') {

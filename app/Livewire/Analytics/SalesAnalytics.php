@@ -27,7 +27,7 @@ class SalesAnalytics extends Component
     // Advanced filters
     public array $selectedChannels = [];
 
-    public string $sortBy = 'received_date';
+    public string $sortBy = 'received_at';
 
     public string $sortDirection = 'desc';
 
@@ -50,7 +50,7 @@ class SalesAnalytics extends Component
         'endDate' => ['except' => ''],
         'datePreset' => ['except' => 'last_30_days'],
         'selectedChannels' => ['except' => []],
-        'sortBy' => ['except' => 'received_date'],
+        'sortBy' => ['except' => 'received_at'],
         'sortDirection' => ['except' => 'desc'],
         'perPage' => ['except' => 50],
         'activeTab' => ['except' => 'overview'],
@@ -162,9 +162,9 @@ class SalesAnalytics extends Component
         $end = $this->endDate ? Carbon::parse($this->endDate)->endOfDay() : null;
 
         $query = Order::query()
-            ->when($start, fn ($q) => $q->where('received_date', '>=', $start))
-            ->when($end, fn ($q) => $q->where('received_date', '<=', $end))
-            ->when(! empty($this->selectedChannels), fn ($q) => $q->whereIn('channel_name', $this->selectedChannels));
+            ->when($start, fn ($q) => $q->where('received_at', '>=', $start))
+            ->when($end, fn ($q) => $q->where('received_at', '<=', $end))
+            ->when(! empty($this->selectedChannels), fn ($q) => $q->whereIn('source', $this->selectedChannels));
 
         return $query->orderBy($this->sortBy, $this->sortDirection)->get();
     }
@@ -175,9 +175,9 @@ class SalesAnalytics extends Component
         $end = $this->endDate ? Carbon::parse($this->endDate)->endOfDay() : null;
 
         $query = Order::query()
-            ->when($start, fn ($q) => $q->where('received_date', '>=', $start))
-            ->when($end, fn ($q) => $q->where('received_date', '<=', $end))
-            ->when(! empty($this->selectedChannels), fn ($q) => $q->whereIn('channel_name', $this->selectedChannels));
+            ->when($start, fn ($q) => $q->where('received_at', '>=', $start))
+            ->when($end, fn ($q) => $q->where('received_at', '<=', $end))
+            ->when(! empty($this->selectedChannels), fn ($q) => $q->whereIn('source', $this->selectedChannels));
 
         return $query->orderBy($this->sortBy, $this->sortDirection)
             ->paginate($this->perPage, ['*'], 'page')
@@ -193,7 +193,7 @@ class SalesAnalytics extends Component
     #[Computed]
     public function availableChannels(): Collection
     {
-        return Order::distinct()->pluck('channel_name')->filter()->sort()->values();
+        return Order::distinct()->pluck('source')->filter()->sort()->values();
     }
 
     #[Computed]

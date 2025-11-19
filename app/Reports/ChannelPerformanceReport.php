@@ -42,7 +42,7 @@ class ChannelPerformanceReport extends AbstractReport
     public function columns(): array
     {
         return [
-            'channel_name' => ['label' => 'Channel', 'type' => 'string'],
+            'source' => ['label' => 'Channel', 'type' => 'string'],
             'subsource' => ['label' => 'Subsource', 'type' => 'string'],
             'orders' => ['label' => 'Orders', 'type' => 'integer'],
             'total_revenue' => ['label' => 'Revenue', 'type' => 'currency'],
@@ -58,14 +58,14 @@ class ChannelPerformanceReport extends AbstractReport
         $dateEnd = Carbon::parse($filters['date_range']['end'])->endOfDay();
 
         $query = DB::table('orders as o')
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd]);
+            ->whereBetween('o.received_at', [$dateStart, $dateEnd]);
 
         if (! empty($filters['channels'])) {
-            $query->whereIn('o.channel_name', $filters['channels']);
+            $query->whereIn('o.source', $filters['channels']);
         }
 
         $query->select([
-            'o.channel_name',
+            'o.source',
             DB::raw("COALESCE(NULLIF(o.subsource, ''), 'Unknown') as subsource"),
             DB::raw('COUNT(*) as orders'),
             DB::raw('SUM(CASE WHEN o.status != "cancelled" THEN o.total_charge ELSE 0 END) as total_revenue'),
@@ -73,7 +73,7 @@ class ChannelPerformanceReport extends AbstractReport
             DB::raw('SUM(CASE WHEN o.status != "cancelled" THEN o.num_items ELSE 0 END) as total_items'),
             DB::raw('SUM(CASE WHEN o.status = "cancelled" THEN 1 ELSE 0 END) as cancelled_orders'),
         ])
-            ->groupBy('o.channel_name', 'o.subsource')
+            ->groupBy('o.source', 'o.subsource')
             ->orderByRaw('total_revenue DESC');
 
         return $query;

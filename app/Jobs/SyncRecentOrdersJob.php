@@ -487,10 +487,9 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
         BulkImportOrders $importer
     ): void {
         // Find orders in DB that are no longer in the open list
-        $missingOrderIds = Order::where('is_open', true)
-            ->whereNotIn('linnworks_order_id', $currentOpenOrderIds->toArray())
-            ->where('last_synced_at', '<', now()->subMinutes(30))
-            ->pluck('linnworks_order_id');
+        $missingOrderIds = Order::where('status', 0)
+            ->whereNotIn('order_id', $currentOpenOrderIds->toArray())
+            ->pluck('order_id');
 
         if ($missingOrderIds->isEmpty()) {
             return;
@@ -544,13 +543,13 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
      */
     protected function markOrdersAsClosedSimple(\Illuminate\Support\Collection $orderIds): void
     {
-        $closedCount = Order::whereIn('linnworks_order_id', $orderIds->toArray())
+        $closedCount = Order::whereIn('order_id', $orderIds->toArray())
             ->update([
-                'is_open' => false,
-                'sync_metadata' => \DB::raw("JSON_SET(COALESCE(sync_metadata, '{}'), '$.marked_closed_at', '".now()->toDateTimeString()."')"),
+                'status' => 1,
+                'processed_at' => now(),
             ]);
 
-        Log::info("Marked {$closedCount} orders as closed (fallback - no full details)");
+        Log::info("Marked {$closedCount} orders as processed (fallback - no full details)");
     }
 
     public function failed(\Throwable $exception): void

@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\Order;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -14,66 +13,60 @@ class OrderFactory extends Factory
     public function definition(): array
     {
         return [
-            'linnworks_order_id' => Str::uuid(),
-            'order_number' => fake()->unique()->numberBetween(10000, 99999),
-            'channel_name' => fake()->randomElement(['Amazon', 'eBay', 'Website', 'Etsy']),
-            'channel_reference_number' => fake()->randomNumber(8),
+            // Linnworks identifiers
+            'order_id' => Str::uuid(),
+            'number' => fake()->unique()->numberBetween(10000, 99999),
+
+            // Order dates
+            'received_at' => fake()->dateTimeBetween('-30 days', 'now'),
+            'processed_at' => fake()->optional()->dateTimeBetween('-25 days', 'now'),
+            'paid_at' => fake()->optional()->dateTimeBetween('-28 days', 'now'),
+            'despatch_by_at' => fake()->optional()->dateTimeBetween('-15 days', '+5 days'),
+
+            // Channel information
             'source' => fake()->randomElement(['Amazon', 'eBay', 'Website', 'Etsy']),
-            'sub_source' => fake()->optional()->randomElement(['Amazon UK', 'eBay UK', 'Amazon US']),
-            'external_reference' => fake()->optional()->randomNumber(8),
-            'total_charge' => fake()->randomFloat(2, 10, 500),
-            'total_discount' => fake()->randomFloat(2, 0, 50),
-            'postage_cost' => fake()->randomFloat(2, 0, 25),
-            'total_paid' => function (array $attributes) {
-                return $attributes['total_charge'] - $attributes['total_discount'] + $attributes['postage_cost'];
-            },
-            'profit_margin' => fake()->randomFloat(2, 0, 100),
-            'currency' => fake()->randomElement(['GBP', 'USD', 'EUR']),
-            'status' => fake()->randomElement(['pending', 'processed', 'cancelled']),
-            'addresses' => json_encode([
-                'billing' => [
-                    'name' => fake()->name(),
-                    'country' => fake()->country(),
-                ],
-                'shipping' => [
-                    'name' => fake()->name(),
-                    'country' => fake()->country(),
-                ],
-            ]),
-            'received_date' => fake()->dateTimeBetween('-30 days', 'now'),
-            'processed_date' => fake()->optional()->dateTimeBetween('-25 days', 'now'),
-            'dispatched_date' => fake()->optional()->dateTimeBetween('-20 days', 'now'),
-            'is_resend' => fake()->boolean(10),
-            'is_exchange' => fake()->boolean(5),
-            'notes' => fake()->optional()->sentence(),
-            'raw_data' => json_encode([
-                'linnworks_order_id' => Str::uuid(),
-                'order_number' => fake()->numberBetween(10000, 99999),
-                'order_status' => fake()->numberBetween(0, 2),
-                'location_id' => Str::uuid(),
-            ]),
-            'items' => json_encode([
-                [
-                    'item_id' => Str::uuid(),
-                    'sku' => fake()->unique()->regexify('[A-Z]{3}[0-9]{3}'),
-                    'item_title' => fake()->words(3, true),
-                    'quantity' => fake()->numberBetween(1, 5),
-                    'unit_cost' => fake()->randomFloat(2, 5, 50),
-                    'price_per_unit' => fake()->randomFloat(2, 10, 100),
-                    'line_total' => fake()->randomFloat(2, 10, 200),
-                    'category_name' => fake()->word(),
-                ],
-            ]),
-            'order_source' => fake()->randomElement(['Amazon', 'eBay', 'Website', 'Etsy']),
             'subsource' => fake()->optional()->randomElement(['Amazon UK', 'eBay UK', 'Amazon US']),
+
+            // Financial information
+            'currency' => fake()->randomElement(['GBP', 'USD', 'EUR']),
+            'total_charge' => fake()->randomFloat(2, 10, 500),
+            'postage_cost' => fake()->randomFloat(2, 0, 25),
+            'postage_cost_ex_tax' => fake()->randomFloat(2, 0, 20),
             'tax' => fake()->randomFloat(2, 0, 20),
-            'order_status' => fake()->randomElement([0, 1, 2]), // 0=pending, 1=processed, 2=cancelled
+            'profit_margin' => fake()->randomFloat(2, 0, 100),
+            'total_discount' => fake()->randomFloat(2, 0, 50),
+            'country_tax_rate' => fake()->optional()->randomFloat(4, 0, 0.25),
+            'conversion_rate' => 1.0,
+
+            // Order status
+            'status' => fake()->randomElement([0, 1, 2]),
+            'is_paid' => fake()->boolean(80),
+            'is_cancelled' => fake()->boolean(5),
+
+            // Location
             'location_id' => Str::uuid(),
-            'last_synced_at' => fake()->optional()->dateTimeBetween('-1 day', 'now'),
-            'is_open' => true,
-            'has_refund' => false,
-            'sync_status' => 'synced',
-            'sync_metadata' => json_encode([]),
+
+            // Payment information
+            'payment_method' => fake()->optional()->randomElement(['Credit Card', 'PayPal', 'Bank Transfer']),
+            'payment_method_id' => fake()->optional()->uuid(),
+
+            // Reference numbers
+            'channel_reference_number' => fake()->optional()->numerify('###-#######-#######'),
+            'secondary_reference' => fake()->optional()->numerify('REF-########'),
+            'external_reference_num' => fake()->optional()->numerify('EXT-########'),
+
+            // Order flags
+            'marker' => fake()->randomElement([0, 1, 2, 3, 4]),
+            'is_parked' => fake()->boolean(5),
+            'label_printed' => fake()->boolean(60),
+            'label_error' => fake()->optional()->sentence(),
+            'invoice_printed' => fake()->boolean(70),
+            'pick_list_printed' => fake()->boolean(65),
+            'is_rule_run' => fake()->boolean(80),
+            'part_shipped' => fake()->boolean(10),
+            'has_scheduled_delivery' => fake()->boolean(20),
+            'pickwave_ids' => fake()->optional()->passthrough(json_encode([fake()->uuid(), fake()->uuid()])),
+            'num_items' => fake()->numberBetween(1, 10),
         ];
     }
 
@@ -83,12 +76,9 @@ class OrderFactory extends Factory
     public function open(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_open' => true,
-            'has_refund' => false,
-            'status' => 'pending',
-            'order_status' => 0,
-            'processed_date' => null,
-            'dispatched_date' => null,
+            'status' => 0,
+            'processed_at' => null,
+            'paid_at' => null,
         ]);
     }
 
@@ -98,52 +88,20 @@ class OrderFactory extends Factory
     public function closed(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_open' => false,
-            'has_refund' => false,
-            'status' => 'processed',
-            'order_status' => 1,
-            'processed_date' => fake()->dateTimeBetween('-10 days', 'now'),
-            'dispatched_date' => fake()->dateTimeBetween('-8 days', 'now'),
+            'status' => 1,
+            'processed_at' => fake()->dateTimeBetween('-10 days', 'now'),
+            'paid_at' => fake()->dateTimeBetween('-12 days', 'now'),
         ]);
     }
 
     /**
-     * Create a refunded order
+     * Create a cancelled order
      */
-    public function refunded(): static
+    public function cancelled(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_open' => false,
-            'has_refund' => true,
-            'status' => 'cancelled',
-            'order_status' => 2,
-            'sync_metadata' => json_encode([
-                'refund_detected_at' => Carbon::now()->toDateTimeString(),
-                'refund_amount' => fake()->randomFloat(2, 5, $attributes['total_charge']),
-            ]),
-        ]);
-    }
-
-    /**
-     * Create an order that needs syncing
-     */
-    public function needingSync(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'is_open' => true,
-            'last_synced_at' => fake()->dateTimeBetween('-1 hour', '-16 minutes'),
-            'sync_status' => 'pending',
-        ]);
-    }
-
-    /**
-     * Create an order that was recently synced
-     */
-    public function recentlySync(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'last_synced_at' => fake()->dateTimeBetween('-5 minutes', 'now'),
-            'sync_status' => 'synced',
+            'status' => 2,
+            'is_cancelled' => true,
         ]);
     }
 
@@ -153,30 +111,37 @@ class OrderFactory extends Factory
     public function fromChannel(string $channel): static
     {
         return $this->state(fn (array $attributes) => [
-            'channel_name' => $channel,
             'source' => $channel,
-            'order_source' => $channel,
         ]);
     }
 
     /**
-     * Create an order with specific items
+     * Create a paid order
+     */
+    public function paid(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_paid' => true,
+            'paid_at' => fake()->dateTimeBetween('-15 days', 'now'),
+        ]);
+    }
+
+    /**
+     * Create an order with items
+     *
+     * @param  array  $items  Array of items [['sku' => 'ABC', 'quantity' => 2], ...]
      */
     public function withItems(array $items): static
     {
-        return $this->state(fn (array $attributes) => [
-            'items' => $items,
-        ]);
-    }
-
-    /**
-     * Create an order with a specific total charge
-     */
-    public function withTotal(float $total): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'total_charge' => $total,
-            'total_paid' => $total,
-        ]);
+        return $this->afterCreating(function (Order $order) use ($items) {
+            foreach ($items as $item) {
+                \App\Models\OrderItem::factory()->create([
+                    'order_id' => $order->id,
+                    'sku' => $item['sku'] ?? fake()->regexify('[A-Z]{3}-[0-9]{6}'),
+                    'quantity' => $item['quantity'] ?? 1,
+                    'item_title' => $item['item_title'] ?? fake()->words(3, true),
+                ]);
+            }
+        });
     }
 }

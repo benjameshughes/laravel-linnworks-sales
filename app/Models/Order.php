@@ -22,7 +22,7 @@ class Order extends Model
 
     protected $fillable = [
         // Linnworks identifiers
-        'linnworks_id',
+        'order_id',
         'number',
 
         // Order dates
@@ -159,12 +159,8 @@ class Order extends Model
     public function markAsProcessed(?Carbon $processedDate = null): bool
     {
         return $this->update([
-            'is_open' => false,
-            'is_processed' => true,
-            'status' => 'processed',
-            'processed_date' => $processedDate ?? now(),
-            'sync_status' => 'synced',
-            'last_synced_at' => now(),
+            'status' => 1,
+            'processed_at' => $processedDate ?? now(),
         ]);
     }
 
@@ -173,10 +169,8 @@ class Order extends Model
      */
     public function matchesProcessedOrder(array $processedOrderData): bool
     {
-        // Match by order_id (from processed orders API) or linnworks_order_id
         return $this->order_id === $processedOrderData['order_id'] ||
-               $this->linnworks_order_id === $processedOrderData['order_id'] ||
-               $this->order_number == $processedOrderData['order_number'];
+               $this->number == $processedOrderData['number'];
     }
 
     /**
@@ -195,7 +189,7 @@ class Order extends Model
     protected function channelDisplay(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->channel_name ?? 'Unknown'
+            get: fn () => $this->source ?? 'Unknown'
         );
     }
 
@@ -217,6 +211,16 @@ class Order extends Model
         return Attribute::make(
             get: fn () => $this->total_charge - $this->items_collection->sum(fn ($item) => ($item['unit_cost'] ?? 0) * ($item['quantity'] ?? 0)
             )
+        );
+    }
+
+    /**
+     * Check if order is open/pending (modern accessor)
+     */
+    protected function isOpen(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->status === 0
         );
     }
 
@@ -248,12 +252,12 @@ class Order extends Model
         return Attribute::make(
             get: function (): int {
                 /** @phpstan-ignore-next-line */
-                if (! $this->received_date || ! $this->received_date instanceof Carbon) {
+                if (! $this->received_at || ! $this->received_at instanceof Carbon) {
                     return 0;
                 }
 
                 /** @phpstan-ignore-next-line */
-                return $this->received_date->diffInDays(now());
+                return $this->received_at->diffInDays(now());
             }
         );
     }
@@ -298,51 +302,42 @@ class Order extends Model
      */
     public function scopeByChannel(Builder $query, string $channelName): Builder
     {
-        return $query->where('channel_name', $channelName);
+        return $query->where('source', $channelName);
     }
 
-    public function scopeByStatus(Builder $query, string $status): Builder
+    public function scopeByStatus(Builder $query, int $status): Builder
     {
         return $query->where('status', $status);
     }
 
     public function scopeByDateRange(Builder $query, Carbon|string $startDate, Carbon|string $endDate): Builder
     {
-        return $query->whereBetween('received_date', [$startDate, $endDate]);
+        return $query->whereBetween('received_at', [$startDate, $endDate]);
     }
 
     public function scopeProcessed(Builder $query): Builder
     {
-        return $query->where('status', 'processed');
+        return $query->where('status', 1);
     }
 
-    public function scopeOpen(Builder $query): Builder
+    public function scopePending(Builder $query): Builder
     {
-        return $query->where('is_open', true)->where('has_refund', false);
+        return $query->where('status', 0);
     }
 
-    public function scopeNotRefunded(Builder $query): Builder
+    public function scopeCancelled(Builder $query): Builder
     {
-        return $query->where('has_refund', false);
-    }
-
-    public function scopeNeedingSync(Builder $query): Builder
-    {
-        return $query->where('is_open', true)
-            ->where(function (Builder $q) {
-                $q->whereNull('last_synced_at')
-                    ->orWhere('last_synced_at', '<', now()->subMinutes(15));
-            });
+        return $query->where('status', 2);
     }
 
     public function scopeRecent(Builder $query, int $days = 7): Builder
     {
-        return $query->where('received_date', '>=', now()->subDays($days));
+        return $query->where('received_at', '>=', now()->subDays($days));
     }
 
     public function scopeProfitable(Builder $query): Builder
     {
-        return $query->whereRaw('total_charge > (SELECT SUM(cost_price * quantity) FROM order_items WHERE order_id = orders.id)');
+        return $query->whereRaw('total_charge > (SELECT SUM(cost * quantity) FROM order_items WHERE order_items.order_id = orders.id)');
     }
 
     public function scopeHighValue(Builder $query, float $threshold = 100): Builder
@@ -352,14 +347,6 @@ class Order extends Model
 
     public function isProcessed(): bool
     {
-        return $this->status === 'processed';
-    }
-
-    public function markAsSynced(): void
-    {
-        $this->update([
-            'last_synced_at' => now(),
-            'sync_status' => 'synced',
-        ]);
+        return $this->status === 1;
     }
 }

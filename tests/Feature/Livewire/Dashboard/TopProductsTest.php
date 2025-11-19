@@ -40,21 +40,23 @@ describe('TopProducts Livewire Component', function () {
     });
 
     it('computes top products correctly', function () {
-        Order::factory()->create([
-            'received_date' => now()->subDays(3),
-            'items' => [
+        Order::factory()
+            ->withItems([
                 ['sku' => 'ABC123', 'quantity' => 10],
                 ['sku' => 'DEF456', 'quantity' => 5],
-            ],
-        ]);
+            ])
+            ->create([
+                'received_at' => now()->subDays(3),
+            ]);
 
-        Order::factory()->create([
-            'received_date' => now()->subDays(3),
-            'items' => [
+        Order::factory()
+            ->withItems([
                 ['sku' => 'ABC123', 'quantity' => 5],
                 ['sku' => 'GHI789', 'quantity' => 3],
-            ],
-        ]);
+            ])
+            ->create([
+                'received_at' => now()->subDays(3),
+            ]);
 
         $component = Livewire::test(TopProducts::class)
             ->set('period', 'custom')
@@ -78,10 +80,11 @@ describe('TopProducts Livewire Component', function () {
             'quantity' => $i,
         ])->toArray();
 
-        Order::factory()->create([
-            'received_date' => now()->subDays(3),
-            'items' => $items,
-        ]);
+        Order::factory()
+            ->withItems($items)
+            ->create([
+                'received_at' => now()->subDays(3),
+            ]);
 
         $component = Livewire::test(TopProducts::class)
             ->set('period', 'custom')
@@ -104,27 +107,29 @@ describe('TopProducts Livewire Component', function () {
     });
 
     it('filters by channel', function () {
-        Order::factory()->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'Amazon',
-            'items' => [
+        Order::factory()
+            ->withItems([
                 ['sku' => 'ABC123', 'quantity' => 10],
-            ],
-        ]);
+            ])
+            ->create([
+                'received_at' => now()->subDays(3),
+                'source' => 'amazon',
+            ]);
 
-        Order::factory()->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'eBay',
-            'items' => [
+        Order::factory()
+            ->withItems([
                 ['sku' => 'DEF456', 'quantity' => 20],
-            ],
-        ]);
+            ])
+            ->create([
+                'received_at' => now()->subDays(3),
+                'source' => 'ebay',
+            ]);
 
         $component = Livewire::test(TopProducts::class)
             ->set('period', 'custom')
             ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
             ->set('customTo', now()->format('Y-m-d'))
-            ->set('channel', 'Amazon');
+            ->set('channel', 'amazon');
 
         $topProducts = $component->get('topProducts');
 
@@ -133,19 +138,21 @@ describe('TopProducts Livewire Component', function () {
     });
 
     it('handles custom date range', function () {
-        Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-05'),
-            'items' => [
+        Order::factory()
+            ->withItems([
                 ['sku' => 'ABC123', 'quantity' => 10],
-            ],
-        ]);
+            ])
+            ->create([
+                'received_at' => Carbon::parse('2025-01-05'),
+            ]);
 
-        Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-20'),
-            'items' => [
+        Order::factory()
+            ->withItems([
                 ['sku' => 'DEF456', 'quantity' => 20],
-            ],
-        ]);
+            ])
+            ->create([
+                'received_at' => Carbon::parse('2025-01-20'),
+            ]);
 
         $component = Livewire::test(TopProducts::class)
             ->set('period', 'custom')
@@ -159,14 +166,15 @@ describe('TopProducts Livewire Component', function () {
     });
 
     it('sorts products by quantity descending', function () {
-        Order::factory()->create([
-            'received_date' => now()->subDays(3),
-            'items' => [
+        Order::factory()
+            ->withItems([
                 ['sku' => 'LOW', 'quantity' => 5],
                 ['sku' => 'HIGH', 'quantity' => 50],
                 ['sku' => 'MEDIUM', 'quantity' => 20],
-            ],
-        ]);
+            ])
+            ->create([
+                'received_at' => now()->subDays(3),
+            ]);
 
         $component = Livewire::test(TopProducts::class)
             ->set('period', 'custom')
