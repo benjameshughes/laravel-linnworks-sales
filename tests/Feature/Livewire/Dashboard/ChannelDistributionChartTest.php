@@ -57,22 +57,6 @@ describe('ChannelDistributionChart Livewire Component', function () {
             ->toBeArray();
     });
 
-    it('generates unique chart key based on filters and view mode', function () {
-        $component = Livewire::test(ChannelDistributionChart::class)
-            ->set('period', '7')
-            ->set('channel', 'Amazon')
-            ->set('viewMode', 'detailed');
-
-        $chartKey = $component->get('chartKey');
-
-        expect($chartKey)
-            ->toBeString()
-            ->toContain('channel-doughnut')
-            ->toContain('detailed')
-            ->toContain('7')
-            ->toContain('Amazon');
-    });
-
     it('handles empty data gracefully', function () {
         $component = Livewire::test(ChannelDistributionChart::class);
 

@@ -13,7 +13,6 @@ use App\Livewire\Settings\ImportProgress;
 use App\Livewire\Settings\LinnworksSettings;
 use App\Livewire\Settings\Password;
 use App\Livewire\Settings\Profile;
-use App\Livewire\Sophie;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -26,17 +25,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('products', ProductAnalytics::class)->name('products.analytics');
     Route::get('products/{sku}', ProductDetail::class)->name('products.detail');
     Route::get('channels', ChannelComparison::class)->name('channels.comparison');
-    Route::get('sophie', Sophie::class)->name('sophie');
     Route::get('reports', ReportsIndex::class)->name('reports');
     Route::get('reports/compare', ReportComparison::class)->name('reports.compare');
     Route::get('linnworks/install-url', [LinnworksCallbackController::class, 'getInstallationUrl'])->name('linnworks.install.url');
-});
-
-// Public callback endpoints (no auth middleware)
-Route::post('linnworks/callback', [LinnworksCallbackController::class, 'handleCallback'])->name('linnworks.callback');
-Route::get('linnworks/callback', [LinnworksCallbackController::class, 'testCallback'])->name('linnworks.callback.test');
-
-Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
 
     Route::get('settings/profile', Profile::class)->name('settings.profile');

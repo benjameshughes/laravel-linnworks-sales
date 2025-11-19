@@ -1,5 +1,5 @@
-<div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700">
-    <div class="p-6 pb-4 border-b border-zinc-200 dark:border-zinc-700">
+<div class="bg-white dark:bg-zinc-800 rounded-md shadow-sm border border-zinc-200 dark:border-zinc-700">
+    <div class="p-3 border-b border-zinc-200 dark:border-zinc-700">
         <div class="flex items-center justify-between">
             <div>
                 <div class="flex items-center gap-3">
@@ -16,7 +16,7 @@
                         class="[&>label]:transition-all [&>label]:duration-200"
                         wire:loading.attr="disabled"
                         x-bind:disabled="cooldown"
-                        x-on:change="cooldown = true; setTimeout(() => cooldown = false, 500)"
+                        x-on:change="cooldown = true; setTimeout(() => cooldown = false, 3000)"
                     >
                         <flux:radio value="revenue" icon="currency-pound">Revenue</flux:radio>
                         <flux:radio value="orders" icon="shopping-cart">Orders</flux:radio>
@@ -28,7 +28,7 @@
 
     <div class="p-6">
         @if(empty($dailyBreakdown))
-            <div class="text-center text-zinc-500 dark:text-zinc-400 py-8">
+            <div class="text-center text-zinc-500 dark:text-zinc-400">
                 <div class="animate-pulse space-y-4">
                     <div class="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-3/4 mx-auto"></div>
                     <div class="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-1/2 mx-auto"></div>

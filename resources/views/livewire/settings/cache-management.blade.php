@@ -145,7 +145,6 @@
 
             {{-- Batch Progress Section --}}
             @if($this->activeBatch)
-                <div {{ !$this->activeBatch['finished'] ? 'wire:poll.2s' : '' }}>
                 <x-animations.fade-in-up
                     :delay="150"
                     class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
@@ -225,7 +224,6 @@
                         </div>
                     </div>
                 </x-animations.fade-in-up>
-                </div>
             @endif
 
             {{-- Recent Cache Warming Section --}}
@@ -411,3 +409,24 @@
         </div>
     </x-settings.layout>
 </section>
+
+@script
+<script>
+    window.Echo.channel('cache-management')
+        .listen('CacheWarmingStarted', (e) => {
+            console.log('Cache warming started:', e);
+        })
+        .listen('CachePeriodWarmingStarted', (e) => {
+            console.log('Period warming started:', e);
+        })
+        .listen('CachePeriodWarmed', (e) => {
+            console.log('Period warmed:', e);
+        })
+        .listen('CacheWarmingCompleted', (e) => {
+            console.log('Cache warming completed:', e);
+        })
+        .listen('CacheCleared', (e) => {
+            console.log('Cache cleared:', e);
+        });
+</script>
+@endscript

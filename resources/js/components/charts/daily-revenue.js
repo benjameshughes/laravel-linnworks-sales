@@ -117,17 +117,6 @@ Alpine.data('dailyRevenueChart', (dailyBreakdown, viewMode) => ({
         return {
             responsive: true,
             maintainAspectRatio: false,
-            animation: {
-                duration: 1000,
-                easing: 'easeInOutQuart'
-            },
-            transitions: {
-                active: {
-                    animation: {
-                        duration: 1000
-                    }
-                }
-            },
             plugins: {
                 legend: {
                     display: true,
