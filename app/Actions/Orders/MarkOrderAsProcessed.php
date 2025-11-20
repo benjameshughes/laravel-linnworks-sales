@@ -51,12 +51,12 @@ class MarkOrderAsProcessed
                     continue;
                 }
 
-                // Find the order in our database by linnworks_order_id
-                $order = Order::where('linnworks_order_id', $orderId)->first();
+                // Find the order in our database by order_id
+                $order = Order::where('order_id', $orderId)->first();
 
                 if (! $order) {
                     Log::debug('Order not found in database', [
-                        'linnworks_order_id' => $orderId,
+                        'order_id' => $orderId,
                     ]);
                     $skippedCount++;
 
@@ -64,27 +64,27 @@ class MarkOrderAsProcessed
                 }
 
                 // Only update if the processed status has changed
-                if ($order->is_processed !== $isProcessed) {
-                    $oldStatus = $order->is_processed;
-                    $order->is_processed = $isProcessed;
-                    $order->is_open = ! $isProcessed;
+                $currentStatus = $order->status;
+                $newStatus = $isProcessed ? 1 : 0;
+
+                if ($currentStatus !== $newStatus) {
+                    $order->status = $newStatus;
                     if ($isProcessed) {
-                        $order->status = 'processed';
-                        $order->processed_date = $order->processed_date ?? now();
+                        $order->processed_at = $order->processed_at ?? now();
                     }
 
                     if ($order->save()) {
                         Log::debug('Updated order processed status', [
                             'order_id' => $order->id,
-                            'linnworks_order_id' => $orderId,
-                            'old_status' => $oldStatus,
-                            'new_status' => $isProcessed,
+                            'external_order_id' => $orderId,
+                            'old_status' => $currentStatus,
+                            'new_status' => $newStatus,
                         ]);
                         $updatedCount++;
                     } else {
                         Log::error('Failed to save order processed status', [
                             'order_id' => $order->id,
-                            'linnworks_order_id' => $orderId,
+                            'external_order_id' => $orderId,
                         ]);
                         $errorCount++;
                     }

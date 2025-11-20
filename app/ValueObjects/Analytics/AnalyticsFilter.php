@@ -12,7 +12,7 @@ readonly class AnalyticsFilter
         public DateRange $dateRange,
         public array $channels = [],
         public array $products = [],
-        public ?bool $isProcessed = null,
+        public ?int $status = null,
         public ?string $searchTerm = null,
         public string $sortBy = 'received_date',
         public string $sortDirection = 'desc',
@@ -37,7 +37,7 @@ readonly class AnalyticsFilter
             dateRange: $dateRange,
             channels: $data['channels'] ?? [],
             products: $data['products'] ?? [],
-            isProcessed: $data['is_processed'] ?? null,
+            status: isset($data['status']) ? (int) $data['status'] : null,
             searchTerm: $data['search'] ?? null,
             sortBy: $data['sort_by'] ?? 'received_date',
             sortDirection: $data['sort_direction'] ?? 'desc',
@@ -65,8 +65,8 @@ readonly class AnalyticsFilter
                 })
             )
             ->when(
-                $this->isProcessed !== null,
-                fn (Builder $q) => $q->where('is_processed', $this->isProcessed)
+                $this->status !== null,
+                fn (Builder $q) => $q->where('status', $this->status)
             )
             ->when(
                 $this->searchTerm,
@@ -84,7 +84,7 @@ readonly class AnalyticsFilter
             dateRange: $dateRange,
             channels: $this->channels,
             products: $this->products,
-            isProcessed: $this->isProcessed,
+            status: $this->status,
             searchTerm: $this->searchTerm,
             sortBy: $this->sortBy,
             sortDirection: $this->sortDirection,
@@ -97,7 +97,7 @@ readonly class AnalyticsFilter
             dateRange: $this->dateRange,
             channels: $channels,
             products: $this->products,
-            isProcessed: $this->isProcessed,
+            status: $this->status,
             searchTerm: $this->searchTerm,
             sortBy: $this->sortBy,
             sortDirection: $this->sortDirection,
@@ -110,7 +110,7 @@ readonly class AnalyticsFilter
             dateRange: $this->dateRange,
             channels: $this->channels,
             products: $products,
-            isProcessed: $this->isProcessed,
+            status: $this->status,
             searchTerm: $this->searchTerm,
             sortBy: $this->sortBy,
             sortDirection: $this->sortDirection,
@@ -123,7 +123,7 @@ readonly class AnalyticsFilter
             dateRange: $this->dateRange,
             channels: $this->channels,
             products: $this->products,
-            isProcessed: $this->isProcessed,
+            status: $this->status,
             searchTerm: $this->searchTerm,
             sortBy: $sortBy,
             sortDirection: $sortDirection,
@@ -136,7 +136,7 @@ readonly class AnalyticsFilter
             'date_range' => $this->dateRange->toArray(),
             'channels' => $this->channels,
             'products' => $this->products,
-            'is_processed' => $this->isProcessed,
+            'status' => $this->status,
             'search' => $this->searchTerm,
             'sort_by' => $this->sortBy,
             'sort_direction' => $this->sortDirection,
@@ -147,7 +147,7 @@ readonly class AnalyticsFilter
     {
         return ! empty($this->channels)
             || ! empty($this->products)
-            || $this->isProcessed !== null
+            || $this->status !== null
             || $this->searchTerm !== null;
     }
 }

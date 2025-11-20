@@ -168,10 +168,10 @@ final readonly class ChunkedMetricsCalculator
                 DATE(received_date) as date,
                 COUNT(*) as orders,
                 SUM(total_charge) as revenue,
-                SUM(CASE WHEN is_processed = 1 THEN 1 ELSE 0 END) as processed_orders,
-                SUM(CASE WHEN is_processed = 0 THEN 1 ELSE 0 END) as open_orders,
-                SUM(CASE WHEN is_processed = 1 THEN total_charge ELSE 0 END) as processed_revenue,
-                SUM(CASE WHEN is_processed = 0 THEN total_charge ELSE 0 END) as open_revenue
+                SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as processed_orders,
+                SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as open_orders,
+                SUM(CASE WHEN status = 1 THEN total_charge ELSE 0 END) as processed_revenue,
+                SUM(CASE WHEN status = 0 THEN total_charge ELSE 0 END) as open_revenue
             ')
             ->groupByRaw('DATE(received_date)')
             ->get()
@@ -332,15 +332,14 @@ final readonly class ChunkedMetricsCalculator
             ->select([
                 'id',
                 'number',
-                'linnworks_order_id',
+                'order_id',
                 'received_at',
                 'source',
                 'subsource',
                 'total_charge',
                 'total_paid',
-                'is_paid',
-                'is_open',
-                'is_processed',
+                'paid',
+                'status',
                 'items',
             ])
             ->whereBetween('received_at', [$start, $end])

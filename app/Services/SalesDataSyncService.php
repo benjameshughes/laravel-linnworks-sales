@@ -96,13 +96,13 @@ class SalesDataSyncService
 
             // Prepare order data
             $orderAttributes = [
-                'linnworks_order_id' => $orderData['pkOrderID'],
+                'order_id' => $orderData['pkOrderID'],
                 'number' => $orderData['nOrderId'] ?? $orderData['OrderNumber'] ?? '',
                 'source' => $orderData['Source'] ?? 'unknown',
                 'channel_reference_number' => $orderData['ExternalReference'] ?? null,
                 'source' => $orderData['Source'] ?? null,
                 'subsource' => $orderData['SubSource'] ?? null,
-                'external_reference' => $orderData['ExternalReference'] ?? null,
+                'external_reference_num' => $orderData['ExternalReference'] ?? null,
                 'total_value' => $orderData['TotalValue'] ?? 0,
                 'total_discount' => $orderData['TotalDiscount'] ?? 0,
                 'postage_cost' => $orderData['PostageCost'] ?? 0,
