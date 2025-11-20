@@ -49,6 +49,9 @@ final class DashboardFilters extends Component
 
         // Check initial rate limit status
         $this->checkRateLimit();
+
+        // Restore sync state from cache if job is running
+        $this->restoreSyncState();
     }
 
     public function checkRateLimit(): void
@@ -60,6 +63,37 @@ final class DashboardFilters extends Component
         } else {
             $this->rateLimitSeconds = 0;
         }
+    }
+
+    private function restoreSyncState(): void
+    {
+        $syncStateKey = 'sync-state:global';
+        $syncState = Cache::get($syncStateKey);
+
+        if ($syncState) {
+            $this->isSyncing = $syncState['is_syncing'] ?? false;
+            $this->syncStage = $syncState['stage'] ?? '';
+            $this->syncMessage = $syncState['message'] ?? '';
+            $this->syncCount = $syncState['count'] ?? 0;
+        }
+    }
+
+    private function persistSyncState(): void
+    {
+        $syncStateKey = 'sync-state:global';
+
+        Cache::put($syncStateKey, [
+            'is_syncing' => $this->isSyncing,
+            'stage' => $this->syncStage,
+            'message' => $this->syncMessage,
+            'count' => $this->syncCount,
+        ], now()->addMinutes(10)); // TTL: 10 minutes
+    }
+
+    private function clearSyncState(): void
+    {
+        $syncStateKey = 'sync-state:global';
+        Cache::forget($syncStateKey);
     }
 
     public function updated($property): void
@@ -109,6 +143,9 @@ final class DashboardFilters extends Component
         $this->syncStage = 'queued';
         $this->syncMessage = 'Sync job queued...';
 
+        // Persist initial sync state
+        $this->persistSyncState();
+
         try {
             // Dispatch recent orders sync job
             SyncRecentOrdersJob::dispatch(startedBy: 'user-'.auth()->id());
@@ -121,6 +158,7 @@ final class DashboardFilters extends Component
             report($exception);
 
             $this->isSyncing = false;
+            $this->clearSyncState();
 
             $this->dispatch('notification', [
                 'message' => 'Failed to queue sync job. See logs for details.',
@@ -246,6 +284,8 @@ final class DashboardFilters extends Component
             $this->syncMessage = 'Starting sync...';
             $this->syncCount = 0;
         }
+
+        $this->persistSyncState();
     }
 
     #[On('echo:sync-progress,SyncProgressUpdated')]
@@ -254,6 +294,8 @@ final class DashboardFilters extends Component
         $this->syncStage = $data['stage'];
         $this->syncMessage = $data['message'];
         $this->syncCount = $data['count'] ?? 0;
+
+        $this->persistSyncState();
     }
 
     #[On('echo:sync-progress,SyncCompleted')]
@@ -287,6 +329,8 @@ final class DashboardFilters extends Component
     {
         $this->syncMessage = 'Crunching the numbers...';
         $this->syncStage = 'warming-cache';
+
+        $this->persistSyncState();
     }
 
     #[On('echo:cache-management,CacheWarmingCompleted')]
@@ -295,6 +339,9 @@ final class DashboardFilters extends Component
         $this->isSyncing = false;
         $this->syncStage = 'completed';
         $this->syncMessage = 'Sync complete!';
+
+        // Clear sync state from cache
+        $this->clearSyncState();
 
         // Clear cached computed properties to force fresh data
         unset($this->lastSyncInfo);

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Factories\Metrics\Sales\SalesFactory;
 use App\Repositories\Metrics\Sales\SalesRepository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -51,9 +50,9 @@ final class RecentOrders extends Component
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Can't cache custom periods
+        // Can't cache custom periods - use repository for limited query
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            return app(SalesRepository::getRecentOrders());
+            return app(SalesRepository::class)->getRecentOrders(limit: 15);
         }
 
         // Check cache
@@ -75,7 +74,7 @@ final class RecentOrders extends Component
 
         // Can't cache custom periods
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            return app(SalesFactory::totalOrders());
+            return 0;
         }
 
         // Check cache
