@@ -6,7 +6,6 @@ namespace App\Observers;
 
 use App\Events\OrdersSynced;
 use App\Models\Order;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Observer for Order model changes
@@ -36,11 +35,6 @@ final class OrderObserver
     public function created(Order $order): void
     {
         $this->queueCacheWarming('order_created');
-
-        Log::info('[OrderObserver] Order created - cache warming queued', [
-            'order_id' => $order->id,
-            'number' => $order->number,
-        ]);
     }
 
     /**
@@ -53,12 +47,6 @@ final class OrderObserver
         // Only warm cache if meaningful fields changed
         if ($this->shouldWarmCache($order)) {
             $this->queueCacheWarming('order_updated');
-
-            Log::info('[OrderObserver] Order updated - cache warming queued', [
-                'order_id' => $order->id,
-                'number' => $order->number,
-                'changed' => array_keys($order->getDirty()),
-            ]);
         }
     }
 
@@ -70,11 +58,6 @@ final class OrderObserver
     public function deleted(Order $order): void
     {
         $this->queueCacheWarming('order_deleted');
-
-        Log::info('[OrderObserver] Order deleted - cache warming queued', [
-            'order_id' => $order->id,
-            'number' => $order->number,
-        ]);
     }
 
     /**

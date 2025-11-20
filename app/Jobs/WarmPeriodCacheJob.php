@@ -94,7 +94,7 @@ final class WarmPeriodCacheJob implements ShouldQueue
             $peakMemoryAfter = memory_get_peak_usage(true);
             $memoryUsed = $peakMemoryAfter - $peakMemoryBefore;
 
-            Log::info('Cache warmed successfully', [
+            Log::debug('Cache warmed successfully', [
                 'cache_key' => $cacheKey,
                 'orders_count' => $cacheData['orders'],
                 'duration_seconds' => $duration,

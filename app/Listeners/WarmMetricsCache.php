@@ -52,11 +52,6 @@ final class WarmMetricsCache implements ShouldQueue
      */
     public function handle(OrdersSynced $event): void
     {
-        Log::info('Warming metrics cache after orders sync', [
-            'orders_processed' => $event->ordersProcessed,
-            'sync_type' => $event->syncType,
-        ]);
-
         $periods = \App\Enums\Period::cacheable();
 
         // Get all available channels from database
@@ -93,11 +88,6 @@ final class WarmMetricsCache implements ShouldQueue
                 CacheWarmingCompleted::dispatch(count($periods));
             })
             ->dispatch();
-
-        Log::info('Cache warming jobs dispatched', [
-            'job_count' => $jobs->count(),
-            'combinations' => 'periods × channels × statuses',
-        ]);
     }
 
     /**

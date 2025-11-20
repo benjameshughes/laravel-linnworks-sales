@@ -59,7 +59,7 @@ class OpenOrdersService
         $viewId = $viewId ?? 4;
         $locationId = $locationId ?? '00000000-0000-0000-0000-000000000000';
 
-        Log::info('Fetching date-filtered open orders', [
+        Log::debug('Fetching date-filtered open orders', [
             'user_id' => $userId,
             'from' => $from->toISOString(),
             'to' => $to->toISOString(),
@@ -112,7 +112,7 @@ class OpenOrdersService
 
             $allOrders = $allOrders->merge($pageOrders);
 
-            Log::info('Fetched date-filtered open orders page', [
+            Log::debug('Fetched date-filtered open orders page', [
                 'page' => $page,
                 'orders_in_page' => $pageOrders->count(),
                 'total_fetched' => $allOrders->count(),
@@ -181,7 +181,7 @@ class OpenOrdersService
         $totalPages = (int) ceil($totalOrders / $entriesPerPage);
         $pagesToFetch = min($totalPages, (int) ceil($maxOrders / $entriesPerPage));
 
-        Log::info('Starting paginated open orders fetch', [
+        Log::debug('Starting paginated open orders fetch', [
             'user_id' => $userId,
             'view_id' => $viewId,
             'location_id' => $locationId,
@@ -226,7 +226,7 @@ class OpenOrdersService
 
             $allOrders = $allOrders->merge($pageOrders);
 
-            Log::info('Fetched open orders page', [
+            Log::debug('Fetched open orders page', [
                 'page' => $page,
                 'orders_in_page' => $pageOrders->count(),
                 'total_fetched' => $allOrders->count(),
@@ -330,7 +330,7 @@ class OpenOrdersService
         // Use config value with sensible default
         $locationId ??= config('linnworks.open_orders.location_id', '00000000-0000-0000-0000-000000000000');
 
-        Log::info('Fetching ALL open order IDs (single call)', [
+        Log::debug('Fetching ALL open order IDs (single call)', [
             'user_id' => $userId,
             'location_id' => $locationId,
         ]);
@@ -408,7 +408,7 @@ class OpenOrdersService
         $page = 1;
         $totalPages = 1;
 
-        Log::info('Fetching open order IDs', [
+        Log::debug('Fetching open order IDs', [
             'user_id' => $userId,
             'view_id' => $viewId,
             'location_id' => $locationId,
@@ -460,7 +460,7 @@ class OpenOrdersService
 
             $ids = $ids->merge($pageIds)->unique()->values();
 
-            Log::info('Fetched open order IDs page', [
+            Log::debug('Fetched open order IDs page', [
                 'user_id' => $userId,
                 'page' => $page,
                 'ids_in_page' => $pageIds->count(),
@@ -492,7 +492,7 @@ class OpenOrdersService
             'OrderIds' => [$orderId],
         ]);
 
-        Log::info('Fetching open order details', [
+        Log::debug('Fetching open order details', [
             'user_id' => $userId,
             'order_id' => $orderId,
         ]);
@@ -515,7 +515,7 @@ class OpenOrdersService
 
         $orderDetails = collect();
 
-        Log::info('Fetching multiple open order details', [
+        Log::debug('Fetching multiple open order details', [
             'user_id' => $userId,
             'order_count' => count($orderIds),
         ]);
@@ -557,7 +557,7 @@ class OpenOrdersService
 
             $orderDetails = $orderDetails->merge($orders);
 
-            Log::info('Processed open order details chunk', [
+            Log::debug('Processed open order details chunk', [
                 'user_id' => $userId,
                 'chunk' => $chunkIndex + 1,
                 'chunk_size' => count($chunk),
@@ -582,7 +582,7 @@ class OpenOrdersService
             return isset($order['Channel']) && $order['Channel'] === $channel;
         });
 
-        Log::info('Filtered open orders by channel', [
+        Log::debug('Filtered open orders by channel', [
             'user_id' => $userId,
             'channel' => $channel,
             'total_orders' => $allOrders->count(),
@@ -655,7 +655,7 @@ class OpenOrdersService
             'orderId' => $orderId,
         ]);
 
-        Log::info('Processing open order', [
+        Log::debug('Processing open order', [
             'user_id' => $userId,
             'order_id' => $orderId,
         ]);
@@ -670,7 +670,7 @@ class OpenOrdersService
     {
         $results = [];
 
-        Log::info('Batch processing open orders', [
+        Log::debug('Batch processing open orders', [
             'user_id' => $userId,
             'order_count' => count($orderIds),
         ]);
@@ -724,7 +724,7 @@ class OpenOrdersService
             return collect();
         }
 
-        Log::info('Fetching order identifiers', [
+        Log::debug('Fetching order identifiers', [
             'user_id' => $userId,
             'order_count' => count($orderIds),
         ]);
@@ -744,7 +744,7 @@ class OpenOrdersService
 
         $data = $response->getData();
 
-        Log::info('Order identifiers fetched', [
+        Log::debug('Order identifiers fetched', [
             'user_id' => $userId,
             'response_keys' => $data->keys()->toArray(),
             'data_count' => $data->count(),

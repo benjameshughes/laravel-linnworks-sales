@@ -49,7 +49,7 @@ class ProcessedOrdersService
             ],
         ];
 
-        Log::info('Searching processed orders', [
+        Log::debug('Searching processed orders', [
             'user_id' => $userId,
             'from' => $from->toISOString(),
             'to' => $to->toISOString(),
@@ -88,7 +88,7 @@ class ProcessedOrdersService
         $page = 1;
         $entriesPerPage = 200;
 
-        Log::info('Starting to fetch all processed orders', [
+        Log::debug('Starting to fetch all processed orders', [
             'user_id' => $userId,
             'from' => $from->toISOString(),
             'to' => $to->toISOString(),
@@ -115,7 +115,7 @@ class ProcessedOrdersService
             $totalResults = $this->parser->getTotalEntries($response);
             $totalPages = $this->parser->getTotalPages($response);
 
-            Log::info('Fetched processed orders page', [
+            Log::debug('Fetched processed orders page', [
                 'user_id' => $userId,
                 'page' => $page,
                 'orders_in_page' => $orders->count(),
