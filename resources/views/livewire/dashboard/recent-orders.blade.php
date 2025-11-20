@@ -47,8 +47,8 @@
                                 <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($order->total_charge, 2) }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <flux:badge color="{{ $order->is_open ? 'blue' : 'zinc' }}" size="sm">
-                                    {{ $order->is_open ? 'Open' : 'Closed' }}
+                                <flux:badge color="{{ $order->status ? 'blue' : 'zinc' }}" size="sm">
+                                    {{ $order->status ? 'Open' : 'Closed' }}
                                 </flux:badge>
                             </td>
                         </tr>

@@ -123,7 +123,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             // Step 1: Get ALL open order IDs (no date filter - always current)
             $syncLog->updateProgress('fetching_open_ids', 0, 4, ['message' => 'Fetching all open orders...']);
             event(new SyncProgressUpdated('fetching-open-ids', 'Fetching all open orders...'));
-            Log::info('Fetching open order IDs from Linnworks...');
+            Log::debug('Fetching open order IDs from Linnworks...');
 
             $openOrderIds = $api->getAllOpenOrderIds();
             Log::info("Found {$openOrderIds->count()} open order IDs");
@@ -141,7 +141,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             $syncLog->updateProgress('fetching_processed_ids', 1, 4, ['message' => 'Streaming processed orders (incremental)...']);
             event(new SyncProgressUpdated('fetching-processed-ids', 'Streaming processed orders (incremental)...'));
 
-            Log::info('Streaming processed order IDs (incremental)', [
+            Log::debug('Streaming processed order IDs (incremental)', [
                 'from' => $processedFrom->toDateString(),
                 'to' => $processedTo->toDateString(),
                 'days_covered' => $processedFrom->diffInDays($processedTo),
@@ -202,7 +202,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 $uniqueIds = $pageOrderIds->diff($alreadyProcessedIds);
 
                 if ($uniqueIds->isEmpty()) {
-                    Log::info('Skipped batch - all orders already processed', [
+                    Log::debug('Skipped batch - all orders already processed', [
                         'batch_size' => $pageOrderIds->count(),
                         'duplicates_skipped' => $pageOrderIds->count(),
                     ]);
@@ -211,7 +211,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 }
 
                 if ($uniqueIds->count() < $pageOrderIds->count()) {
-                    Log::info('Deduplication removed already-processed orders', [
+                    Log::debug('Deduplication removed already-processed orders', [
                         'original_count' => $pageOrderIds->count(),
                         'unique_count' => $uniqueIds->count(),
                         'duplicates_removed' => $pageOrderIds->count() - $uniqueIds->count(),
@@ -444,7 +444,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 }
 
                 // Wait before retrying
-                Log::info('Waiting before retry', [
+                Log::debug('Waiting before retry', [
                     'batch' => $currentBatch,
                     'attempt' => $attempt,
                     'backoff_seconds' => $backoffSeconds,
@@ -549,7 +549,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 'processed_at' => now(),
             ]);
 
-        Log::info("Marked {$closedCount} orders as processed (fallback - no full details)");
+        Log::debug("Marked {$closedCount} orders as processed (fallback - no full details)");
     }
 
     public function failed(\Throwable $exception): void

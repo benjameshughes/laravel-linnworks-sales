@@ -105,7 +105,7 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
             $totalFailed = 0;
 
             // Skip open orders entirely - historical data is all processed
-            Log::info('Historical import - processed orders only', [
+            Log::debug('Historical import - processed orders only', [
                 'from' => $this->fromDate->toDateString(),
                 'to' => $this->toDate->toDateString(),
             ]);
@@ -244,22 +244,13 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
                     ($totalProcessed === 0 ? 'no orders processed' :
                     'historical data outside dashboard periods (last 730 days)');
 
-                Log::info('Skipping cache warming', [
+                Log::debug('Skipping cache warming', [
                     'reason' => $reason,
                     'success' => $success,
                     'total_processed' => $totalProcessed,
                     'affects_dashboard' => $this->affectsDashboardPeriods(),
                 ]);
             }
-
-            Log::info('Historical import finished', [
-                'total_orders_fetched' => $totalOrdersFetched,
-                'processed' => $totalProcessed,
-                'created' => $totalCreated,
-                'updated' => $totalUpdated,
-                'failed' => $totalFailed,
-                'success' => $success,
-            ]);
 
         } catch (\Throwable $e) {
             Log::error('Historical import failed', [
@@ -466,7 +457,7 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
                 }
 
                 // Wait before retrying
-                Log::info('Waiting before retry', [
+                Log::debug('Waiting before retry', [
                     'batch' => $currentBatch,
                     'attempt' => $attempt,
                     'backoff_seconds' => $backoffSeconds,

@@ -251,7 +251,7 @@ class LinnworksApiService
                 ->map(fn ($order) => $order instanceof LinnworksOrder ? $order : LinnworksOrder::fromArray(is_array($order) ? $order : (array) $order))
                 ->take($maxOrders);
 
-            Log::info('All processed orders aggregated', [
+            Log::debug('All processed orders aggregated', [
                 'user_id' => $userId,
                 'from' => $from->toISOString(),
                 'to' => $to->toISOString(),
@@ -506,7 +506,7 @@ class LinnworksApiService
             if ($rawData->isNotEmpty()) {
                 $sampleOrder = $rawData->first();
                 $sampleArray = is_array($sampleOrder) ? $sampleOrder : (array) $sampleOrder;
-                Log::info('getOrdersByIds: Sample API response', [
+                Log::debug('getOrdersByIds: Sample API response', [
                     'order_count' => $rawData->count(),
                     'sample_keys' => array_keys($sampleArray),
                     'has_ShippingInfo' => isset($sampleArray['ShippingInfo']),
@@ -580,7 +580,7 @@ class LinnworksApiService
                 ->filter(fn (LinnworksOrder $order) => $order->receivedDate === null || $order->receivedDate->greaterThanOrEqualTo($cutoff))
                 ->values();
 
-            Log::info('Recent open orders fetched', [
+            Log::debug('Recent open orders fetched', [
                 'user_id' => $userId,
                 'requested_days' => $days,
                 'max_orders' => $maxOrders,

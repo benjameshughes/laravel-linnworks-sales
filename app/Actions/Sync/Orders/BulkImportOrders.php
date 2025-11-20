@@ -153,7 +153,7 @@ final class BulkImportOrders
             ->values()
             ->toArray();
 
-        Log::info('Sync/Orders/BulkImportOrders: Batch loading existing orders', [
+        Log::debug('Sync/Orders/BulkImportOrders: Batch loading existing orders', [
             'order_ids_count' => count($orderIds),
             'order_numbers_count' => count($orderNumbers),
         ]);
@@ -184,7 +184,7 @@ final class BulkImportOrders
             ->filter(fn ($order) => $order->number)
             ->keyBy('number');
 
-        Log::info('Sync/Orders/BulkImportOrders: Existing orders loaded', [
+        Log::debug('Sync/Orders/BulkImportOrders: Existing orders loaded', [
             'total_loaded' => $existingOrders->unique('id')->count(),
             'by_order_id' => $orderIdMap->count(),
             'by_order_number' => $orderNumberMap->count(),
@@ -229,7 +229,7 @@ final class BulkImportOrders
             }
         }
 
-        Log::info('Sync/Orders/BulkImportOrders: Orders partitioned', [
+        Log::debug('Sync/Orders/BulkImportOrders: Orders partitioned', [
             'new' => $newOrders->count(),
             'updates' => $updates->count(),
         ]);
@@ -254,7 +254,7 @@ final class BulkImportOrders
         // Single bulk insert
         DB::table('orders')->insert($rows);
 
-        Log::info('Sync/Orders/BulkImportOrders: Bulk inserted orders', [
+        Log::debug('Sync/Orders/BulkImportOrders: Bulk inserted orders', [
             'count' => count($rows),
         ]);
 
@@ -303,7 +303,7 @@ final class BulkImportOrders
             });
         });
 
-        Log::info('Sync/Orders/BulkImportOrders: Bulk updated orders', [
+        Log::debug('Sync/Orders/BulkImportOrders: Bulk updated orders', [
             'count' => $updated,
         ]);
 
@@ -400,7 +400,7 @@ final class BulkImportOrders
             $orderId = $dbOrderMap[$dto->orderId] ?? null;
 
             if (! $orderId) {
-                Log::warning('Sync/Orders/BulkImportOrders: Order not found for items', [
+                Log::debug('Sync/Orders/BulkImportOrders: Order not found for items', [
                     'order_id' => $dto->orderId,
                 ]);
 
@@ -425,7 +425,7 @@ final class BulkImportOrders
         })->toArray();
 
         if (empty($allItems)) {
-            Log::info('Sync/Orders/BulkImportOrders: No items to sync', [
+            Log::debug('Sync/Orders/BulkImportOrders: No items to sync', [
                 'skipped_no_sku' => $skippedCount,
             ]);
 
@@ -435,7 +435,7 @@ final class BulkImportOrders
         // Single INSERT for all items
         DB::table('order_items')->insert($allItems);
 
-        Log::info('Sync/Orders/BulkImportOrders: Bulk synced order items', [
+        Log::debug('Sync/Orders/BulkImportOrders: Bulk synced order items', [
             'orders_count' => count($orderIds),
             'deleted' => $deleted,
             'inserted' => count($allItems),

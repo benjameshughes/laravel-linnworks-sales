@@ -58,7 +58,7 @@ class FetchLinnworksOrders implements ShouldQueue
             if ($this->orderType === 'open' || $this->orderType === 'both') {
                 $windowDays = max(1, $this->fromDate->diffInDays($this->toDate) ?: 1);
 
-                Log::info('Fetching open orders from Linnworks', [
+                Log::debug('Fetching open orders from Linnworks', [
                     'window_days' => $windowDays,
                 ]);
 
@@ -70,7 +70,7 @@ class FetchLinnworksOrders implements ShouldQueue
 
             // Fetch processed orders if requested
             if ($this->orderType === 'processed' || $this->orderType === 'both') {
-                Log::info('Fetching processed orders from Linnworks');
+                Log::debug('Fetching processed orders from Linnworks');
 
                 $pageNumber = 1;
 
