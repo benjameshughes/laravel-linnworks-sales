@@ -272,11 +272,13 @@ final readonly class ChunkedMetricsCalculator
     /**
      * Calculate top products using streaming aggregation
      *
-     * Uses lazyById() to stream orders without loading all into memory
+     * Uses order_items table aggregation - much more efficient!
      */
     private function calculateTopProducts(Carbon $start, Carbon $end, int $limit = 5): Collection
     {
-        // Use order_items table aggregation - much more efficient!
+        // FIXED: Use correct column names from order_items table
+        // - item_title (not title)
+        // - line_total (not total_price)
         $productStatsQuery = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.received_at', [$start, $end])
@@ -288,12 +290,12 @@ final readonly class ChunkedMetricsCalculator
         $productStats = $productStatsQuery
             ->selectRaw('
                 order_items.sku,
-                order_items.title as item_title,
+                order_items.item_title,
                 SUM(order_items.quantity) as quantity,
-                SUM(order_items.total_price) as revenue,
+                SUM(order_items.line_total) as revenue,
                 COUNT(DISTINCT orders.id) as order_count
             ')
-            ->groupBy('order_items.sku', 'order_items.title')
+            ->groupBy('order_items.sku', 'order_items.item_title')
             ->orderByDesc('revenue')
             ->limit($limit)
             ->get();
@@ -328,6 +330,8 @@ final readonly class ChunkedMetricsCalculator
      */
     private function getRecentOrders(Carbon $start, Carbon $end, int $limit = 15): Collection
     {
+        // FIXED: Removed 'items' column reference - it doesn't exist in orders table
+        // Items are in the order_items relationship, not a JSON column
         $query = DB::table('orders')
             ->select([
                 'id',
@@ -339,7 +343,7 @@ final readonly class ChunkedMetricsCalculator
                 'total_charge',
                 'is_paid',
                 'status',
-                'items',
+                // 'items' column does NOT exist - removed
             ])
             ->whereBetween('received_at', [$start, $end])
             ->where('source', '!=', 'DIRECT')
@@ -352,11 +356,6 @@ final readonly class ChunkedMetricsCalculator
             ->limit($limit)
             ->get()
             ->map(function ($order) {
-                // Decode JSON items column
-                if (is_string($order->items)) {
-                    $order->items = json_decode($order->items, true) ?? [];
-                }
-
                 // Convert date string to Carbon for consistency
                 if (is_string($order->received_at)) {
                     $order->received_at = Carbon::parse($order->received_at);
