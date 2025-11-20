@@ -162,8 +162,8 @@ final class DashboardFilters extends Component
             ->distinct()
             ->get()
             ->map(fn ($order) => collect([
-                'name' => $order->channel_name,
-                'label' => $order->channel_name,
+                'name' => $order->source,
+                'label' => $order->source,
             ]));
     }
 

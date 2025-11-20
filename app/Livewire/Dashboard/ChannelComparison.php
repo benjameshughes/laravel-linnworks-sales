@@ -48,11 +48,11 @@ class ChannelComparison extends Component
         $orders = $this->orders;
 
         $channels = $orders->groupBy(function ($order) {
-            if ($this->showSubsources && $order->subsource && $order->subsource !== $order->channel_name) {
-                return "{$order->channel_name} ({$order->subsource})";
+            if ($this->showSubsources && $order->subsource && $order->subsource !== $order->source) {
+                return "{$order->source} ({$order->subsource})";
             }
 
-            return $order->channel_name;
+            return $order->source;
         });
 
         return $channels->map(function ($channelOrders, $channelKey) {
@@ -104,13 +104,13 @@ class ChannelComparison extends Component
             $date = Carbon::now()->subDays($i);
 
             $dayOrders = $this->orders->filter(function ($order) use ($date) {
-                if (! $order->received_date || ! $order->received_date->isSameDay($date)) {
+                if (! $order->received_at || ! $order->received_at->isSameDay($date)) {
                     return false;
                 }
 
-                $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->channel_name
-                    ? "{$order->channel_name} ({$order->subsource})"
-                    : $order->channel_name;
+                $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->source
+                    ? "{$order->source} ({$order->subsource})"
+                    : $order->source;
 
                 return $orderChannel === $this->selectedChannel;
             });
@@ -127,9 +127,9 @@ class ChannelComparison extends Component
 
         // Get top products for this channel
         $channelOrders = $this->orders->filter(function ($order) {
-            $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->channel_name
-                ? "{$order->channel_name} ({$order->subsource})"
-                : $order->channel_name;
+            $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->source
+                ? "{$order->source} ({$order->subsource})"
+                : $order->source;
 
             return $orderChannel === $this->selectedChannel;
         });
@@ -142,7 +142,7 @@ class ChannelComparison extends Component
             ->selectRaw('
                 sku,
                 SUM(quantity) as total_quantity,
-                SUM(total_price) as total_revenue,
+                SUM(line_total) as total_revenue,
                 COUNT(*) as order_count
             ')
             ->groupBy('sku')
@@ -226,9 +226,9 @@ class ChannelComparison extends Component
         $previousOrders = Order::whereBetween('received_at', [$previousStart, $previousEnd])->get();
 
         $previousRevenue = $previousOrders->filter(function ($order) use ($channel) {
-            $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->channel_name
-                ? "{$order->channel_name} ({$order->subsource})"
-                : $order->channel_name;
+            $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->source
+                ? "{$order->source} ({$order->subsource})"
+                : $order->source;
 
             return $orderChannel === $channel;
         })->sum('total_charge');
