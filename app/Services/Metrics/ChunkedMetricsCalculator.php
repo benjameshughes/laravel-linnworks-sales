@@ -361,6 +361,10 @@ final readonly class ChunkedMetricsCalculator
                     $order->received_at = Carbon::parse($order->received_at);
                 }
 
+                // Add is_open property (derived from status)
+                // status: 0 = open, 1 = processed
+                $order->is_open = $order->status === 0;
+
                 return $order;
             });
     }
