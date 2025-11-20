@@ -239,7 +239,7 @@ final readonly class ChunkedMetricsCalculator
 
         return $channelsQuery
             ->selectRaw('
-                channel_name,
+                source,
                 COALESCE(subsource, "") as subsource,
                 COUNT(*) as orders,
                 SUM(total_charge) as revenue
@@ -253,13 +253,13 @@ final readonly class ChunkedMetricsCalculator
                 $orders = (int) $channel->orders;
 
                 $displayName = $channel->subsource
-                    ? "{$channel->subsource} ({$channel->channel_name})"
-                    : $channel->channel_name;
+                    ? "{$channel->subsource} ({$channel->source})"
+                    : $channel->source;
 
                 // Wrap in collect() to match SalesMetrics format (blade template expects Collection)
                 return collect([
                     'name' => $displayName,
-                    'channel' => $channel->channel_name,
+                    'channel' => $channel->source,
                     'subsource' => $channel->subsource ?: null,
                     'orders' => $orders,
                     'revenue' => $revenue,
@@ -337,7 +337,6 @@ final readonly class ChunkedMetricsCalculator
                 'source',
                 'subsource',
                 'total_charge',
-                'total_paid',
                 'is_paid',
                 'status',
                 'items',
