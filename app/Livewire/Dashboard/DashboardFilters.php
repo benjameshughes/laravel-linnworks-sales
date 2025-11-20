@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Livewire\Dashboard;
 
 use App\Jobs\SyncRecentOrdersJob;
-use App\Models\Order;
 use App\Models\SyncLog;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -157,14 +157,13 @@ final class DashboardFilters extends Component
     #[Computed]
     public function availableChannels(): Collection
     {
-        return Order::select('source')
-            ->where('source', '!=', 'DIRECT')
-            ->distinct()
-            ->get()
-            ->map(fn ($order) => collect([
-                'name' => $order->source,
-                'label' => $order->source,
-            ]));
+        // Use global channels cache (not period-specific)
+        $channels = Cache::get('analytics:available_channels', collect());
+
+        return $channels->map(fn ($channel) => collect([
+            'name' => $channel,
+            'label' => $channel,
+        ]));
     }
 
     #[Computed]
@@ -209,26 +208,31 @@ final class DashboardFilters extends Component
     #[Computed]
     public function totalOrders(): int
     {
-        return Order::whereBetween('received_at', [
-            $this->dateRange->get('start'),
-            $this->dateRange->get('end'),
-        ])
-            ->where('source', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn ($query) => $query->where('source', $this->channel)
-            )
-            ->when($this->status !== 'all', function ($query) {
-                if ($this->status === 'open_paid') {
-                    // Show ALL paid orders (both open and processed)
-                    $query->where('is_paid', true);
-                } elseif ($this->status === 'open') {
-                    // Show open paid orders (paid orders needing fulfillment)
-                    $query->where('status', 0)->where('is_paid', true);
-                } elseif ($this->status === 'processed') {
-                    // Show processed paid orders (paid orders already fulfilled)
-                    $query->where('status', 1)->where('is_paid', true);
-                }
-            })
-            ->count();
+        // Can't use cache for custom periods
+        if ($this->period === 'custom') {
+            return 0;
+        }
+
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+        if (! $periodEnum || ! $periodEnum->isCacheable()) {
+            return 0;
+        }
+
+        // Build cache key using Period enum
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        if (! $cached) {
+            return 0; // Cache miss - return zero
+        }
+
+        // Return appropriate count based on status filter
+        return match ($this->status) {
+            'open' => (int) ($cached['open_orders'] ?? 0),
+            'processed' => (int) ($cached['processed_orders'] ?? 0),
+            'open_paid' => (int) ($cached['orders'] ?? 0), // Total paid orders
+            default => (int) ($cached['orders'] ?? 0), // 'all'
+        };
     }
 
     #[On('echo:sync-progress,SyncStarted')]

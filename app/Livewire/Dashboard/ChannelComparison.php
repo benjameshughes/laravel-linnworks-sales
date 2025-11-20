@@ -2,8 +2,7 @@
 
 namespace App\Livewire\Dashboard;
 
-use App\Models\Order;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -23,62 +22,35 @@ class ChannelComparison extends Component
     }
 
     #[Computed]
-    public function dateRange()
-    {
-        $days = (int) $this->period;
-
-        return [
-            'start' => Carbon::now()->subDays($days)->startOfDay(),
-            'end' => Carbon::now()->endOfDay(),
-        ];
-    }
-
-    #[Computed]
-    public function orders()
-    {
-        return Order::whereBetween('received_at', [
-            $this->dateRange['start'],
-            $this->dateRange['end'],
-        ])->get();
-    }
-
-    #[Computed]
     public function channelComparison()
     {
-        $orders = $this->orders;
+        // Get cached channel data
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        $channels = $orders->groupBy(function ($order) {
-            if ($this->showSubsources && $order->subsource && $order->subsource !== $order->source) {
-                return "{$order->source} ({$order->subsource})";
-            }
+        if (! $periodEnum || ! $periodEnum->isCacheable()) {
+            return collect();
+        }
 
-            return $order->source;
-        });
+        $cacheKey = $periodEnum->cacheKey('all', 'all');
+        $cached = Cache::get($cacheKey);
 
-        return $channels->map(function ($channelOrders, $channelKey) {
-            $totalRevenue = $channelOrders->sum('total_charge');
-            $totalOrders = $channelOrders->count();
-            $totalItems = $channelOrders->sum('total_items');
-            $avgOrderValue = $totalOrders > 0 ? $totalRevenue / $totalOrders : 0;
+        if (! $cached || ! isset($cached['top_channels'])) {
+            return collect();
+        }
 
-            // Calculate profit
-            $totalProfit = $channelOrders->sum('net_profit');
-            $profitMargin = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;
-
-            // Get conversion rate (assume all orders are conversions for now)
-            $conversionRate = 100; // Could be enhanced with visit tracking
-
+        // Transform cached top_channels data to match expected format
+        return collect($cached['top_channels'])->map(function ($channel) {
             return [
-                'channel' => $channelKey,
-                'total_revenue' => $totalRevenue,
-                'total_orders' => $totalOrders,
-                'total_items' => $totalItems,
-                'avg_order_value' => $avgOrderValue,
-                'total_profit' => $totalProfit,
-                'profit_margin' => $profitMargin,
-                'conversion_rate' => $conversionRate,
-                'revenue_share' => 0, // Will be calculated later
-                'growth_rate' => $this->getChannelGrowthRate($channelKey),
+                'channel' => $channel['name'],
+                'total_revenue' => $channel['revenue'],
+                'total_orders' => $channel['orders'],
+                'total_items' => 0, // Not available in cache yet
+                'avg_order_value' => $channel['avg_order_value'],
+                'total_profit' => 0, // Not available in cache yet
+                'profit_margin' => 0, // Not available in cache yet
+                'conversion_rate' => 100, // Not tracked yet
+                'revenue_share' => $channel['percentage'],
+                'growth_rate' => 0, // Not available in cache yet
             ];
         })->sortByDesc($this->metric === 'revenue' ? 'total_revenue' : $this->metric);
     }
@@ -96,75 +68,10 @@ class ChannelComparison extends Component
             return null;
         }
 
-        // Get daily performance for the selected channel
-        $days = (int) $this->period;
-        $dailyData = [];
-
-        for ($i = $days - 1; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i);
-
-            $dayOrders = $this->orders->filter(function ($order) use ($date) {
-                if (! $order->received_at || ! $order->received_at->isSameDay($date)) {
-                    return false;
-                }
-
-                $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->source
-                    ? "{$order->source} ({$order->subsource})"
-                    : $order->source;
-
-                return $orderChannel === $this->selectedChannel;
-            });
-
-            $dailyData[] = [
-                'date' => $date->format('M j'),
-                'revenue' => $dayOrders->sum('total_charge'),
-                'orders' => $dayOrders->count(),
-                'items' => $dayOrders->sum('total_items'),
-            ];
-        }
-
-        $channelData['daily_data'] = $dailyData;
-
-        // Get top products for this channel
-        $channelOrders = $this->orders->filter(function ($order) {
-            $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->source
-                ? "{$order->source} ({$order->subsource})"
-                : $order->source;
-
-            return $orderChannel === $this->selectedChannel;
-        });
-
-        // Use proper relationships and eager loading - senior Laravel approach
-        $orderIds = $channelOrders->pluck('id');
-
-        // Get aggregated data first
-        $aggregatedData = \App\Models\OrderItem::whereIn('order_id', $orderIds)
-            ->selectRaw('
-                sku,
-                SUM(quantity) as total_quantity,
-                SUM(line_total) as total_revenue,
-                COUNT(*) as order_count
-            ')
-            ->groupBy('sku')
-            ->orderByDesc('total_revenue')
-            ->limit(5)
-            ->get()
-            ->keyBy('sku');
-
-        // Get product titles for these SKUs in one query
-        $products = \App\Models\Product::whereIn('sku', $aggregatedData->keys())
-            ->pluck('title', 'sku');
-
-        // Combine the data
-        $topProducts = $aggregatedData->map(fn ($item) => [
-            'sku' => $item->sku,
-            'item_title' => $products[$item->sku] ?? 'Unknown Product',
-            'total_quantity' => (int) $item->total_quantity,
-            'total_revenue' => (float) $item->total_revenue,
-            'order_count' => (int) $item->order_count,
-        ])->values();
-
-        $channelData['top_products'] = $topProducts;
+        // TODO: Add detailed channel breakdown to cache warming
+        // For now, return basic data without daily breakdown or top products
+        $channelData['daily_data'] = [];
+        $channelData['top_products'] = [];
 
         return $channelData;
     }
@@ -173,14 +80,6 @@ class ChannelComparison extends Component
     public function chartData()
     {
         $comparison = $this->channelComparison;
-
-        // Calculate revenue share
-        $totalRevenue = $comparison->sum('total_revenue');
-        $comparison = $comparison->map(function ($channel) use ($totalRevenue) {
-            $channel['revenue_share'] = $totalRevenue > 0 ? ($channel['total_revenue'] / $totalRevenue) * 100 : 0;
-
-            return $channel;
-        });
 
         return [
             'labels' => $comparison->pluck('channel')->take(10)->toArray(),
@@ -214,32 +113,6 @@ class ChannelComparison extends Component
     public function updatedPeriod()
     {
         $this->clearSelection();
-    }
-
-    private function getChannelGrowthRate(string $channel): float
-    {
-        // Get previous period data for growth calculation
-        $currentPeriodDays = (int) $this->period;
-        $previousStart = Carbon::now()->subDays($currentPeriodDays * 2)->startOfDay();
-        $previousEnd = Carbon::now()->subDays($currentPeriodDays)->endOfDay();
-
-        $previousOrders = Order::whereBetween('received_at', [$previousStart, $previousEnd])->get();
-
-        $previousRevenue = $previousOrders->filter(function ($order) use ($channel) {
-            $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->source
-                ? "{$order->source} ({$order->subsource})"
-                : $order->source;
-
-            return $orderChannel === $channel;
-        })->sum('total_charge');
-
-        $currentRevenue = $this->channelComparison->firstWhere('channel', $channel)['total_revenue'] ?? 0;
-
-        if ($previousRevenue == 0) {
-            return $currentRevenue > 0 ? 100 : 0;
-        }
-
-        return (($currentRevenue - $previousRevenue) / $previousRevenue) * 100;
     }
 
     public function render()

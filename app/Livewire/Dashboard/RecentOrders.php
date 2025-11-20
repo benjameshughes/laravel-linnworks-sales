@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
@@ -52,7 +51,7 @@ final class RecentOrders extends Component
 
         // Can't cache custom periods
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            return app(SalesMetricsService::class)->getRecentOrders(limit: 15);
+            return collect();
         }
 
         // Check cache
@@ -74,14 +73,7 @@ final class RecentOrders extends Component
 
         // Can't cache custom periods
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            $metrics = app(SalesMetricsService::class)->getMetricsSummary(
-                period: $this->period,
-                channel: $this->channel,
-                customFrom: $this->customFrom,
-                customTo: $this->customTo
-            );
-
-            return (int) $metrics->get('total_orders', 0);
+            return 0;
         }
 
         // Check cache
