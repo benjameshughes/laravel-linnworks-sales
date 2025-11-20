@@ -165,7 +165,7 @@ final readonly class ChunkedMetricsCalculator
 
         $orderStats = $orderStatsQuery
             ->selectRaw('
-                DATE(received_date) as date,
+                DATE(received_at) as date,
                 COUNT(*) as orders,
                 SUM(total_charge) as revenue,
                 SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as processed_orders,
@@ -173,7 +173,7 @@ final readonly class ChunkedMetricsCalculator
                 SUM(CASE WHEN status = 1 THEN total_charge ELSE 0 END) as processed_revenue,
                 SUM(CASE WHEN status = 0 THEN total_charge ELSE 0 END) as open_revenue
             ')
-            ->groupByRaw('DATE(received_date)')
+            ->groupByRaw('DATE(received_at)')
             ->get()
             ->keyBy('date');
 
@@ -338,7 +338,7 @@ final readonly class ChunkedMetricsCalculator
                 'subsource',
                 'total_charge',
                 'total_paid',
-                'paid',
+                'is_paid',
                 'status',
                 'items',
             ])
@@ -359,8 +359,8 @@ final readonly class ChunkedMetricsCalculator
                 }
 
                 // Convert date string to Carbon for consistency
-                if (is_string($order->received_date)) {
-                    $order->received_date = Carbon::parse($order->received_date);
+                if (is_string($order->received_at)) {
+                    $order->received_at = Carbon::parse($order->received_at);
                 }
 
                 return $order;
