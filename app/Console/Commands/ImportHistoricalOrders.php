@@ -281,7 +281,7 @@ class ImportHistoricalOrders extends Command
 
             try {
                 if ($isDryRun) {
-                    $this->line("  [DRY RUN] Would import: {$orderData['order_number']} ({$orderData['received_date']})");
+                    $this->line("  [DRY RUN] Would import: {$orderData['order_number']} ({$orderData['received_at']})");
                     $this->totalImported++;
 
                     continue;
@@ -358,30 +358,21 @@ class ImportHistoricalOrders extends Command
 
             // Create the order record
             $order = Order::create([
-                'linnworks_order_id' => $orderData['order_id'],
                 'order_id' => $orderData['order_id'],
-                'order_number' => $orderData['order_number'],
-                'received_date' => $orderData['received_date'] ? Carbon::parse($orderData['received_date']) : null,
-                'processed_date' => $orderData['processed_date'] ? Carbon::parse($orderData['processed_date']) : null,
-                'channel_name' => \Illuminate\Support\Str::lower(str_replace(' ', '_', $orderData['order_source'] ?? $orderData['channel_name'] ?? 'Unknown')),
-                'sub_source' => isset($orderData['subsource']) || isset($orderData['sub_source'])
+                'number' => $orderData['order_number'],
+                'received_at' => $orderData['received_date'] ? Carbon::parse($orderData['received_date']) : null,
+                'processed_at' => $orderData['processed_date'] ? Carbon::parse($orderData['processed_date']) : null,
+                'source' => \Illuminate\Support\Str::lower(str_replace(' ', '_', $orderData['order_source'] ?? $orderData['channel_name'] ?? 'Unknown')),
+                'subsource' => isset($orderData['subsource']) || isset($orderData['sub_source'])
                     ? \Illuminate\Support\Str::lower(str_replace(' ', '_', $orderData['subsource'] ?? $orderData['sub_source']))
                     : null,
                 'currency' => $orderData['currency'] ?? 'GBP',
                 'total_charge' => $orderData['total_charge'] ?? 0,
-                'total_paid' => $orderData['total_charge'] ?? 0,
                 'postage_cost' => $orderData['postage_cost'] ?? 0,
                 'tax' => $orderData['tax'] ?? 0,
                 'profit_margin' => $orderData['profit_margin'] ?? 0,
-                'order_status' => $linnworksStatus,
-                'status' => $status,
-                'is_open' => false, // All processed orders are closed
-                'is_processed' => $isProcessed,
-                'is_cancelled' => $isCancelled,
-                'has_refund' => $hasRefund,
+                'status' => $isProcessed ? 1 : ($isCancelled ? 2 : 0),
                 'location_id' => $orderData['location_id'] ?? null,
-                'notes' => $orderData['notes'] ?? null,
-                'last_synced_at' => now(),
             ]);
 
             // Create order items
@@ -439,8 +430,8 @@ class ImportHistoricalOrders extends Command
 
         // Get orders in date range without items
         $ordersWithoutItems = Order::whereDoesntHave('orderItems')
-            ->whereNotNull('linnworks_order_id')
-            ->whereBetween('received_date', [$from, $to])
+            ->whereNotNull('order_id')
+            ->whereBetween('received_at', [$from, $to])
             ->get();
 
         $totalWithoutItems = $ordersWithoutItems->count();

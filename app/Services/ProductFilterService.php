@@ -96,12 +96,12 @@ readonly class ProductFilterService
             ];
 
             $currentQuantity = \App\Models\OrderItem::where('sku', $sku)
-                ->whereHas('order', fn ($query) => $query->whereBetween('received_date', [$currentPeriod['from'], $currentPeriod['to']])
+                ->whereHas('order', fn ($query) => $query->whereBetween('received_at', [$currentPeriod['from'], $currentPeriod['to']])
                 )
                 ->sum('quantity');
 
             $previousQuantity = \App\Models\OrderItem::where('sku', $sku)
-                ->whereHas('order', fn ($query) => $query->whereBetween('received_date', [$previousPeriod['from'], $previousPeriod['to']])
+                ->whereHas('order', fn ($query) => $query->whereBetween('received_at', [$previousPeriod['from'], $previousPeriod['to']])
                 )
                 ->sum('quantity');
 

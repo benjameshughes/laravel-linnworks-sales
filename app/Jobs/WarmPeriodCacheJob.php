@@ -182,9 +182,9 @@ final class WarmPeriodCacheJob implements ShouldQueue
 
         // For status counts, use factory
         $repository = app(SalesRepository::class);
-        $orders = $repository->getOrdersForPeriodWithFilters(
+        $orders = $repository->getAllOrders(
             period: $this->period,
-            channel: $this->channel,
+            source: $this->channel,
             status: $this->status
         );
         $factory = new SalesFactory($orders);

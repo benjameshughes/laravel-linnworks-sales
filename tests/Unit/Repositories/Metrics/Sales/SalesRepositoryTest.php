@@ -58,12 +58,12 @@ describe('SalesRepository', function () {
     it('orders recent orders by most recent first', function () {
         $oldOrder = Order::factory()->create([
             'created_at' => now()->subDays(5),
-            'order_number' => 'OLD',
+            'number' => 'OLD',
         ]);
 
         $newOrder = Order::factory()->create([
             'created_at' => now()->subDay(),
-            'order_number' => 'NEW',
+            'number' => 'NEW',
         ]);
 
         $repository = new SalesRepository;
@@ -75,11 +75,11 @@ describe('SalesRepository', function () {
 
     it('gets all open orders', function () {
         Order::factory()->count(3)->create([
-            'is_processed' => false,
+            'status' => 0,
         ]);
 
         Order::factory()->count(2)->create([
-            'is_processed' => true,
+            'status' => 1,
         ]);
 
         $repository = new SalesRepository;
@@ -90,17 +90,17 @@ describe('SalesRepository', function () {
             ->toHaveCount(3);
 
         $orders->each(function ($order) {
-            expect($order->is_processed)->toBeFalse();
+            expect($order->status)->toBe(0);
         });
     });
 
     it('gets all processed orders', function () {
         Order::factory()->count(3)->create([
-            'is_processed' => true,
+            'status' => 1,
         ]);
 
         Order::factory()->count(2)->create([
-            'is_processed' => false,
+            'status' => 0,
         ]);
 
         $repository = new SalesRepository;
@@ -117,15 +117,15 @@ describe('SalesRepository', function () {
 
     it('gets orders between dates', function () {
         Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-05 10:00:00'),
+            'received_at' => Carbon::parse('2025-01-05 10:00:00'),
         ]);
 
         Order::factory()->count(3)->create([
-            'received_date' => Carbon::parse('2025-01-10 10:00:00'),
+            'received_at' => Carbon::parse('2025-01-10 10:00:00'),
         ]);
 
         Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-20 10:00:00'),
+            'received_at' => Carbon::parse('2025-01-20 10:00:00'),
         ]);
 
         $repository = new SalesRepository;
@@ -141,15 +141,15 @@ describe('SalesRepository', function () {
 
     it('includes orders on boundary dates', function () {
         Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-10 00:00:00'),
+            'received_at' => Carbon::parse('2025-01-10 00:00:00'),
         ]);
 
         Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-15 23:59:59'),
+            'received_at' => Carbon::parse('2025-01-15 23:59:59'),
         ]);
 
         Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-09 23:59:59'),
+            'received_at' => Carbon::parse('2025-01-09 23:59:59'),
         ]);
 
         $repository = new SalesRepository;
@@ -165,15 +165,15 @@ describe('SalesRepository', function () {
 
     it('gets orders for period', function () {
         Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-05 10:00:00'),
+            'received_at' => Carbon::parse('2025-01-05 10:00:00'),
         ]);
 
         Order::factory()->count(3)->create([
-            'received_date' => Carbon::parse('2025-01-10 10:00:00'),
+            'received_at' => Carbon::parse('2025-01-10 10:00:00'),
         ]);
 
         Order::factory()->create([
-            'received_date' => Carbon::parse('2025-01-20 10:00:00'),
+            'received_at' => Carbon::parse('2025-01-20 10:00:00'),
         ]);
 
         $repository = new SalesRepository;

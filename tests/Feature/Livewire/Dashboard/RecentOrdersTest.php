@@ -41,7 +41,7 @@ describe('RecentOrders Livewire Component', function () {
 
     it('computes recent orders correctly', function () {
         Order::factory()->count(20)->create([
-            'received_date' => now()->subHour(),
+            'received_at' => now()->subHour(),
         ]);
 
         $component = Livewire::test(RecentOrders::class)
@@ -58,7 +58,7 @@ describe('RecentOrders Livewire Component', function () {
 
     it('limits recent orders to 15', function () {
         Order::factory()->count(50)->create([
-            'received_date' => now()->subHour(),
+            'received_at' => now()->subHour(),
         ]);
 
         $component = Livewire::test(RecentOrders::class)
@@ -83,7 +83,7 @@ describe('RecentOrders Livewire Component', function () {
 
     it('computes total orders correctly', function () {
         Order::factory()->count(10)->create([
-            'received_date' => now()->subDays(3),
+            'received_at' => now()->subDays(3),
         ]);
 
         $component = Livewire::test(RecentOrders::class)
@@ -98,11 +98,11 @@ describe('RecentOrders Livewire Component', function () {
 
     it('filters total orders by period', function () {
         Order::factory()->count(5)->create([
-            'received_date' => now()->subDays(3),
+            'received_at' => now()->subDays(3),
         ]);
 
         Order::factory()->count(3)->create([
-            'received_date' => now()->subDays(20),
+            'received_at' => now()->subDays(20),
         ]);
 
         $component = Livewire::test(RecentOrders::class)
@@ -117,13 +117,13 @@ describe('RecentOrders Livewire Component', function () {
 
     it('filters total orders by channel', function () {
         Order::factory()->count(3)->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'Amazon',
+            'received_at' => now()->subDays(3),
+            'source' => 'Amazon',
         ]);
 
         Order::factory()->count(2)->create([
-            'received_date' => now()->subDays(3),
-            'channel_name' => 'eBay',
+            'received_at' => now()->subDays(3),
+            'source' => 'eBay',
         ]);
 
         $component = Livewire::test(RecentOrders::class)
@@ -139,11 +139,11 @@ describe('RecentOrders Livewire Component', function () {
 
     it('handles custom date range for total orders', function () {
         Order::factory()->count(3)->create([
-            'received_date' => Carbon::parse('2025-01-05'),
+            'received_at' => Carbon::parse('2025-01-05'),
         ]);
 
         Order::factory()->count(2)->create([
-            'received_date' => Carbon::parse('2025-01-20'),
+            'received_at' => Carbon::parse('2025-01-20'),
         ]);
 
         $component = Livewire::test(RecentOrders::class)
@@ -158,13 +158,13 @@ describe('RecentOrders Livewire Component', function () {
 
     it('recent orders are ordered by most recent first', function () {
         $oldOrder = Order::factory()->create([
-            'received_date' => now()->subDays(5),
-            'order_number' => 'OLD123',
+            'received_at' => now()->subDays(5),
+            'number' => 'OLD123',
         ]);
 
         $newOrder = Order::factory()->create([
-            'received_date' => now()->subDay(),
-            'order_number' => 'NEW456',
+            'received_at' => now()->subDay(),
+            'number' => 'NEW456',
         ]);
 
         $component = Livewire::test(RecentOrders::class)
@@ -174,7 +174,7 @@ describe('RecentOrders Livewire Component', function () {
 
         $recentOrders = $component->get('recentOrders');
 
-        expect($recentOrders->first()->order_number)->toBe('NEW456')
-            ->and($recentOrders->last()->order_number)->toBe('OLD123');
+        expect($recentOrders->first()->number)->toBe('NEW456')
+            ->and($recentOrders->last()->number)->toBe('OLD123');
     });
 });

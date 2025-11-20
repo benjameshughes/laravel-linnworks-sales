@@ -43,23 +43,23 @@ final class SalesFactory
 
     public function totalItemsSold(): int
     {
-        return $this->orders->sum(fn ($order) => collect($order->items)->sum('quantity'));
+        return $this->orders->sum(fn ($order) => $order->orderItems->sum('quantity'));
     }
 
     public function totalProcessedOrders(): float
     {
-        return $this->orders->where('is_processed', 1 | true)->count();
+        return $this->orders->where('status', 1)->count();
     }
 
     public function totalOpenOrders(): float
     {
-        return $this->orders->where('is_processed', 0 | false)->count();
+        return $this->orders->where('status', 0)->count();
     }
 
     public function topChannels(int $limit = 3): Collection
     {
         // Get the channels for each order. Calculate the total revenue and amount of orders for each channel. Sort by largest first and take the top 3
-        return $this->orders->groupBy('channel_name')->map(function ($sourceOrders, $sourceName) {
+        return $this->orders->groupBy('source')->map(function ($sourceOrders, $sourceName) {
             return collect([
                 'source' => $sourceName,
                 'revenue' => $sourceOrders->sum('total_charge'),
@@ -74,7 +74,7 @@ final class SalesFactory
     public function topProducts(int $limit = 10): Collection
     {
         return $this->orders->flatMap(function ($order) {
-            return $order->items ?? [];
+            return $order->orderItems;
         })->groupBy('sku')->map(function ($itemWithSameSKU, $sku) {
             return collect([
                 'sku' => $sku,
@@ -87,7 +87,7 @@ final class SalesFactory
 
     public function processedOrdersRevenue(): float
     {
-        return $this->orders->where('is_processed', 1)->sum('total_charge');
+        return $this->orders->where('status', 1)->sum('total_charge');
     }
 
     public function growthRate(SalesFactory $previousFactory): float

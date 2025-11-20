@@ -121,7 +121,7 @@ class UpdateUnknownChannels extends Command
                         } else {
                             $updateData = ['channel_name' => \Illuminate\Support\Str::lower(str_replace(' ', '_', $source))];
                             if ($subSource) {
-                                $updateData['sub_source'] = \Illuminate\Support\Str::lower(str_replace(' ', '_', $subSource));
+                                $updateData['subsource'] = \Illuminate\Support\Str::lower(str_replace(' ', '_', $subSource));
                             }
 
                             $localOrder->update($updateData);

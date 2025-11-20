@@ -36,7 +36,7 @@ class ChannelComparison extends Component
     #[Computed]
     public function orders()
     {
-        return Order::whereBetween('received_date', [
+        return Order::whereBetween('received_at', [
             $this->dateRange['start'],
             $this->dateRange['end'],
         ])->get();
@@ -223,7 +223,7 @@ class ChannelComparison extends Component
         $previousStart = Carbon::now()->subDays($currentPeriodDays * 2)->startOfDay();
         $previousEnd = Carbon::now()->subDays($currentPeriodDays)->endOfDay();
 
-        $previousOrders = Order::whereBetween('received_date', [$previousStart, $previousEnd])->get();
+        $previousOrders = Order::whereBetween('received_at', [$previousStart, $previousEnd])->get();
 
         $previousRevenue = $previousOrders->filter(function ($order) use ($channel) {
             $orderChannel = $this->showSubsources && $order->subsource && $order->subsource !== $order->channel_name

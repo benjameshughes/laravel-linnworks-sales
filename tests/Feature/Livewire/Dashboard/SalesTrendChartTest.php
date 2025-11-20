@@ -40,12 +40,13 @@ describe('SalesTrendChart Livewire Component', function () {
     });
 
     it('returns chart data with correct structure', function () {
-        Order::factory()->create([
-            'created_at' => now()->subDays(2),
-            'received_date' => now()->subDays(2),
-            'total_charge' => 100.00,
-            'items' => [['sku' => 'ABC', 'quantity' => 2]],
-        ]);
+        Order::factory()
+            ->withItems([['sku' => 'ABC', 'quantity' => 2]])
+            ->create([
+                'created_at' => now()->subDays(2),
+                'received_at' => now()->subDays(2),
+                'total_charge' => 100.00,
+            ]);
 
         $component = Livewire::test(SalesTrendChart::class)
             ->set('period', 'custom')
@@ -91,15 +92,15 @@ describe('SalesTrendChart Livewire Component', function () {
     it('filters data by channel', function () {
         Order::factory()->create([
             'created_at' => now()->subDays(2),
-            'received_date' => now()->subDays(2),
-            'channel_name' => 'Amazon',
+            'received_at' => now()->subDays(2),
+            'source' => 'Amazon',
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->create([
             'created_at' => now()->subDays(2),
-            'received_date' => now()->subDays(2),
-            'channel_name' => 'eBay',
+            'received_at' => now()->subDays(2),
+            'source' => 'eBay',
             'total_charge' => 200.00,
         ]);
 

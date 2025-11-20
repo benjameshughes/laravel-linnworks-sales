@@ -57,21 +57,21 @@ class DailyRevenueReport extends AbstractReport
         $dateEnd = Carbon::parse($filters['date_range']['end'])->endOfDay();
 
         $query = DB::table('orders as o')
-            ->whereBetween('o.received_date', [$dateStart, $dateEnd]);
+            ->whereBetween('o.received_at', [$dateStart, $dateEnd]);
 
         if (! empty($filters['channels'])) {
-            $query->whereIn('o.channel_name', $filters['channels']);
+            $query->whereIn('o.source', $filters['channels']);
         }
 
         $query->select([
-            DB::raw('DATE(o.received_date) as date'),
+            DB::raw('DATE(o.received_at) as date'),
             DB::raw('COUNT(*) as orders'),
             DB::raw('SUM(CASE WHEN o.status != "cancelled" THEN o.total_charge ELSE 0 END) as revenue'),
             DB::raw('AVG(CASE WHEN o.status != "cancelled" THEN o.total_charge ELSE 0 END) as avg_order_value'),
             DB::raw('SUM(CASE WHEN o.status != "cancelled" THEN o.num_items ELSE 0 END) as items_sold'),
             DB::raw('SUM(CASE WHEN o.status = "cancelled" THEN 1 ELSE 0 END) as cancelled_orders'),
         ])
-            ->groupBy(DB::raw('DATE(o.received_date)'))
+            ->groupBy(DB::raw('DATE(o.received_at)'))
             ->orderBy('date');
 
         return $query;

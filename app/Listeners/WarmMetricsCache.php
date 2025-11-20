@@ -61,10 +61,10 @@ final class WarmMetricsCache implements ShouldQueue
 
         // Get all available channels from database
         $channels = \Illuminate\Support\Facades\DB::table('orders')
-            ->select('channel_name')
-            ->where('channel_name', '!=', 'DIRECT')
+            ->select('source')
+            ->where('source', '!=', 'DIRECT')
             ->distinct()
-            ->pluck('channel_name')
+            ->pluck('source')
             ->prepend('all') // Always include 'all' channel
             ->toArray();
 

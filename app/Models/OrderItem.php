@@ -18,36 +18,130 @@ class OrderItem extends Model
 
     protected $fillable = [
         'order_id',
+
+        // Linnworks identifiers
         'item_id',
-        'linnworks_item_id',
+        'stock_item_id',
+        'stock_item_int_id',
+        'row_id',
+        'item_number',
+
+        // SKU & Titles
         'sku',
-        'title',
-        'description',
-        'category',
+        'item_title',
+        'item_source',
+        'channel_sku',
+        'channel_title',
+        'barcode_number',
+
+        // Quantity
         'quantity',
-        'unit_price',
-        'total_price',
-        'cost_price',
-        'profit_margin',
+        'part_shipped_qty',
+
+        // Category
+        'category_name',
+
+        // Pricing
+        'price_per_unit',
+        'unit_cost',
+        'line_total',
+        'cost',
+        'cost_inc_tax',
+        'despatch_stock_unit_cost',
+        'discount',
+        'discount_value',
+
+        // Tax
+        'tax',
         'tax_rate',
-        'discount_amount',
+        'sales_tax',
+        'tax_cost_inclusive',
+
+        // Stock levels
+        'stock_levels_specified',
+        'stock_level',
+        'available_stock',
+        'on_order',
+        'stock_level_indicator',
+
+        // Inventory tracking
+        'inventory_tracking_type',
+        'is_batched_stock_item',
+        'is_warehouse_managed',
+        'is_unlinked',
+        'batch_number_scan_required',
+        'serial_number_scan_required',
+
+        // Shipping
+        'part_shipped',
+        'weight',
+        'shipping_cost',
         'bin_rack',
+        'bin_racks',
+
+        // Product attributes
         'is_service',
-        'item_attributes',
+        'has_image',
+        'image_id',
+        'market',
+
+        // Composite items & additional data
+        'composite_sub_items',
+        'additional_info',
+
+        // Metadata
+        'added_at',
     ];
 
     protected function casts(): array
     {
         return [
+            // Quantities
             'quantity' => 'integer',
-            'unit_price' => 'decimal:4',
-            'total_price' => 'decimal:4',
-            'cost_price' => 'decimal:4',
-            'profit_margin' => 'decimal:4',
+            'part_shipped_qty' => 'integer',
+            'stock_level' => 'integer',
+            'available_stock' => 'integer',
+            'on_order' => 'integer',
+            'stock_level_indicator' => 'integer',
+
+            // Pricing
+            'price_per_unit' => 'decimal:2',
+            'unit_cost' => 'decimal:2',
+            'line_total' => 'decimal:2',
+            'cost' => 'decimal:2',
+            'cost_inc_tax' => 'decimal:2',
+            'despatch_stock_unit_cost' => 'decimal:2',
+            'discount' => 'decimal:2',
+            'discount_value' => 'decimal:2',
+
+            // Tax
+            'tax' => 'decimal:2',
             'tax_rate' => 'decimal:4',
-            'discount_amount' => 'decimal:4',
+            'sales_tax' => 'decimal:2',
+
+            // Weight & shipping
+            'weight' => 'decimal:3',
+            'shipping_cost' => 'decimal:2',
+
+            // Booleans
+            'tax_cost_inclusive' => 'boolean',
+            'stock_levels_specified' => 'boolean',
+            'is_batched_stock_item' => 'boolean',
+            'is_warehouse_managed' => 'boolean',
+            'is_unlinked' => 'boolean',
+            'batch_number_scan_required' => 'boolean',
+            'serial_number_scan_required' => 'boolean',
+            'part_shipped' => 'boolean',
             'is_service' => 'boolean',
-            'item_attributes' => 'array',
+            'has_image' => 'boolean',
+
+            // JSON
+            'bin_racks' => 'array',
+            'composite_sub_items' => 'array',
+            'additional_info' => 'array',
+
+            // Dates
+            'added_at' => 'datetime',
         ];
     }
 

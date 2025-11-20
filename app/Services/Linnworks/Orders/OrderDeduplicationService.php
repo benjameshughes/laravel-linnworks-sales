@@ -81,7 +81,7 @@ class OrderDeduplicationService
         $existingKeys = $existingOrders->map(fn (Order $order) => [
             'linnworks_id' => $order->linnworks_order_id,
             'order_id' => $order->order_id,
-            'order_number' => $order->order_number,
+            'number' => $order->order_number,
         ])->flatMap(function ($order) {
             $keys = [];
             if ($order['linnworks_id']) {
@@ -90,8 +90,8 @@ class OrderDeduplicationService
             if ($order['order_id']) {
                 $keys[] = 'id:'.$order['order_id'];
             }
-            if ($order['order_number']) {
-                $keys[] = 'num:'.$order['order_number'];
+            if ($order['number']) {
+                $keys[] = 'num:'.$order['number'];
             }
 
             return $keys;
@@ -138,13 +138,13 @@ class OrderDeduplicationService
         // Add query for order numbers
         if (! empty($orderNumbers)) {
             if (! empty($orderIds)) {
-                $query->orWhereIn('order_number', $orderNumbers);
+                $query->orWhereIn('number', $orderNumbers);
             } else {
-                $query->whereIn('order_number', $orderNumbers);
+                $query->whereIn('number', $orderNumbers);
             }
         }
 
-        return $query->get(['id', 'linnworks_order_id', 'order_id', 'order_number']);
+        return $query->get(['id', 'linnworks_order_id', 'order_id', 'number']);
     }
 
     /**
@@ -201,7 +201,7 @@ class OrderDeduplicationService
         }
 
         if ($order->orderNumber) {
-            if (Order::where('order_number', $order->orderNumber)->exists()) {
+            if (Order::where('number', $order->orderNumber)->exists()) {
                 return true;
             }
         }

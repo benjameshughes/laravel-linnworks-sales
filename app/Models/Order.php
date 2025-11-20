@@ -21,77 +21,94 @@ class Order extends Model
     use HasFactory;
 
     protected $fillable = [
-        'linnworks_order_id',
+        // Linnworks identifiers
         'order_id',
-        'order_number',
-        'channel_name',
-        'channel_reference_number',
-        'external_reference',
-        'total_charge',
-        'total_discount',
-        'postage_cost',
-        'total_paid',
-        'profit_margin',
-        'currency',
-        'status',
-        'addresses',
-        'received_date',
-        'processed_date',
-        'notes',
-        'raw_data',
-        'items',
-        'order_source',
+        'number',
+
+        // Order dates
+        'received_at',
+        'processed_at',
+        'paid_at',
+        'despatch_by_at',
+
+        // Channel information
+        'source',
         'subsource',
+
+        // Financial information
+        'currency',
+        'total_charge',
+        'postage_cost',
+        'postage_cost_ex_tax',
         'tax',
-        'order_status',
-        'location_id',
-        'last_synced_at',
+        'profit_margin',
+        'total_discount',
+        'country_tax_rate',
+        'conversion_rate',
+
+        // Order status
+        'status',
         'is_paid',
-        'paid_date',
-        'is_open',
-        'is_processed',
-        'has_refund',
         'is_cancelled',
-        'status_reason',
-        'cancelled_at',
-        'dispatched_at',
-        'sync_status',
-        'sync_metadata',
-        // Extended order fields
+
+        // Location
+        'location_id',
+
+        // Payment information
+        'payment_method',
+        'payment_method_id',
+
+        // Reference numbers
+        'channel_reference_number',
+        'secondary_reference',
+        'external_reference_num',
+
+        // Order flags
         'marker',
         'is_parked',
-        'despatch_by_date',
+        'label_printed',
+        'label_error',
+        'invoice_printed',
+        'pick_list_printed',
+        'is_rule_run',
+        'part_shipped',
+        'has_scheduled_delivery',
+        'pickwave_ids',
         'num_items',
-        'payment_method',
     ];
 
     protected function casts(): array
     {
         return [
+            // Dates
+            'received_at' => 'datetime',
+            'processed_at' => 'datetime',
+            'paid_at' => 'datetime',
+            'despatch_by_at' => 'datetime',
+
+            // Financial
             'total_charge' => 'decimal:2',
-            'total_discount' => 'decimal:2',
             'postage_cost' => 'decimal:2',
-            'total_paid' => 'decimal:2',
-            'profit_margin' => 'decimal:2',
+            'postage_cost_ex_tax' => 'decimal:2',
             'tax' => 'decimal:2',
-            'addresses' => 'array',
-            'received_date' => 'datetime',
-            'processed_date' => 'datetime',
-            'cancelled_at' => 'datetime',
-            'dispatched_at' => 'datetime',
-            'is_cancelled' => 'boolean',
+            'profit_margin' => 'decimal:2',
+            'total_discount' => 'decimal:2',
+            'country_tax_rate' => 'decimal:4',
+            'conversion_rate' => 'decimal:6',
+
+            // Booleans
             'is_paid' => 'boolean',
-            'raw_data' => 'array',
-            'last_synced_at' => 'datetime',
-            'is_open' => 'boolean',
-            'is_processed' => 'boolean',
-            'has_refund' => 'boolean',
-            'sync_metadata' => 'array',
-            'items' => 'array',
-            // Extended order field casts
+            'is_cancelled' => 'boolean',
             'is_parked' => 'boolean',
-            'despatch_by_date' => 'datetime',
-            'paid_date' => 'datetime',
+            'label_printed' => 'boolean',
+            'invoice_printed' => 'boolean',
+            'pick_list_printed' => 'boolean',
+            'is_rule_run' => 'boolean',
+            'part_shipped' => 'boolean',
+            'has_scheduled_delivery' => 'boolean',
+
+            // JSON
+            'pickwave_ids' => 'array',
         ];
     }
 
@@ -142,12 +159,8 @@ class Order extends Model
     public function markAsProcessed(?Carbon $processedDate = null): bool
     {
         return $this->update([
-            'is_open' => false,
-            'is_processed' => true,
-            'status' => 'processed',
-            'processed_date' => $processedDate ?? now(),
-            'sync_status' => 'synced',
-            'last_synced_at' => now(),
+            'status' => 1,
+            'processed_at' => $processedDate ?? now(),
         ]);
     }
 
@@ -156,10 +169,8 @@ class Order extends Model
      */
     public function matchesProcessedOrder(array $processedOrderData): bool
     {
-        // Match by order_id (from processed orders API) or linnworks_order_id
         return $this->order_id === $processedOrderData['order_id'] ||
-               $this->linnworks_order_id === $processedOrderData['order_id'] ||
-               $this->order_number == $processedOrderData['order_number'];
+               $this->number == $processedOrderData['number'];
     }
 
     /**
@@ -178,7 +189,7 @@ class Order extends Model
     protected function channelDisplay(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->channel_name ?? 'Unknown'
+            get: fn () => $this->source ?? 'Unknown'
         );
     }
 
@@ -200,6 +211,16 @@ class Order extends Model
         return Attribute::make(
             get: fn () => $this->total_charge - $this->items_collection->sum(fn ($item) => ($item['unit_cost'] ?? 0) * ($item['quantity'] ?? 0)
             )
+        );
+    }
+
+    /**
+     * Check if order is open/pending (modern accessor)
+     */
+    protected function isOpen(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->status === 0
         );
     }
 
@@ -231,12 +252,12 @@ class Order extends Model
         return Attribute::make(
             get: function (): int {
                 /** @phpstan-ignore-next-line */
-                if (! $this->received_date || ! $this->received_date instanceof Carbon) {
+                if (! $this->received_at || ! $this->received_at instanceof Carbon) {
                     return 0;
                 }
 
                 /** @phpstan-ignore-next-line */
-                return $this->received_date->diffInDays(now());
+                return $this->received_at->diffInDays(now());
             }
         );
     }
@@ -281,51 +302,42 @@ class Order extends Model
      */
     public function scopeByChannel(Builder $query, string $channelName): Builder
     {
-        return $query->where('channel_name', $channelName);
+        return $query->where('source', $channelName);
     }
 
-    public function scopeByStatus(Builder $query, string $status): Builder
+    public function scopeByStatus(Builder $query, int $status): Builder
     {
         return $query->where('status', $status);
     }
 
     public function scopeByDateRange(Builder $query, Carbon|string $startDate, Carbon|string $endDate): Builder
     {
-        return $query->whereBetween('received_date', [$startDate, $endDate]);
+        return $query->whereBetween('received_at', [$startDate, $endDate]);
     }
 
     public function scopeProcessed(Builder $query): Builder
     {
-        return $query->where('status', 'processed');
+        return $query->where('status', 1);
     }
 
-    public function scopeOpen(Builder $query): Builder
+    public function scopePending(Builder $query): Builder
     {
-        return $query->where('is_open', true)->where('has_refund', false);
+        return $query->where('status', 0);
     }
 
-    public function scopeNotRefunded(Builder $query): Builder
+    public function scopeCancelled(Builder $query): Builder
     {
-        return $query->where('has_refund', false);
-    }
-
-    public function scopeNeedingSync(Builder $query): Builder
-    {
-        return $query->where('is_open', true)
-            ->where(function (Builder $q) {
-                $q->whereNull('last_synced_at')
-                    ->orWhere('last_synced_at', '<', now()->subMinutes(15));
-            });
+        return $query->where('status', 2);
     }
 
     public function scopeRecent(Builder $query, int $days = 7): Builder
     {
-        return $query->where('received_date', '>=', now()->subDays($days));
+        return $query->where('received_at', '>=', now()->subDays($days));
     }
 
     public function scopeProfitable(Builder $query): Builder
     {
-        return $query->whereRaw('total_charge > (SELECT SUM(cost_price * quantity) FROM order_items WHERE order_id = orders.id)');
+        return $query->whereRaw('total_charge > (SELECT SUM(cost * quantity) FROM order_items WHERE order_items.order_id = orders.id)');
     }
 
     public function scopeHighValue(Builder $query, float $threshold = 100): Builder
@@ -335,14 +347,6 @@ class Order extends Model
 
     public function isProcessed(): bool
     {
-        return $this->status === 'processed';
-    }
-
-    public function markAsSynced(): void
-    {
-        $this->update([
-            'last_synced_at' => now(),
-            'sync_status' => 'synced',
-        ]);
+        return $this->status === 1;
     }
 }

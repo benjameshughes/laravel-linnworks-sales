@@ -37,7 +37,7 @@ final class SalesRepository
      */
     public function getAllOpenOrders(): Collection
     {
-        return Order::where('is_processed', 0 | false)->get();
+        return Order::where('status', 0 | false)->get();
     }
 
     /**
@@ -45,7 +45,7 @@ final class SalesRepository
      */
     public function getAllProcessedOrders(): Collection
     {
-        return Order::where('is_processed', 1 | true)->get();
+        return Order::where('status', 1 | true)->get();
     }
 
     /**
@@ -55,7 +55,7 @@ final class SalesRepository
      */
     public function getOrdersBetweenDates(Carbon $start, Carbon $end): Collection
     {
-        return Order::whereBetween('received_date', [$start, $end])->get();
+        return Order::with('orderItems')->whereBetween('received_at', [$start, $end])->get();
     }
 
     /**
@@ -63,6 +63,6 @@ final class SalesRepository
      */
     public function getOrdersForPeriod(Carbon $start, Carbon $end): Collection
     {
-        return Order::whereBetween('received_date', [$start, $end])->get();
+        return Order::with('orderItems')->whereBetween('received_at', [$start, $end])->get();
     }
 }
