@@ -90,8 +90,8 @@ final readonly class ChunkedMetricsCalculator
         $result = $query->selectRaw('
                 COUNT(*) as total_orders,
                 SUM(total_charge) as total_revenue,
-                SUM(CASE WHEN is_processed = 1 THEN 1 ELSE 0 END) as processed_orders,
-                SUM(CASE WHEN is_processed = 0 THEN 1 ELSE 0 END) as open_orders,
+                SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as processed_orders,
+                SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as open_orders,
                 AVG(total_charge) as avg_order_value
             ')
             ->first();
@@ -626,11 +626,11 @@ final readonly class ChunkedMetricsCalculator
     {
         return $query->when($this->status !== 'all', function ($q) {
             if ($this->status === 'open_paid') {
-                $q->where('is_paid', (int) true);
+                $q->where('is_paid', true);
             } elseif ($this->status === 'open') {
-                $q->where('is_open', (int) true)->where('is_paid', (int) true);
+                $q->where('status', 0)->where('is_paid', true);
             } elseif ($this->status === 'processed') {
-                $q->where('is_processed', (int) true)->where('is_paid', (int) true);
+                $q->where('status', 1)->where('is_paid', true);
             }
         });
     }
