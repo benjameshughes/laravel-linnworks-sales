@@ -61,16 +61,22 @@ describe('SalesFactory', function () {
 
     it('calculates total items sold correctly', function () {
         $orders = collect([
-            (object) ['items' => [
-                ['sku' => 'ABC123', 'quantity' => 2],
-                ['sku' => 'DEF456', 'quantity' => 3],
-            ]],
-            (object) ['items' => [
-                ['sku' => 'GHI789', 'quantity' => 5],
-            ]],
-            (object) ['items' => [
-                ['sku' => 'JKL012', 'quantity' => 1],
-            ]],
+            (object) [
+                'orderItems' => collect([
+                    (object) ['sku' => 'ABC123', 'quantity' => 2],
+                    (object) ['sku' => 'DEF456', 'quantity' => 3],
+                ]),
+            ],
+            (object) [
+                'orderItems' => collect([
+                    (object) ['sku' => 'GHI789', 'quantity' => 5],
+                ]),
+            ],
+            (object) [
+                'orderItems' => collect([
+                    (object) ['sku' => 'JKL012', 'quantity' => 1],
+                ]),
+            ],
         ]);
 
         $factory = new SalesFactory($orders);
@@ -80,8 +86,8 @@ describe('SalesFactory', function () {
 
     it('returns zero items when no items in orders', function () {
         $orders = collect([
-            (object) ['items' => []],
-            (object) ['items' => null],
+            (object) ['orderItems' => collect([])],
+            (object) ['orderItems' => collect([])],
         ]);
 
         $factory = new SalesFactory($orders);
@@ -91,11 +97,11 @@ describe('SalesFactory', function () {
 
     it('groups and sorts top channels correctly', function () {
         $orders = collect([
-            (object) ['channel_name' => 'Amazon', 'total_charge' => 500.00],
-            (object) ['channel_name' => 'eBay', 'total_charge' => 200.00],
-            (object) ['channel_name' => 'Amazon', 'total_charge' => 300.00],
-            (object) ['channel_name' => 'Website', 'total_charge' => 150.00],
-            (object) ['channel_name' => 'eBay', 'total_charge' => 100.00],
+            (object) ['source' => 'Amazon', 'total_charge' => 500.00],
+            (object) ['source' => 'eBay', 'total_charge' => 200.00],
+            (object) ['source' => 'Amazon', 'total_charge' => 300.00],
+            (object) ['source' => 'Website', 'total_charge' => 150.00],
+            (object) ['source' => 'eBay', 'total_charge' => 100.00],
         ]);
 
         $factory = new SalesFactory($orders);
@@ -125,10 +131,10 @@ describe('SalesFactory', function () {
 
     it('limits top channels correctly', function () {
         $orders = collect([
-            (object) ['channel_name' => 'Amazon', 'total_charge' => 500.00],
-            (object) ['channel_name' => 'eBay', 'total_charge' => 400.00],
-            (object) ['channel_name' => 'Website', 'total_charge' => 300.00],
-            (object) ['channel_name' => 'Etsy', 'total_charge' => 200.00],
+            (object) ['source' => 'Amazon', 'total_charge' => 500.00],
+            (object) ['source' => 'eBay', 'total_charge' => 400.00],
+            (object) ['source' => 'Website', 'total_charge' => 300.00],
+            (object) ['source' => 'Etsy', 'total_charge' => 200.00],
         ]);
 
         $factory = new SalesFactory($orders);
@@ -141,17 +147,23 @@ describe('SalesFactory', function () {
 
     it('groups and sorts top products correctly', function () {
         $orders = collect([
-            (object) ['items' => [
-                ['sku' => 'ABC123', 'quantity' => 5],
-                ['sku' => 'DEF456', 'quantity' => 2],
-            ]],
-            (object) ['items' => [
-                ['sku' => 'ABC123', 'quantity' => 3],
-                ['sku' => 'GHI789', 'quantity' => 10],
-            ]],
-            (object) ['items' => [
-                ['sku' => 'DEF456', 'quantity' => 1],
-            ]],
+            (object) [
+                'orderItems' => collect([
+                    (object) ['sku' => 'ABC123', 'quantity' => 5, 'item_title' => 'Product A', 'line_total' => 50.00],
+                    (object) ['sku' => 'DEF456', 'quantity' => 2, 'item_title' => 'Product B', 'line_total' => 20.00],
+                ]),
+            ],
+            (object) [
+                'orderItems' => collect([
+                    (object) ['sku' => 'ABC123', 'quantity' => 3, 'item_title' => 'Product A', 'line_total' => 30.00],
+                    (object) ['sku' => 'GHI789', 'quantity' => 10, 'item_title' => 'Product C', 'line_total' => 100.00],
+                ]),
+            ],
+            (object) [
+                'orderItems' => collect([
+                    (object) ['sku' => 'DEF456', 'quantity' => 1, 'item_title' => 'Product B', 'line_total' => 10.00],
+                ]),
+            ],
         ]);
 
         $factory = new SalesFactory($orders);
@@ -175,12 +187,14 @@ describe('SalesFactory', function () {
 
     it('limits top products correctly', function () {
         $orders = collect([
-            (object) ['items' => [
-                ['sku' => 'SKU1', 'quantity' => 100],
-                ['sku' => 'SKU2', 'quantity' => 90],
-                ['sku' => 'SKU3', 'quantity' => 80],
-                ['sku' => 'SKU4', 'quantity' => 70],
-            ]],
+            (object) [
+                'orderItems' => collect([
+                    (object) ['sku' => 'SKU1', 'quantity' => 100, 'item_title' => 'Prod 1', 'line_total' => 1000.00],
+                    (object) ['sku' => 'SKU2', 'quantity' => 90, 'item_title' => 'Prod 2', 'line_total' => 900.00],
+                    (object) ['sku' => 'SKU3', 'quantity' => 80, 'item_title' => 'Prod 3', 'line_total' => 800.00],
+                    (object) ['sku' => 'SKU4', 'quantity' => 70, 'item_title' => 'Prod 4', 'line_total' => 700.00],
+                ]),
+            ],
         ]);
 
         $factory = new SalesFactory($orders);

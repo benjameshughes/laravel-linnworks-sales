@@ -6,6 +6,7 @@ namespace App\Actions\Linnworks\Orders;
 
 use App\DataTransferObjects\ImportOrdersResult;
 use App\DataTransferObjects\LinnworksOrder;
+use App\Jobs\SyncProductsFromOrdersJob;
 use App\Models\Order;
 use App\Services\Performance\PerformanceMonitor;
 use Illuminate\Support\Collection;
@@ -214,6 +215,9 @@ final class ImportOrders
             'peak_memory_mb' => round($peakMemoryAfter / 1024 / 1024, 2),
         ]);
 
+        // Dispatch product sync job for new/updated orders
+        $this->dispatchProductSync($dtoCollection);
+
         return new ImportOrdersResult(
             processed: $counts['processed'],
             created: $counts['created'],
@@ -221,6 +225,36 @@ final class ImportOrders
             skipped: $counts['skipped'],
             failed: $counts['failed'],
         );
+    }
+
+    /**
+     * Dispatch a job to sync product details for order items.
+     *
+     * Collects unique stock_item_ids from order items and dispatches
+     * SyncProductsFromOrdersJob to fetch product details from Linnworks.
+     */
+    private function dispatchProductSync(Collection $dtoCollection): void
+    {
+        // Collect unique stock_item_ids from all order items
+        $stockItemIds = $dtoCollection
+            ->flatMap(fn (LinnworksOrder $order) => $order->items)
+            ->pluck('stockItemId')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        if (empty($stockItemIds)) {
+            Log::debug('ImportOrders: No stock item IDs to sync');
+
+            return;
+        }
+
+        Log::info('ImportOrders: Dispatching product sync job', [
+            'stock_item_ids_count' => count($stockItemIds),
+        ]);
+
+        SyncProductsFromOrdersJob::dispatch($stockItemIds);
     }
 
     /**
@@ -264,7 +298,7 @@ final class ImportOrders
         }
 
         if (! empty($orderNumbers)) {
-            $byOrderNumber = Order::whereIn('order_number', $orderNumbers)->get();
+            $byOrderNumber = Order::whereIn('number', $orderNumbers)->get();
             $existingOrders = $existingOrders->merge($byOrderNumber);
         }
 
@@ -274,8 +308,8 @@ final class ImportOrders
             ->keyBy(fn ($order) => $order->linnworks_order_id ?? $order->order_id);
 
         $orderNumberMap = $existingOrders
-            ->filter(fn ($order) => $order->order_number)
-            ->keyBy('order_number');
+            ->filter(fn ($order) => $order->number)
+            ->keyBy('number');
 
         Log::info('ImportOrders: Existing orders loaded', [
             'total_loaded' => $existingOrders->unique('id')->count(),
@@ -325,7 +359,7 @@ final class ImportOrders
         }
 
         if (! $existingOrder && $orderNumber) {
-            $existingOrder = Order::where('order_number', $orderNumber)->first();
+            $existingOrder = Order::where('number', $orderNumber)->first();
         }
 
         return $existingOrder;
