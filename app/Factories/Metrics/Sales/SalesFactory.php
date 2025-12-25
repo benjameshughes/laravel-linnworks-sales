@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Factories\Metrics\Sales;
 
-use App\Models\Order;
 use Illuminate\Support\Collection;
 
 final class SalesFactory
@@ -58,14 +57,30 @@ final class SalesFactory
 
     public function topChannels(int $limit = 3): Collection
     {
-        // Get the channels for each order. Calculate the total revenue and amount of orders for each channel. Sort by largest first and take the top 3
-        return $this->orders->groupBy('source')->map(function ($sourceOrders, $sourceName) {
-            return collect([
-                'source' => $sourceName,
-                'revenue' => $sourceOrders->sum('total_charge'),
-                'order_count' => $sourceOrders->count(),
-            ]);
-        })
+        $totalRevenue = $this->orders->sum('total_charge');
+
+        // Group by source AND subsource to match ChunkedMetricsCalculator format
+        return $this->orders->groupBy(fn ($order) => $order->source.'|'.($order->subsource ?? ''))
+            ->map(function ($sourceOrders, $key) use ($totalRevenue) {
+                [$source, $subsource] = explode('|', $key, 2);
+                $revenue = $sourceOrders->sum('total_charge');
+                $orders = $sourceOrders->count();
+
+                // Build display name like ChunkedMetricsCalculator
+                $displayName = $subsource
+                    ? "{$subsource} ({$source})"
+                    : $source;
+
+                return collect([
+                    'name' => $displayName,
+                    'channel' => $source,
+                    'subsource' => $subsource ?: null,
+                    'orders' => $orders,
+                    'revenue' => $revenue,
+                    'avg_order_value' => $orders > 0 ? $revenue / $orders : 0,
+                    'percentage' => $totalRevenue > 0 ? ($revenue / $totalRevenue) * 100 : 0,
+                ]);
+            })
             ->sortByDesc('revenue')
             ->take($limit)
             ->values();
@@ -75,10 +90,12 @@ final class SalesFactory
     {
         return $this->orders->flatMap(function ($order) {
             return $order->orderItems;
-        })->groupBy('sku')->map(function ($itemWithSameSKU, $sku) {
+        })->groupBy('sku')->map(function ($itemsWithSameSKU, $sku) {
             return collect([
                 'sku' => $sku,
-                'quantity' => $itemWithSameSKU->sum('quantity'),
+                'title' => $itemsWithSameSKU->first()->item_title ?? 'Unknown Product',
+                'quantity' => $itemsWithSameSKU->sum('quantity'),
+                'revenue' => $itemsWithSameSKU->sum('line_total'),
             ]);
         })->sortByDesc('quantity')
             ->take($limit)
