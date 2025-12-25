@@ -54,13 +54,6 @@ final class DailyRevenueChart extends Component
         $this->calculateChartData();
     }
 
-    #[On('echo:cache-management,CacheWarmingCompleted')]
-    public function refreshAfterCacheWarming(): void
-    {
-        // Trigger re-render - recalculate chart data with fresh cache
-        $this->calculateChartData();
-    }
-
     private function calculateChartData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
@@ -104,6 +97,46 @@ final class DailyRevenueChart extends Component
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
         return $periodEnum?->label() ?? "Last {$this->period} days";
+    }
+
+    /**
+     * Format data for Chart.js
+     */
+    public function chartData(): array
+    {
+        $labels = array_column($this->dailyBreakdown, 'date');
+
+        if ($this->viewMode === 'orders_revenue') {
+            return [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => 'Orders',
+                        'data' => array_column($this->dailyBreakdown, 'orders'),
+                        'backgroundColor' => 'rgba(59, 130, 246, 0.8)',
+                        'borderRadius' => 4,
+                    ],
+                    [
+                        'label' => 'Revenue',
+                        'data' => array_column($this->dailyBreakdown, 'revenue'),
+                        'backgroundColor' => 'rgba(34, 197, 94, 0.8)',
+                        'borderRadius' => 4,
+                    ],
+                ],
+            ];
+        }
+
+        return [
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'label' => 'Items Sold',
+                    'data' => array_column($this->dailyBreakdown, 'items'),
+                    'backgroundColor' => 'rgba(168, 85, 247, 0.8)',
+                    'borderRadius' => 4,
+                ],
+            ],
+        ];
     }
 
     public function render()

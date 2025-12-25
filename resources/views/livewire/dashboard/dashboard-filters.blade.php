@@ -76,35 +76,29 @@
                               this.displayText = minutes + ' minute' + (minutes === 1 ? '' : 's') + ' ago';
                           }
                       }">
-                    @if($isSyncing)
-                        <span class="flex items-center gap-1"
-                              x-transition:enter="transition ease-out duration-300"
-                              x-transition:enter-start="opacity-0"
-                              x-transition:enter-end="opacity-100"
-                              x-transition:leave="transition ease-in duration-200"
-                              x-transition:leave-start="opacity-100"
-                              x-transition:leave-end="opacity-0">
-                            <svg class="animate-spin size-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span class="text-blue-600 dark:text-blue-400">{{ $syncMessage }}</span>
-                            @if($syncCount > 0)
-                                <span class="text-blue-600 dark:text-blue-400 font-medium">• {{ number_format($syncCount) }}</span>
-                            @endif
-                        </span>
-                    @else
-                        <span class="flex items-center gap-1"
-                              x-transition:enter="transition ease-out duration-300"
-                              x-transition:enter-start="opacity-0"
-                              x-transition:enter-end="opacity-100"
-                              x-transition:leave="transition ease-in duration-200"
-                              x-transition:leave-start="opacity-100"
-                              x-transition:leave-end="opacity-0">
-                            <flux:icon name="arrow-path" class="size-3 text-zinc-500 transition-transform duration-500 hover:rotate-180" />
-                            <span x-text="displayText">{{ $this->lastSyncInfo->get('time_human') }}</span>
-                        </span>
-                    @endif
+                    <span x-show="isSyncing" class="flex items-center gap-1"
+                          x-transition:enter="transition ease-out duration-300"
+                          x-transition:enter-start="opacity-0"
+                          x-transition:enter-end="opacity-100"
+                          x-transition:leave="transition ease-in duration-200"
+                          x-transition:leave-start="opacity-100"
+                          x-transition:leave-end="opacity-0">
+                        <svg class="animate-spin size-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-blue-600 dark:text-blue-400" x-text="$wire.syncMessage">{{ $syncMessage }}</span>
+                    </span>
+                    <span x-show="!isSyncing" class="flex items-center gap-1"
+                          x-transition:enter="transition ease-out duration-300"
+                          x-transition:enter-start="opacity-0"
+                          x-transition:enter-end="opacity-100"
+                          x-transition:leave="transition ease-in duration-200"
+                          x-transition:leave-start="opacity-100"
+                          x-transition:leave-end="opacity-0">
+                        <flux:icon name="arrow-path" class="size-3 text-zinc-500 transition-transform duration-500 hover:rotate-180" />
+                        <span x-text="displayText">{{ $this->lastSyncInfo->get('time_human') }}</span>
+                    </span>
                 </span>
                 @if($this->lastSyncInfo->get('status') === 'success')
                     <span x-data x-init="$el.classList.add('opacity-0', 'scale-95'); setTimeout(() => $el.classList.remove('opacity-0', 'scale-95'), 50)" class="transition-all duration-300">

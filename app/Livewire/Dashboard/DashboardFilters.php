@@ -13,8 +13,18 @@ use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use Throwable;
 
+/**
+ * Dashboard Filters Component
+ *
+ * Simple sync flow:
+ * 1. User clicks Sync → isSyncing=true, message="Starting..."
+ * 2. SyncStarted event → message="Starting sync..."
+ * 3. SyncProgressUpdated events → message updates with progress
+ * 4. SyncCompleted event → message="Sync complete: X created, Y updated"
+ * 5. CacheWarmingStarted event → message="Crunching the numbers..."
+ * 6. CacheWarmingCompleted event → isSyncing=false, show last sync time
+ */
 final class DashboardFilters extends Component
 {
     public string $period;
@@ -27,31 +37,22 @@ final class DashboardFilters extends Component
 
     public ?string $customTo = null;
 
+    // Simple sync state - no caching needed
     public bool $isSyncing = false;
 
-    public string $syncStage = '';
-
     public string $syncMessage = '';
-
-    public int $syncCount = 0;
 
     public int $rateLimitSeconds = 0;
 
     public function mount(): void
     {
-        // Initialize period from config
         $defaultPeriod = config('dashboard.default_period', \App\Enums\Period::SEVEN_DAYS);
         $this->period = $defaultPeriod instanceof \App\Enums\Period ? $defaultPeriod->value : $defaultPeriod;
 
-        // Initialize custom dates to last 7 days
         $this->customTo = Carbon::now()->format('Y-m-d');
         $this->customFrom = Carbon::now()->subDays(7)->format('Y-m-d');
 
-        // Check initial rate limit status
         $this->checkRateLimit();
-
-        // Restore sync state from cache if job is running
-        $this->restoreSyncState();
     }
 
     public function checkRateLimit(): void
@@ -65,40 +66,8 @@ final class DashboardFilters extends Component
         }
     }
 
-    private function restoreSyncState(): void
-    {
-        $syncStateKey = 'sync-state:global';
-        $syncState = Cache::get($syncStateKey);
-
-        if ($syncState) {
-            $this->isSyncing = $syncState['is_syncing'] ?? false;
-            $this->syncStage = $syncState['stage'] ?? '';
-            $this->syncMessage = $syncState['message'] ?? '';
-            $this->syncCount = $syncState['count'] ?? 0;
-        }
-    }
-
-    private function persistSyncState(): void
-    {
-        $syncStateKey = 'sync-state:global';
-
-        Cache::put($syncStateKey, [
-            'is_syncing' => $this->isSyncing,
-            'stage' => $this->syncStage,
-            'message' => $this->syncMessage,
-            'count' => $this->syncCount,
-        ], now()->addMinutes(10)); // TTL: 10 minutes
-    }
-
-    private function clearSyncState(): void
-    {
-        $syncStateKey = 'sync-state:global';
-        Cache::forget($syncStateKey);
-    }
-
     public function updated($property): void
     {
-        // Clear custom dates when switching away from custom period
         if ($property === 'period' && $this->period !== 'custom') {
             $this->customFrom = null;
             $this->customTo = null;
@@ -121,7 +90,6 @@ final class DashboardFilters extends Component
             return;
         }
 
-        // Rate limit: 1 sync per 2 minutes per user
         $key = 'sync-orders:'.auth()->id();
 
         if (RateLimiter::tooManyAttempts($key, 1)) {
@@ -136,35 +104,17 @@ final class DashboardFilters extends Component
         }
 
         $this->rateLimitSeconds = 0;
-
-        RateLimiter::hit($key, 120); // 2 minutes
+        RateLimiter::hit($key, 120);
 
         $this->isSyncing = true;
-        $this->syncStage = 'queued';
-        $this->syncMessage = 'Sync job queued...';
+        $this->syncMessage = 'Starting sync...';
 
-        // Persist initial sync state
-        $this->persistSyncState();
+        SyncRecentOrdersJob::dispatch(startedBy: 'user-'.auth()->id());
 
-        try {
-            // Dispatch recent orders sync job
-            SyncRecentOrdersJob::dispatch(startedBy: 'user-'.auth()->id());
-
-            $this->dispatch('notification', [
-                'message' => 'Sync started in background. Updates will appear automatically.',
-                'type' => 'info',
-            ]);
-        } catch (Throwable $exception) {
-            report($exception);
-
-            $this->isSyncing = false;
-            $this->clearSyncState();
-
-            $this->dispatch('notification', [
-                'message' => 'Failed to queue sync job. See logs for details.',
-                'type' => 'error',
-            ]);
-        }
+        $this->dispatch('notification', [
+            'message' => 'Sync started. Updates will appear automatically.',
+            'type' => 'info',
+        ]);
     }
 
     #[Computed]
@@ -195,7 +145,6 @@ final class DashboardFilters extends Component
     #[Computed]
     public function availableChannels(): Collection
     {
-        // Use global channels cache (not period-specific)
         $channels = Cache::get('analytics:available_channels', collect());
 
         return $channels->map(fn ($channel) => collect([
@@ -224,13 +173,12 @@ final class DashboardFilters extends Component
 
         return collect([
             'time_human' => $lastSync->completed_at->diffForHumans(),
-            'timestamp' => $lastSync->completed_at->toIso8601String(), // For client-side calculation
-            'elapsed_seconds' => (int) $lastSync->completed_at->diffInSeconds(now()), // Initial elapsed time
+            'timestamp' => $lastSync->completed_at->toIso8601String(),
+            'elapsed_seconds' => (int) $lastSync->completed_at->diffInSeconds(now()),
             'created' => $lastSync->total_created ?? 0,
             'updated' => $lastSync->total_updated ?? 0,
             'failed' => $lastSync->total_failed ?? 0,
             'status' => 'success',
-            'success_rate' => $this->calculateSuccessRate($lastSync),
         ]);
     }
 
@@ -246,7 +194,6 @@ final class DashboardFilters extends Component
     #[Computed]
     public function totalOrders(): int
     {
-        // Can't use cache for custom periods
         if ($this->period === 'custom') {
             return 0;
         }
@@ -256,67 +203,44 @@ final class DashboardFilters extends Component
             return 0;
         }
 
-        // Build cache key using Period enum
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 
         if (! $cached) {
-            return 0; // Cache miss - return zero
+            return 0;
         }
 
-        // Return appropriate count based on status filter
         return match ($this->status) {
             'open' => (int) ($cached['open_orders'] ?? 0),
             'processed' => (int) ($cached['processed_orders'] ?? 0),
-            'open_paid' => (int) ($cached['orders'] ?? 0), // Total paid orders
-            default => (int) ($cached['orders'] ?? 0), // 'all'
+            'open_paid' => (int) ($cached['orders'] ?? 0),
+            default => (int) ($cached['orders'] ?? 0),
         };
     }
+
+    // ========================================
+    // Event Handlers - Simple state updates
+    // ========================================
 
     #[On('echo:sync-progress,SyncStarted')]
     public function handleSyncStarted(array $data): void
     {
-        // Only update UI if we're not already showing syncing state
-        // This prevents manual button click from being overridden
-        if (! $this->isSyncing) {
-            $this->isSyncing = true;
-            $this->syncStage = 'started';
-            $this->syncMessage = 'Starting sync...';
-            $this->syncCount = 0;
-        }
-
-        $this->persistSyncState();
+        $this->isSyncing = true;
+        $this->syncMessage = 'Starting sync...';
     }
 
     #[On('echo:sync-progress,SyncProgressUpdated')]
     public function handleSyncProgress(array $data): void
     {
-        $this->syncStage = $data['stage'];
-        $this->syncMessage = $data['message'];
-        $this->syncCount = $data['count'] ?? 0;
-
-        $this->persistSyncState();
+        $this->syncMessage = $data['message'] ?? 'Syncing...';
     }
 
     #[On('echo:sync-progress,SyncCompleted')]
     public function handleSyncCompleted(array $data): void
     {
-        $this->syncStage = 'completed';
         $this->syncMessage = $data['success']
-            ? "Sync completed: {$data['created']} created, {$data['updated']} updated"
+            ? "Synced: {$data['created']} new, {$data['updated']} updated"
             : 'Sync completed with errors';
-
-        // Clear cached computed properties to force fresh data
-        unset($this->lastSyncInfo);
-        unset($this->totalOrders);
-
-        $this->dispatch('filters-updated',
-            period: $this->period,
-            channel: $this->channel,
-            status: $this->status,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
 
         $this->dispatch('notification', [
             'message' => $this->syncMessage,
@@ -328,26 +252,19 @@ final class DashboardFilters extends Component
     public function handleCacheWarmingStarted(array $data): void
     {
         $this->syncMessage = 'Crunching the numbers...';
-        $this->syncStage = 'warming-cache';
-
-        $this->persistSyncState();
     }
 
     #[On('echo:cache-management,CacheWarmingCompleted')]
     public function handleCacheWarmingCompleted(array $data): void
     {
         $this->isSyncing = false;
-        $this->syncStage = 'completed';
-        $this->syncMessage = 'Sync complete!';
+        $this->syncMessage = '';
 
-        // Clear sync state from cache
-        $this->clearSyncState();
-
-        // Clear cached computed properties to force fresh data
+        // Refresh computed properties
         unset($this->lastSyncInfo);
         unset($this->totalOrders);
 
-        // Trigger data refresh across all dashboard components
+        // Notify other components
         $this->dispatch('filters-updated',
             period: $this->period,
             channel: $this->channel,
@@ -360,18 +277,5 @@ final class DashboardFilters extends Component
     public function render()
     {
         return view('livewire.dashboard.dashboard-filters');
-    }
-
-    private function calculateSuccessRate(SyncLog $syncLog): float
-    {
-        $total = ($syncLog->total_created ?? 0) + ($syncLog->total_updated ?? 0) + ($syncLog->total_failed ?? 0);
-
-        if ($total === 0) {
-            return 100.0;
-        }
-
-        $successful = ($syncLog->total_created ?? 0) + ($syncLog->total_updated ?? 0);
-
-        return ($successful / $total) * 100;
     }
 }

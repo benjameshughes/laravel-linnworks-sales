@@ -52,13 +52,6 @@ final class ChannelDistributionChart extends Component
         $this->calculateChartData();
     }
 
-    #[On('echo:cache-management,CacheWarmingCompleted')]
-    public function refreshAfterCacheWarming(): void
-    {
-        // Trigger re-render - recalculate chart data with fresh cache
-        $this->calculateChartData();
-    }
-
     private function calculateChartData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
@@ -90,6 +83,65 @@ final class ChannelDistributionChart extends Component
 
         // Cache miss - return empty array to prevent OOM
         $this->channelData = [];
+    }
+
+    /**
+     * Format data for Chart.js doughnut chart
+     */
+    public function chartData(): array
+    {
+        $colors = [
+            'rgba(59, 130, 246, 0.8)',   // blue
+            'rgba(34, 197, 94, 0.8)',    // green
+            'rgba(168, 85, 247, 0.8)',   // purple
+            'rgba(251, 146, 60, 0.8)',   // orange
+            'rgba(236, 72, 153, 0.8)',   // pink
+            'rgba(20, 184, 166, 0.8)',   // teal
+        ];
+
+        if ($this->viewMode === 'grouped') {
+            // Group by channel (parent)
+            $grouped = [];
+            foreach ($this->channelData as $item) {
+                $channel = $item['channel'] ?? 'Unknown';
+                if (! isset($grouped[$channel])) {
+                    $grouped[$channel] = 0;
+                }
+                $grouped[$channel] += (float) ($item['revenue'] ?? 0);
+            }
+
+            return [
+                'labels' => array_keys($grouped),
+                'datasets' => [
+                    [
+                        'data' => array_values($grouped),
+                        'backgroundColor' => array_slice($colors, 0, count($grouped)),
+                        'borderWidth' => 0,
+                    ],
+                ],
+            ];
+        }
+
+        // Detailed view - show subsource
+        $labels = array_map(
+            fn ($item) => $item['subsource'] ?? $item['channel'] ?? 'Unknown',
+            $this->channelData
+        );
+        $data = array_map(
+            fn ($item) => (float) ($item['revenue'] ?? 0),
+            $this->channelData
+        );
+
+        return [
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'data' => $data,
+                    'backgroundColor' => array_slice($colors, 0, count($labels)),
+                    'borderWidth' => 0,
+                ],
+            ],
+        ];
     }
 
     public function render()
