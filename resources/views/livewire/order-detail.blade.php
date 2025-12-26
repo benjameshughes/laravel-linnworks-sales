@@ -1,9 +1,9 @@
-<div class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
-    <div class="space-y-6 p-6">
+<div class="min-h-screen">
+    <div class="space-y-3 p-3 lg:p-4">
         {{-- Header with Order Info --}}
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div class="flex items-center gap-6">
+        <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div class="flex items-center gap-4">
                     <div class="flex items-center gap-3">
                         <flux:button
                             variant="ghost"
@@ -66,149 +66,127 @@
         </div>
 
         {{-- Key Metrics Grid --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
             {{-- Order Total --}}
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-blue-100 text-sm font-medium">Order Total</p>
-                        <p class="text-3xl font-bold">£{{ number_format($this->orderInfo['total_charge'], 2) }}</p>
-                        <p class="text-sm text-blue-100 mt-1">
-                            {{ $this->orderInfo['num_items'] }} items
-                        </p>
-                    </div>
-                    <flux:icon name="currency-pound" class="size-10 text-blue-200/50" />
+            <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Total</span>
+                    <flux:icon name="currency-pound" class="size-4 text-zinc-400" />
                 </div>
+                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+                    £{{ number_format($this->orderInfo['total_charge'], 2) }}
+                </p>
+                <p class="text-xs text-zinc-500 mt-1">
+                    {{ $this->orderInfo['num_items'] }} items
+                </p>
             </div>
 
             {{-- Profit --}}
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-sm p-6 text-white">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-green-100 text-sm font-medium">Profit</p>
-                        <p class="text-3xl font-bold">£{{ number_format($this->profitAnalysis['profit'], 2) }}</p>
-                        <p class="text-sm text-green-100 mt-1">
-                            {{ number_format($this->profitAnalysis['margin_percentage'], 1) }}% margin
-                        </p>
-                    </div>
-                    <flux:icon name="star" class="size-10 text-green-200/50" />
+            <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Profit</span>
+                    <flux:icon name="star" class="size-4 text-zinc-400" />
                 </div>
+                <p class="text-2xl font-semibold {{ $this->profitAnalysis['profit'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">
+                    £{{ number_format($this->profitAnalysis['profit'], 2) }}
+                </p>
+                <p class="text-xs text-zinc-500 mt-1">
+                    {{ number_format($this->profitAnalysis['margin_percentage'], 1) }}% margin
+                </p>
             </div>
 
             {{-- Cost --}}
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 text-white">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-purple-100 text-sm font-medium">Cost</p>
-                        <p class="text-3xl font-bold">£{{ number_format($this->profitAnalysis['total_cost'], 2) }}</p>
-                        <p class="text-sm text-purple-100 mt-1">
-                            Product costs
-                        </p>
-                    </div>
-                    <flux:icon name="calculator" class="size-10 text-purple-200/50" />
+            <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Cost</span>
+                    <flux:icon name="calculator" class="size-4 text-zinc-400" />
                 </div>
+                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+                    £{{ number_format($this->profitAnalysis['total_cost'], 2) }}
+                </p>
+                <p class="text-xs text-zinc-500 mt-1">
+                    Product costs
+                </p>
             </div>
 
             {{-- Processing Time --}}
-            <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-sm p-6 text-white">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-orange-100 text-sm font-medium">Processing</p>
-                        @if($this->processingTime)
-                            <p class="text-3xl font-bold">{{ $this->processingTime['formatted'] }}</p>
-                            <p class="text-sm text-orange-100 mt-1">
-                                @if($this->processingTime['is_same_day'])
-                                    Same day
-                                @elseif($this->processingTime['is_fast'])
-                                    Fast processing
-                                @else
-                                    Processing time
-                                @endif
-                            </p>
-                        @else
-                            <p class="text-3xl font-bold">Pending</p>
-                            <p class="text-sm text-orange-100 mt-1">Not yet processed</p>
-                        @endif
-                    </div>
-                    <flux:icon name="clock" class="size-10 text-orange-200/50" />
+            <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Processing</span>
+                    <flux:icon name="clock" class="size-4 text-zinc-400" />
                 </div>
+                @if($this->processingTime)
+                    <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ $this->processingTime['formatted'] }}</p>
+                    <p class="text-xs text-zinc-500 mt-1">
+                        @if($this->processingTime['is_same_day'])
+                            Same day
+                        @elseif($this->processingTime['is_fast'])
+                            Fast processing
+                        @else
+                            Processing time
+                        @endif
+                    </p>
+                @else
+                    <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Pending</p>
+                    <p class="text-xs text-zinc-500 mt-1">Not yet processed</p>
+                @endif
             </div>
         </div>
 
         {{-- Order Timeline & Items --}}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
             {{-- Items Breakdown --}}
-            <div class="lg:col-span-2 bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-                <flux:heading size="lg" class="mb-4">Order Items</flux:heading>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-zinc-50 dark:bg-zinc-900/50">
-                            <tr>
-                                <th class="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-400">Product</th>
-                                <th class="px-4 py-3 text-center font-medium text-zinc-600 dark:text-zinc-400">Qty</th>
-                                <th class="px-4 py-3 text-right font-medium text-zinc-600 dark:text-zinc-400">Unit Price</th>
-                                <th class="px-4 py-3 text-right font-medium text-zinc-600 dark:text-zinc-400">Cost</th>
-                                <th class="px-4 py-3 text-right font-medium text-zinc-600 dark:text-zinc-400">Total</th>
-                                <th class="px-4 py-3 text-right font-medium text-zinc-600 dark:text-zinc-400">Profit</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                            @foreach($this->orderItems as $item)
-                                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                                    <td class="px-4 py-3">
-                                        <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ Str::limit($item['title'], 40) }}</div>
-                                        <div class="text-xs text-zinc-500">{{ $item['sku'] }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 text-center text-zinc-600 dark:text-zinc-400">
-                                        {{ $item['quantity'] }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400">
-                                        £{{ number_format($item['price_per_unit'], 2) }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400">
-                                        £{{ number_format($item['unit_cost'], 2) }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right font-medium text-zinc-900 dark:text-zinc-100">
-                                        £{{ number_format($item['line_total'], 2) }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right">
-                                        <span class="{{ $item['profit'] >= 0 ? 'text-green-600' : 'text-red-600' }} font-medium">
-                                            £{{ number_format($item['profit'], 2) }}
-                                        </span>
-                                        <div class="text-xs text-zinc-500">
-                                            {{ number_format($item['profit_margin'], 1) }}%
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                        <tfoot class="bg-zinc-50 dark:bg-zinc-900/50">
-                            <tr class="font-medium">
-                                <td class="px-4 py-3 text-zinc-900 dark:text-zinc-100">Total</td>
-                                <td class="px-4 py-3 text-center text-zinc-600 dark:text-zinc-400">
-                                    {{ $this->orderItems->sum('quantity') }}
-                                </td>
-                                <td class="px-4 py-3"></td>
-                                <td class="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400">
-                                    £{{ number_format($this->profitAnalysis['total_cost'], 2) }}
-                                </td>
-                                <td class="px-4 py-3 text-right text-zinc-900 dark:text-zinc-100">
-                                    £{{ number_format($this->profitAnalysis['total_revenue'], 2) }}
-                                </td>
-                                <td class="px-4 py-3 text-right text-green-600 font-bold">
-                                    £{{ number_format($this->profitAnalysis['profit'], 2) }}
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+            <div class="lg:col-span-2">
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>Product</flux:table.column>
+                        <flux:table.column align="center">Qty</flux:table.column>
+                        <flux:table.column align="end">Unit Price</flux:table.column>
+                        <flux:table.column align="end">Cost</flux:table.column>
+                        <flux:table.column align="end">Total</flux:table.column>
+                        <flux:table.column align="end">Profit</flux:table.column>
+                    </flux:table.columns>
+
+                    <flux:table.rows>
+                        @foreach($this->orderItems as $item)
+                            <flux:table.row>
+                                <flux:table.cell>
+                                    <div class="font-medium">{{ Str::limit($item['title'], 40) }}</div>
+                                    <div class="text-xs text-zinc-500">{{ $item['sku'] }}</div>
+                                </flux:table.cell>
+                                <flux:table.cell align="center">{{ $item['quantity'] }}</flux:table.cell>
+                                <flux:table.cell align="end">£{{ number_format($item['price_per_unit'], 2) }}</flux:table.cell>
+                                <flux:table.cell align="end">£{{ number_format($item['unit_cost'], 2) }}</flux:table.cell>
+                                <flux:table.cell align="end" variant="strong">£{{ number_format($item['line_total'], 2) }}</flux:table.cell>
+                                <flux:table.cell align="end">
+                                    <span class="{{ $item['profit'] >= 0 ? 'text-emerald-600' : 'text-red-600' }} font-medium">
+                                        £{{ number_format($item['profit'], 2) }}
+                                    </span>
+                                    <div class="text-xs text-zinc-500">{{ number_format($item['profit_margin'], 1) }}%</div>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+
+                        {{-- Totals Row --}}
+                        <flux:table.row>
+                            <flux:table.cell variant="strong">Total</flux:table.cell>
+                            <flux:table.cell align="center">{{ $this->orderItems->sum('quantity') }}</flux:table.cell>
+                            <flux:table.cell></flux:table.cell>
+                            <flux:table.cell align="end">£{{ number_format($this->profitAnalysis['total_cost'], 2) }}</flux:table.cell>
+                            <flux:table.cell align="end" variant="strong">£{{ number_format($this->profitAnalysis['total_revenue'], 2) }}</flux:table.cell>
+                            <flux:table.cell align="end">
+                                <span class="text-emerald-600 font-bold">£{{ number_format($this->profitAnalysis['profit'], 2) }}</span>
+                            </flux:table.cell>
+                        </flux:table.row>
+                    </flux:table.rows>
+                </flux:table>
             </div>
 
             {{-- Timeline & Details Sidebar --}}
-            <div class="space-y-6">
+            <div class="space-y-3">
                 {{-- Order Timeline --}}
-                <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-                    <flux:heading size="lg" class="mb-4">Order Timeline</flux:heading>
+                <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+                    <flux:heading size="lg" class="mb-3">Order Timeline</flux:heading>
                     @if($this->timeline->isNotEmpty())
                         <div class="space-y-4">
                             @foreach($this->timeline as $event)
@@ -229,8 +207,8 @@
                 </div>
 
                 {{-- Order Details --}}
-                <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-                    <flux:heading size="lg" class="mb-4">Order Details</flux:heading>
+                <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+                    <flux:heading size="lg" class="mb-3">Order Details</flux:heading>
                     <dl class="space-y-3 text-sm">
                         <div class="flex justify-between">
                             <dt class="text-zinc-500">Payment Method</dt>
@@ -257,8 +235,8 @@
 
                 {{-- Related Orders --}}
                 @if($this->relatedOrders->isNotEmpty())
-                    <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-                        <flux:heading size="lg" class="mb-4">Related Orders</flux:heading>
+                    <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+                        <flux:heading size="lg" class="mb-3">Related Orders</flux:heading>
                         <div class="space-y-3">
                             @foreach($this->relatedOrders as $related)
                                 <a href="{{ route('orders.detail', $related['number']) }}"

@@ -172,47 +172,40 @@
 
                 <div>
                     @if($previewData->isNotEmpty())
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead class="bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-300 dark:border-zinc-600">
-                                    <tr>
-                                        @foreach($this->selectedReport->columns() as $columnKey => $columnConfig)
-                                            <th class="px-4 py-3 text-left text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider whitespace-nowrap">
-                                                {{ $columnConfig['label'] ?? $columnKey }}
-                                            </th>
-                                        @endforeach
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                                    @foreach($previewData as $row)
-                                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-colors">
-                                            @foreach($this->selectedReport->columns() as $columnKey => $columnConfig)
-                                                <td class="px-4 py-3 text-sm text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
-                                                    @php
-                                                        $value = $row->{$columnKey} ?? '';
-                                                        $type = $columnConfig['type'] ?? 'string';
-                                                    @endphp
+                        <flux:table>
+                            <flux:table.columns>
+                                @foreach($this->selectedReport->columns() as $columnKey => $columnConfig)
+                                    <flux:table.column>{{ $columnConfig['label'] ?? $columnKey }}</flux:table.column>
+                                @endforeach
+                            </flux:table.columns>
 
-                                                    @if($type === 'currency')
-                                                        <span class="font-semibold text-green-600 dark:text-green-400">
-                                                            £{{ number_format((float)($value ?: 0), 2) }}
-                                                        </span>
-                                                    @elseif($type === 'integer')
-                                                        <span class="font-mono">
-                                                            {{ number_format((int)($value ?: 0)) }}
-                                                        </span>
-                                                    @elseif($type === 'percentage')
-                                                        {{ number_format((float)($value ?: 0), 2) }}%
-                                                    @else
-                                                        {{ $value }}
-                                                    @endif
-                                                </td>
-                                            @endforeach
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                            <flux:table.rows>
+                                @foreach($previewData as $row)
+                                    <flux:table.row>
+                                        @foreach($this->selectedReport->columns() as $columnKey => $columnConfig)
+                                            <flux:table.cell>
+                                                @php
+                                                    $value = $row->{$columnKey} ?? '';
+                                                    $type = $columnConfig['type'] ?? 'string';
+                                                @endphp
+
+                                                @if($type === 'currency')
+                                                    <span class="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                        £{{ number_format((float)($value ?: 0), 2) }}
+                                                    </span>
+                                                @elseif($type === 'integer')
+                                                    <span class="font-mono">{{ number_format((int)($value ?: 0)) }}</span>
+                                                @elseif($type === 'percentage')
+                                                    {{ number_format((float)($value ?: 0), 2) }}%
+                                                @else
+                                                    {{ $value }}
+                                                @endif
+                                            </flux:table.cell>
+                                        @endforeach
+                                    </flux:table.row>
+                                @endforeach
+                            </flux:table.rows>
+                        </flux:table>
                     @else
                         <div class="text-center py-12">
                             <flux:icon name="chart-bar" class="size-12 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />

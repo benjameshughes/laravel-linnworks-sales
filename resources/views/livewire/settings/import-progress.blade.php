@@ -234,61 +234,44 @@
                         <flux:badge color="zinc">{{ count($syncHistory) }} syncs</flux:badge>
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
-                            <thead>
-                                <tr class="border-b border-zinc-200 dark:border-zinc-700">
-                                    <th class="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Status</th>
-                                    <th class="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Date Range</th>
-                                    <th class="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Started</th>
-                                    <th class="text-right py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Processed</th>
-                                    <th class="text-right py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Created</th>
-                                    <th class="text-right py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Updated</th>
-                                    <th class="text-right py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Failed</th>
-                                    <th class="text-right py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Duration</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                                @foreach ($syncHistory as $historyItem)
-                                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                                        <td class="py-3 px-2">
-                                            <flux:badge size="sm" :color="$historyItem['status_color']">
-                                                {{ $historyItem['status_label'] }}
-                                            </flux:badge>
-                                        </td>
-                                        <td class="py-3 px-2 text-zinc-600 dark:text-zinc-400">
-                                            {{ $historyItem['date_range'] ?? '-' }}
-                                        </td>
-                                        <td class="py-3 px-2 text-zinc-900 dark:text-zinc-100">
-                                            {{ $historyItem['started_at'] }}
-                                        </td>
-                                        <td class="py-3 px-2 text-right font-medium text-zinc-900 dark:text-zinc-100">
-                                            {{ number_format($historyItem['total_processed']) }}
-                                        </td>
-                                        <td class="py-3 px-2 text-right text-green-600 dark:text-green-400">
-                                            {{ number_format($historyItem['created']) }}
-                                        </td>
-                                        <td class="py-3 px-2 text-right text-amber-600 dark:text-amber-400">
-                                            {{ number_format($historyItem['updated']) }}
-                                        </td>
-                                        <td class="py-3 px-2 text-right {{ $historyItem['failed'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-zinc-500' }}">
-                                            {{ number_format($historyItem['failed']) }}
-                                        </td>
-                                        <td class="py-3 px-2 text-right text-zinc-600 dark:text-zinc-400">
-                                            {{ $historyItem['duration'] ?? '-' }}
-                                        </td>
-                                    </tr>
-                                    @if ($historyItem['error_message'])
-                                        <tr class="bg-red-50 dark:bg-red-900/10">
-                                            <td colspan="8" class="py-2 px-4 text-sm text-red-700 dark:text-red-400">
-                                                <span class="font-medium">Error:</span> {{ Str::limit($historyItem['error_message'], 200) }}
-                                            </td>
-                                        </tr>
-                                    @endif
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                    <flux:table>
+                        <flux:table.columns>
+                            <flux:table.column>Status</flux:table.column>
+                            <flux:table.column>Date Range</flux:table.column>
+                            <flux:table.column>Started</flux:table.column>
+                            <flux:table.column align="end">Processed</flux:table.column>
+                            <flux:table.column align="end">Created</flux:table.column>
+                            <flux:table.column align="end">Updated</flux:table.column>
+                            <flux:table.column align="end">Failed</flux:table.column>
+                            <flux:table.column align="end">Duration</flux:table.column>
+                        </flux:table.columns>
+
+                        <flux:table.rows>
+                            @foreach ($syncHistory as $historyItem)
+                                <flux:table.row>
+                                    <flux:table.cell>
+                                        <flux:badge size="sm" :color="$historyItem['status_color']">
+                                            {{ $historyItem['status_label'] }}
+                                        </flux:badge>
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-zinc-500">{{ $historyItem['date_range'] ?? '-' }}</flux:table.cell>
+                                    <flux:table.cell>{{ $historyItem['started_at'] }}</flux:table.cell>
+                                    <flux:table.cell align="end" variant="strong">{{ number_format($historyItem['total_processed']) }}</flux:table.cell>
+                                    <flux:table.cell align="end" class="text-emerald-600 dark:text-emerald-400">{{ number_format($historyItem['created']) }}</flux:table.cell>
+                                    <flux:table.cell align="end" class="text-amber-600 dark:text-amber-400">{{ number_format($historyItem['updated']) }}</flux:table.cell>
+                                    <flux:table.cell align="end" class="{{ $historyItem['failed'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-zinc-500' }}">{{ number_format($historyItem['failed']) }}</flux:table.cell>
+                                    <flux:table.cell align="end" class="text-zinc-500">{{ $historyItem['duration'] ?? '-' }}</flux:table.cell>
+                                </flux:table.row>
+                                @if ($historyItem['error_message'])
+                                    <flux:table.row class="bg-red-50 dark:bg-red-900/10">
+                                        <flux:table.cell colspan="8" class="text-red-700 dark:text-red-400">
+                                            <span class="font-medium">Error:</span> {{ Str::limit($historyItem['error_message'], 200) }}
+                                        </flux:table.cell>
+                                    </flux:table.row>
+                                @endif
+                            @endforeach
+                        </flux:table.rows>
+                    </flux:table>
                 </x-animations.fade-in-up>
             @endif
         </div>

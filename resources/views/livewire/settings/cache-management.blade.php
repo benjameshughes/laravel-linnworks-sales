@@ -239,46 +239,37 @@
                         </div>
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
-                            <thead>
-                                <tr class="border-b border-zinc-200 dark:border-zinc-800">
-                                    <th class="text-left py-2 px-3 text-xs font-medium text-zinc-600 dark:text-zinc-400">Time</th>
-                                    <th class="text-left py-2 px-3 text-xs font-medium text-zinc-600 dark:text-zinc-400">Period</th>
-                                    <th class="text-right py-2 px-3 text-xs font-medium text-zinc-600 dark:text-zinc-400">Orders</th>
-                                    <th class="text-right py-2 px-3 text-xs font-medium text-zinc-600 dark:text-zinc-400">Memory Used</th>
-                                    <th class="text-right py-2 px-3 text-xs font-medium text-zinc-600 dark:text-zinc-400">Peak Memory</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($this->recentCacheWarming as $log)
-                                    <tr class="border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                                        <td class="py-2 px-3 text-zinc-600 dark:text-zinc-400">
-                                            {{ \Carbon\Carbon::parse($log['timestamp'])->format('H:i:s') }}
-                                        </td>
-                                        <td class="py-2 px-3 font-medium text-zinc-900 dark:text-zinc-100">
-                                            {{ $log['cache_key'] }}
-                                        </td>
-                                        <td class="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
-                                            {{ number_format($log['orders_count']) }}
-                                        </td>
-                                        <td class="py-2 px-3 text-right">
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-                                                {{ $log['memory_used_mb'] > 50 ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400' : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400' }}">
-                                                {{ number_format($log['memory_used_mb'], 1) }} MB
-                                            </span>
-                                        </td>
-                                        <td class="py-2 px-3 text-right">
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-                                                {{ $log['peak_memory_mb'] > 100 ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' }}">
-                                                {{ number_format($log['peak_memory_mb'], 1) }} MB
-                                            </span>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                    <flux:table>
+                        <flux:table.columns>
+                            <flux:table.column>Time</flux:table.column>
+                            <flux:table.column>Period</flux:table.column>
+                            <flux:table.column align="end">Orders</flux:table.column>
+                            <flux:table.column align="end">Memory Used</flux:table.column>
+                            <flux:table.column align="end">Peak Memory</flux:table.column>
+                        </flux:table.columns>
+
+                        <flux:table.rows>
+                            @foreach($this->recentCacheWarming as $log)
+                                <flux:table.row>
+                                    <flux:table.cell class="text-zinc-500">
+                                        {{ \Carbon\Carbon::parse($log['timestamp'])->format('H:i:s') }}
+                                    </flux:table.cell>
+                                    <flux:table.cell variant="strong">{{ $log['cache_key'] }}</flux:table.cell>
+                                    <flux:table.cell align="end">{{ number_format($log['orders_count']) }}</flux:table.cell>
+                                    <flux:table.cell align="end">
+                                        <flux:badge size="sm" color="{{ $log['memory_used_mb'] > 50 ? 'orange' : 'green' }}">
+                                            {{ number_format($log['memory_used_mb'], 1) }} MB
+                                        </flux:badge>
+                                    </flux:table.cell>
+                                    <flux:table.cell align="end">
+                                        <flux:badge size="sm" color="{{ $log['peak_memory_mb'] > 100 ? 'red' : 'blue' }}">
+                                            {{ number_format($log['peak_memory_mb'], 1) }} MB
+                                        </flux:badge>
+                                    </flux:table.cell>
+                                </flux:table.row>
+                            @endforeach
+                        </flux:table.rows>
+                    </flux:table>
 
                     <div class="p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-lg">
                         <div class="flex items-start gap-2">
