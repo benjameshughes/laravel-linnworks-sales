@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
+use App\Services\Metrics\ChunkedMetricsCalculator;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -56,20 +56,24 @@ final class ChannelDistributionChart extends Component
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Can't cache custom periods
+        // Custom periods: Use ChunkedMetricsCalculator (memory-safe DB aggregation)
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            $this->channelData = app(SalesMetricsService::class)->getTopChannels(
+            $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
                 channel: $this->channel,
-                limit: 6,
+                status: $this->status,
                 customFrom: $this->customFrom,
                 customTo: $this->customTo
-            )->toArray();
+            );
+
+            $data = $calculator->calculate();
+
+            $this->channelData = $data['top_channels']->toArray();
 
             return;
         }
 
-        // Check cache
+        // Check cache for standard periods
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 

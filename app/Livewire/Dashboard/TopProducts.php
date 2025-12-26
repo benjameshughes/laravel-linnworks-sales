@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
+use App\Services\Metrics\ChunkedMetricsCalculator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
@@ -50,18 +50,22 @@ final class TopProducts extends Component
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Can't cache custom periods
+        // Custom periods: Use ChunkedMetricsCalculator (memory-safe DB aggregation)
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            return app(SalesMetricsService::class)->getTopProducts(
+            $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
                 channel: $this->channel,
-                limit: 10,
+                status: $this->status,
                 customFrom: $this->customFrom,
                 customTo: $this->customTo
             );
+
+            $data = $calculator->calculate();
+
+            return $data['top_products'];
         }
 
-        // Check cache
+        // Check cache for standard periods
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 

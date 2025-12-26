@@ -276,12 +276,11 @@ final readonly class ChunkedMetricsCalculator
      * Calculate top products using streaming aggregation
      *
      * Uses order_items table aggregation - much more efficient!
+     * Groups by SKU only to aggregate same product across orders.
+     * Sorted by quantity (best sellers) rather than revenue.
      */
-    private function calculateTopProducts(Carbon $start, Carbon $end, int $limit = 5): Collection
+    private function calculateTopProducts(Carbon $start, Carbon $end, int $limit = 10): Collection
     {
-        // FIXED: Use correct column names from order_items table
-        // - item_title (not title)
-        // - line_total (not total_price)
         $productStatsQuery = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.received_at', [$start, $end])
@@ -293,13 +292,13 @@ final readonly class ChunkedMetricsCalculator
         $productStats = $productStatsQuery
             ->selectRaw('
                 order_items.sku,
-                order_items.item_title,
+                MAX(order_items.item_title) as item_title,
                 SUM(order_items.quantity) as quantity,
                 SUM(order_items.line_total) as revenue,
                 COUNT(DISTINCT orders.id) as order_count
             ')
-            ->groupBy('order_items.sku', 'order_items.item_title')
-            ->orderByDesc('revenue')
+            ->groupBy('order_items.sku')
+            ->orderByDesc('quantity')
             ->limit($limit)
             ->get();
 
