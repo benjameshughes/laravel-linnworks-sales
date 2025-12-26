@@ -244,7 +244,7 @@ readonly class ProductBadgeService
 
         $thresholdIndex = (int) ($quantities->count() * $this->highVolumePercentile);
 
-        return $quantities->get($thresholdIndex, 0);
+        return (int) $quantities->get($thresholdIndex, 0);
     }
 
     private function isConsistentSeller(string $sku, int $period): bool
