@@ -65,7 +65,7 @@ class OrderStatusReport extends AbstractReport
                 DB::raw('ROUND((COUNT(*) / (
                     SELECT COUNT(*)
                     FROM orders
-                    WHERE received_date BETWEEN ? AND ?
+                    WHERE received_at BETWEEN ? AND ?
                 )) * 100, 2) as percent_of_orders'),
             ])
             ->addBinding([$dateStart, $dateEnd], 'select')

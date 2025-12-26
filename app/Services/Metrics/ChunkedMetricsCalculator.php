@@ -7,6 +7,7 @@ namespace App\Services\Metrics;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -36,9 +37,21 @@ final readonly class ChunkedMetricsCalculator
      * 2. Daily data: Use database GROUP BY date
      * 3. Top N lists: Stream and aggregate incrementally
      * 4. Charts: Build from daily aggregates
+     *
+     * Custom ranges are cached for 10 minutes to avoid repeated DB hits.
      */
     public function calculate(): array
     {
+        // Check for cached custom range result
+        if ($this->isCustomRange()) {
+            $cacheKey = $this->getCustomRangeCacheKey();
+            $cached = Cache::get($cacheKey);
+
+            if ($cached !== null) {
+                return $cached;
+            }
+        }
+
         [$start, $end] = $this->getDateRange();
 
         // Get simple aggregates directly from database (very memory efficient)
@@ -59,7 +72,7 @@ final readonly class ChunkedMetricsCalculator
         // Find best performing day from daily data
         $bestDay = $dailyData->sortByDesc('revenue')->first();
 
-        return [
+        $result = [
             'revenue' => $aggregates['revenue'],
             'orders' => $aggregates['orders'],
             'items' => $aggregates['items'],
@@ -74,6 +87,14 @@ final readonly class ChunkedMetricsCalculator
             'daily_breakdown' => $dailyData->toArray(),
             'warmed_at' => now()->toISOString(),
         ];
+
+        // Cache custom range results with short TTL
+        if ($this->isCustomRange()) {
+            $ttl = config('dashboard.custom_range_cache_ttl', 10);
+            Cache::put($this->getCustomRangeCacheKey(), $result, now()->addMinutes($ttl));
+        }
+
+        return $result;
     }
 
     /**
@@ -639,6 +660,19 @@ final readonly class ChunkedMetricsCalculator
     public function isCustomRange(): bool
     {
         return $this->customFrom !== null && $this->customTo !== null;
+    }
+
+    /**
+     * Generate cache key for custom range queries
+     */
+    private function getCustomRangeCacheKey(): string
+    {
+        return 'custom_metrics_'.md5(serialize([
+            $this->customFrom,
+            $this->customTo,
+            $this->channel,
+            $this->status,
+        ]));
     }
 
     /**

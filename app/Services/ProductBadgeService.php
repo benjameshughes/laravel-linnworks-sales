@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Enums\ProductBadgeType;
@@ -30,7 +32,7 @@ readonly class ProductBadgeService
     {
         $cacheKey = "product_badges:{$product->sku}:{$period}";
 
-        return Cache::remember($cacheKey, now()->addMinutes(15),
+        return Cache::remember($cacheKey, now()->addHour(),
             fn () => $this->calculateBadges($product, $period)
         );
     }
@@ -68,7 +70,7 @@ readonly class ProductBadgeService
             ->where('sku', $sku)
             ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_at', [$dateRange->from, $dateRange->to])
             )
-            ->with('order:id,received_date')
+            ->with('order:id,received_at')
             ->get();
     }
 
@@ -253,23 +255,20 @@ readonly class ProductBadgeService
             return false;
         }
 
-        $weeksWithSales = 0;
         $fromDate = now()->subDays($period);
 
-        for ($i = 0; $i < $weeks; $i++) {
-            $weekStart = $fromDate->copy()->addWeeks($i);
-            $weekEnd = $weekStart->copy()->addWeek()->min(now());
+        // Single query to get all order dates, then count distinct weeks in PHP
+        // This reduces N queries to 1 query while remaining database-agnostic
+        $orderDates = OrderItem::query()
+            ->where('order_items.sku', $sku)
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->where('orders.received_at', '>=', $fromDate)
+            ->pluck('orders.received_at');
 
-            $hasSales = OrderItem::query()
-                ->where('sku', $sku)
-                ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_at', [$weekStart, $weekEnd])
-                )
-                ->exists();
-
-            if ($hasSales) {
-                $weeksWithSales++;
-            }
-        }
+        $weeksWithSales = $orderDates
+            ->map(fn ($date) => \Carbon\Carbon::parse($date)->startOfWeek()->format('Y-W'))
+            ->unique()
+            ->count();
 
         return ($weeksWithSales / $weeks) >= $this->consistentThreshold;
     }

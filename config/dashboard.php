@@ -30,4 +30,19 @@ return [
     |
     */
     'chunked_calculation_threshold' => 0,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Custom Range Cache TTL (minutes)
+    |--------------------------------------------------------------------------
+    |
+    | When users select a custom date range, the calculated metrics are
+    | cached for this many minutes to avoid repeated DB hits.
+    |
+    | Dashboard custom ranges: 10 minutes
+    | Product custom ranges: 5 minutes
+    |
+    */
+    'custom_range_cache_ttl' => 10,
+    'product_custom_range_cache_ttl' => 5,
 ];

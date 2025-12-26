@@ -66,13 +66,20 @@
             </div>
         </div>
 
-        {{-- Key Metrics Grid --}}
+        {{-- Key Metrics Grid - Expandable Cards --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {{-- Total Revenue --}}
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white">
+            {{-- Total Revenue - Expandable --}}
+            <div
+                x-data="{ expanded: false }"
+                @click="expanded = !expanded"
+                class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+            >
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-blue-100 text-sm font-medium">Total Revenue</p>
+                        <div class="flex items-center gap-2">
+                            <p class="text-blue-100 text-sm font-medium">Total Revenue</p>
+                            <flux:icon name="chevron-down" class="size-3 text-blue-200 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
+                        </div>
                         <p class="text-3xl font-bold">£{{ number_format($this->profitAnalysis['total_revenue'], 2) }}</p>
                         <p class="text-sm text-blue-100 mt-1">
                             £{{ number_format($this->profitAnalysis['avg_selling_price'], 2) }} avg price
@@ -80,13 +87,48 @@
                     </div>
                     <flux:icon name="currency-pound" class="size-8 text-blue-200" />
                 </div>
+
+                {{-- Expanded Details --}}
+                <div
+                    x-show="expanded"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 -translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 -translate-y-2"
+                    class="mt-4 pt-3 border-t border-white/20 space-y-2"
+                    @click.stop
+                >
+                    <div class="flex justify-between text-sm">
+                        <span class="text-white/80">Avg Selling Price:</span>
+                        <span class="font-medium">£{{ number_format($this->profitAnalysis['avg_selling_price'], 2) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-white/80">Avg Unit Cost:</span>
+                        <span class="font-medium">£{{ number_format($this->profitAnalysis['avg_unit_cost'], 2) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm border-t border-white/20 pt-2">
+                        <span class="text-white/80">Markup:</span>
+                        <span class="font-bold">
+                            {{ $this->profitAnalysis['avg_unit_cost'] > 0 ? number_format((($this->profitAnalysis['avg_selling_price'] - $this->profitAnalysis['avg_unit_cost']) / $this->profitAnalysis['avg_unit_cost']) * 100, 1) : 0 }}%
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            {{-- Total Profit --}}
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-sm p-6 text-white">
+            {{-- Total Profit - Expandable --}}
+            <div
+                x-data="{ expanded: false }"
+                @click="expanded = !expanded"
+                class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-sm p-6 text-white cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+            >
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-green-100 text-sm font-medium">Total Profit</p>
+                        <div class="flex items-center gap-2">
+                            <p class="text-green-100 text-sm font-medium">Total Profit</p>
+                            <flux:icon name="chevron-down" class="size-3 text-green-200 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
+                        </div>
                         <p class="text-3xl font-bold">£{{ number_format($this->profitAnalysis['total_profit'], 2) }}</p>
                         <p class="text-sm text-green-100 mt-1">
                             {{ number_format($this->profitAnalysis['profit_margin'], 1) }}% margin
@@ -94,13 +136,46 @@
                     </div>
                     <flux:icon name="chart-bar" class="size-8 text-green-200" />
                 </div>
+
+                {{-- Expanded Details --}}
+                <div
+                    x-show="expanded"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 -translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 -translate-y-2"
+                    class="mt-4 pt-3 border-t border-white/20 space-y-2"
+                    @click.stop
+                >
+                    <div class="flex justify-between text-sm">
+                        <span class="text-white/80">Revenue:</span>
+                        <span class="font-medium">£{{ number_format($this->profitAnalysis['total_revenue'], 2) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-white/80">Cost:</span>
+                        <span class="font-medium">£{{ number_format($this->profitAnalysis['total_cost'], 2) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm border-t border-white/20 pt-2">
+                        <span class="text-white/80">Profit:</span>
+                        <span class="font-bold">£{{ number_format($this->profitAnalysis['total_profit'], 2) }}</span>
+                    </div>
+                </div>
             </div>
 
-            {{-- Units Sold --}}
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 text-white">
+            {{-- Units Sold - Expandable --}}
+            <div
+                x-data="{ expanded: false }"
+                @click="expanded = !expanded"
+                class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 text-white cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+            >
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-purple-100 text-sm font-medium">Units Sold</p>
+                        <div class="flex items-center gap-2">
+                            <p class="text-purple-100 text-sm font-medium">Units Sold</p>
+                            <flux:icon name="chevron-down" class="size-3 text-purple-200 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
+                        </div>
                         <p class="text-3xl font-bold">{{ number_format($this->profitAnalysis['total_sold']) }}</p>
                         <p class="text-sm text-purple-100 mt-1">
                             {{ number_format($this->profitAnalysis['total_sold'] / max($this->period, 1), 1) }} per day
@@ -108,13 +183,46 @@
                     </div>
                     <flux:icon name="cube" class="size-8 text-purple-200" />
                 </div>
+
+                {{-- Expanded Details --}}
+                <div
+                    x-show="expanded"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 -translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 -translate-y-2"
+                    class="mt-4 pt-3 border-t border-white/20 space-y-2"
+                    @click.stop
+                >
+                    <div class="flex justify-between text-sm">
+                        <span class="text-white/80">Total Units:</span>
+                        <span class="font-medium">{{ number_format($this->profitAnalysis['total_sold']) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-white/80">Daily Average:</span>
+                        <span class="font-medium">{{ number_format($this->profitAnalysis['total_sold'] / max($this->period, 1), 1) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm border-t border-white/20 pt-2">
+                        <span class="text-white/80">Total Orders:</span>
+                        <span class="font-bold">{{ number_format($this->profitAnalysis['order_count'] ?? 0) }}</span>
+                    </div>
+                </div>
             </div>
 
-            {{-- Stock Status --}}
-            <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-sm p-6 text-white">
+            {{-- Stock Status - Expandable --}}
+            <div
+                x-data="{ expanded: false }"
+                @click="expanded = !expanded"
+                class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-sm p-6 text-white cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+            >
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-orange-100 text-sm font-medium">Current Stock</p>
+                        <div class="flex items-center gap-2">
+                            <p class="text-orange-100 text-sm font-medium">Current Stock</p>
+                            <flux:icon name="chevron-down" class="size-3 text-orange-200 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
+                        </div>
                         <p class="text-3xl font-bold">{{ number_format($this->stockInfo['current_stock']) }}</p>
                         <p class="text-sm text-orange-100 mt-1">
                             @if($this->stockInfo['stock_status'] === 'out_of_stock')
@@ -127,6 +235,38 @@
                         </p>
                     </div>
                     <flux:icon name="archive-box" class="size-8 text-orange-200" />
+                </div>
+
+                {{-- Expanded Details --}}
+                <div
+                    x-show="expanded"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 -translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 -translate-y-2"
+                    class="mt-4 pt-3 border-t border-white/20 space-y-2"
+                    @click.stop
+                >
+                    <div class="flex justify-between text-sm">
+                        <span class="text-white/80">Current Stock:</span>
+                        <span class="font-medium">{{ number_format($this->stockInfo['current_stock']) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-white/80">Minimum Stock:</span>
+                        <span class="font-medium">{{ number_format($this->stockInfo['minimum_stock']) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm border-t border-white/20 pt-2">
+                        <span class="text-white/80">Days of Stock:</span>
+                        <span class="font-bold">
+                            @php
+                                $dailySales = $this->profitAnalysis['total_sold'] / max($this->period, 1);
+                                $daysOfStock = $dailySales > 0 ? round($this->stockInfo['current_stock'] / $dailySales) : '∞';
+                            @endphp
+                            {{ $daysOfStock }}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -141,46 +281,76 @@
                     {{ $this->period }} days
                 </flux:badge>
             </div>
-            
-            <div class="h-64">
-                <livewire:chart
-                    type="area"
-                    :data="[
-                        'labels' => $this->salesTrend->pluck('date')->toArray(),
-                        'datasets' => [
-                            [
-                                'label' => 'Units Sold',
-                                'data' => $this->salesTrend->pluck('quantity')->toArray(),
-                                'borderColor' => 'rgb(59, 130, 246)',
-                                'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
-                                'fill' => true,
-                            ]
-                        ]
-                    ]"
-                    :options="[
-                        'responsive' => true,
-                        'maintainAspectRatio' => false,
-                        'plugins' => [
-                            'legend' => ['display' => false],
-                            'tooltip' => [
-                                'callbacks' => [
-                                    'afterBody' => 'function(context) {
-                                        var index = context[0].dataIndex;
-                                        var revenue = ' . json_encode($this->salesTrend->pluck('revenue')->toArray()) . '[index];
-                                        return "Revenue: £" + revenue.toFixed(2);
-                                    }'
-                                ]
-                            ]
-                        ],
-                        'scales' => [
-                            'y' => [
-                                'beginAtZero' => true,
-                                'ticks' => ['precision' => 0]
-                            ]
-                        ]
-                    ]"
-                />
-            </div>
+
+            @if($this->salesTrend->isEmpty())
+                <div class="h-64 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+                    <div class="text-center">
+                        <flux:icon name="chart-bar" class="size-12 mx-auto mb-4 text-zinc-300 dark:text-zinc-600" />
+                        <p>No sales data available for this period</p>
+                    </div>
+                </div>
+            @else
+                {{-- wire:key forces full replacement when data changes, avoiding Chart.js conflicts --}}
+                <div
+                    wire:key="sales-trend-chart-{{ md5(json_encode($this->salesTrend->toArray())) }}"
+                    x-data="{
+                        chart: null,
+                        init() {
+                            const revenueData = @js($this->salesTrend->pluck('revenue')->toArray());
+                            this.chart = new Chart(this.$refs.canvas, {
+                                type: 'line',
+                                data: {
+                                    labels: @js($this->salesTrend->pluck('date')->toArray()),
+                                    datasets: [{
+                                        label: 'Units Sold',
+                                        data: @js($this->salesTrend->pluck('quantity')->toArray()),
+                                        borderColor: 'rgb(59, 130, 246)',
+                                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                        fill: true,
+                                        tension: 0.4
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: { display: false },
+                                        tooltip: {
+                                            enabled: true,
+                                            mode: 'index',
+                                            intersect: false,
+                                            callbacks: {
+                                                afterBody: function(context) {
+                                                    const index = context[0].dataIndex;
+                                                    const revenue = revenueData[index];
+                                                    return 'Revenue: £' + revenue.toFixed(2);
+                                                }
+                                            }
+                                        }
+                                    },
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: { precision: 0 },
+                                            grid: { color: 'rgba(0,0,0,0.05)' }
+                                        },
+                                        x: { grid: { display: false } }
+                                    }
+                                }
+                            });
+                        },
+                        destroy() {
+                            if (this.chart) {
+                                this.chart.destroy();
+                                this.chart = null;
+                            }
+                        }
+                    }"
+                    class="h-64"
+                >
+                    <canvas x-ref="canvas"></canvas>
+                </div>
+            @endif
         </div>
 
         {{-- Two Column Layout --}}
@@ -246,88 +416,6 @@
                         <p>No recent orders</p>
                     </div>
                 @endif
-            </div>
-        </div>
-
-        {{-- Detailed Analysis --}}
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-            <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100 mb-6">
-                Detailed Analysis
-            </flux:heading>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {{-- Profit Analysis --}}
-                <div class="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                    <div class="flex items-center gap-3 mb-3">
-                        <flux:icon name="currency-pound" class="size-6 text-green-600 dark:text-green-400" />
-                        <h3 class="font-medium text-green-900 dark:text-green-100">Profit Analysis</h3>
-                    </div>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-green-700 dark:text-green-300">Revenue:</span>
-                            <span class="font-medium text-green-900 dark:text-green-100">£{{ number_format($this->profitAnalysis['total_revenue'], 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-green-700 dark:text-green-300">Cost:</span>
-                            <span class="font-medium text-green-900 dark:text-green-100">£{{ number_format($this->profitAnalysis['total_cost'], 2) }}</span>
-                        </div>
-                        <div class="flex justify-between border-t border-green-200 dark:border-green-800 pt-2">
-                            <span class="text-green-700 dark:text-green-300">Profit:</span>
-                            <span class="font-bold text-green-900 dark:text-green-100">£{{ number_format($this->profitAnalysis['total_profit'], 2) }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Pricing Analysis --}}
-                <div class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                    <div class="flex items-center gap-3 mb-3">
-                        <flux:icon name="tag" class="size-6 text-blue-600 dark:text-blue-400" />
-                        <h3 class="font-medium text-blue-900 dark:text-blue-100">Pricing Analysis</h3>
-                    </div>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-blue-700 dark:text-blue-300">Avg Selling Price:</span>
-                            <span class="font-medium text-blue-900 dark:text-blue-100">£{{ number_format($this->profitAnalysis['avg_selling_price'], 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-blue-700 dark:text-blue-300">Avg Unit Cost:</span>
-                            <span class="font-medium text-blue-900 dark:text-blue-100">£{{ number_format($this->profitAnalysis['avg_unit_cost'], 2) }}</span>
-                        </div>
-                        <div class="flex justify-between border-t border-blue-200 dark:border-blue-800 pt-2">
-                            <span class="text-blue-700 dark:text-blue-300">Markup:</span>
-                            <span class="font-bold text-blue-900 dark:text-blue-100">
-                                {{ $this->profitAnalysis['avg_unit_cost'] > 0 ? number_format((($this->profitAnalysis['avg_selling_price'] - $this->profitAnalysis['avg_unit_cost']) / $this->profitAnalysis['avg_unit_cost']) * 100, 1) : 0 }}%
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Stock Analysis --}}
-                <div class="p-4 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
-                    <div class="flex items-center gap-3 mb-3">
-                        <flux:icon name="archive-box" class="size-6 text-orange-600 dark:text-orange-400" />
-                        <h3 class="font-medium text-orange-900 dark:text-orange-100">Stock Analysis</h3>
-                    </div>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-orange-700 dark:text-orange-300">Current Stock:</span>
-                            <span class="font-medium text-orange-900 dark:text-orange-100">{{ number_format($this->stockInfo['current_stock']) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-orange-700 dark:text-orange-300">Minimum Stock:</span>
-                            <span class="font-medium text-orange-900 dark:text-orange-100">{{ number_format($this->stockInfo['minimum_stock']) }}</span>
-                        </div>
-                        <div class="flex justify-between border-t border-orange-200 dark:border-orange-800 pt-2">
-                            <span class="text-orange-700 dark:text-orange-300">Status:</span>
-                            <flux:badge 
-                                color="{{ $this->stockInfo['stock_status'] === 'out_of_stock' ? 'red' : ($this->stockInfo['stock_status'] === 'low_stock' ? 'yellow' : 'green') }}" 
-                                size="sm"
-                            >
-                                {{ ucfirst(str_replace('_', ' ', $this->stockInfo['stock_status'])) }}
-                            </flux:badge>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 

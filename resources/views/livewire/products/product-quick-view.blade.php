@@ -1,15 +1,16 @@
-@if($this->productDetails)
-    @php
-        $details = $this->productDetails;
-        $product = $details['product'];
-        $profit = $details['profit_analysis'];
-        $channels = $details['channel_performance'];
-        $stock = $details['stock_info'];
-    @endphp
+<div>
+    @if($this->productDetails)
+        @php
+            $details = $this->productDetails;
+            $product = $details['product'];
+            $profit = $details['profit_analysis'];
+            $channels = $details['channel_performance'];
+            $stock = $details['stock_info'];
+        @endphp
 
-    {{-- Sales Chart Section --}}
-    @if($showChart)
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6 mb-6">
+        {{-- Sales Chart Section --}}
+        @if($showChart)
+            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6 mb-6">
             <div class="flex items-center justify-between mb-6">
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
                     Sales Trend: {{ $product->title ?? 'Selected Product' }}
@@ -118,4 +119,5 @@
             @endif
         </div>
     </div>
-@endif
+    @endif
+</div>

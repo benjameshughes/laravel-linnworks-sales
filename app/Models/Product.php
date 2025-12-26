@@ -258,7 +258,7 @@ final class Product extends Model
     {
         return Attribute::make(
             get: fn () => $this->orderItems
-                ->filter(fn ($item) => $item->order && $item->order->received_date >= now()->subDays(30)
+                ->filter(fn ($item) => $item->order && $item->order->received_at >= now()->subDays(30)
                 )->isNotEmpty()
         );
     }

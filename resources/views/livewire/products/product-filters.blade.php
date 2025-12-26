@@ -7,6 +7,12 @@
                     <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">Product Analytics</flux:heading>
                     <div class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 mt-1">
                         <span>{{ $this->periodSummary->get('period_label') }}</span>
+                        @if($this->lastWarmedAt)
+                            <span class="text-zinc-400 dark:text-zinc-500">·</span>
+                            <span class="text-zinc-500 dark:text-zinc-400" title="Data last updated {{ $this->lastWarmedAt }}">
+                                Updated {{ \Carbon\Carbon::parse($this->lastWarmedAt)->diffForHumans() }}
+                            </span>
+                        @endif
                     </div>
                 </div>
             </div>

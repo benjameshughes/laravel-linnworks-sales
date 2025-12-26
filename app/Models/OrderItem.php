@@ -257,7 +257,7 @@ class OrderItem extends Model
     public function scopeByDateRange(Builder $query, Carbon|string $startDate, Carbon|string $endDate): Builder
     {
         return $query->whereHas('order', function (Builder $q) use ($startDate, $endDate) {
-            $q->whereBetween('received_date', [$startDate, $endDate]);
+            $q->whereBetween('received_at', [$startDate, $endDate]);
         });
     }
 

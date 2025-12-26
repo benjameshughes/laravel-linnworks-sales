@@ -9,6 +9,7 @@ use App\Services\ProductAnalyticsService;
 use App\Services\ProductFilterService;
 use App\ValueObjects\FilterCriteria;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -254,6 +255,14 @@ final class ProductFilters extends Component
     public function currentSearchType(): SearchType
     {
         return SearchType::tryFrom($this->searchType) ?? SearchType::COMBINED;
+    }
+
+    #[Computed]
+    public function lastWarmedAt(): ?string
+    {
+        $cached = Cache::get("product_metrics_{$this->period}d");
+
+        return $cached['warmed_at'] ?? null;
     }
 
     public function render()

@@ -22,6 +22,14 @@ final class ProductAnalyticsService
 
     public function getMetrics(int $period = 30, ?string $search = null, ?string $category = null): array
     {
+        // Check for pre-warmed cache first (no search/category filter)
+        if ($search === null && $category === null) {
+            $warmedCache = Cache::get("product_metrics_{$period}d");
+            if ($warmedCache && isset($warmedCache['metrics'])) {
+                return $warmedCache['metrics'];
+            }
+        }
+
         $cacheKey = $this->getCacheKey('metrics', $period, $search, $category);
 
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($period, $search, $category) {
@@ -46,6 +54,14 @@ final class ProductAnalyticsService
 
     public function getTopSellingProducts(int $period = 30, ?string $search = null, ?string $category = null, int $limit = 20): Collection
     {
+        // Check for pre-warmed cache first (no search/category filter)
+        if ($search === null && $category === null && $limit <= 100) {
+            $warmedCache = Cache::get("product_metrics_{$period}d");
+            if ($warmedCache && isset($warmedCache['top_products'])) {
+                return collect($warmedCache['top_products'])->take($limit);
+            }
+        }
+
         $cacheKey = $this->getCacheKey('top_products', $period, $search, $category, $limit);
 
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($search, $category, $limit) {
@@ -92,6 +108,12 @@ final class ProductAnalyticsService
 
     public function getTopCategories(int $period = 30): Collection
     {
+        // Check for pre-warmed cache first
+        $warmedCache = Cache::get("product_metrics_{$period}d");
+        if ($warmedCache && isset($warmedCache['categories'])) {
+            return collect($warmedCache['categories']);
+        }
+
         $cacheKey = $this->getCacheKey('top_categories', $period);
 
         return Cache::remember($cacheKey, self::CACHE_TTL, function () {
@@ -105,6 +127,13 @@ final class ProductAnalyticsService
 
     public function getStockAlerts(): Collection
     {
+        // Check for any pre-warmed cache (stock alerts are period-independent)
+        // Use 7d as the default period to check
+        $warmedCache = Cache::get('product_metrics_7d');
+        if ($warmedCache && isset($warmedCache['stock_alerts'])) {
+            return collect($warmedCache['stock_alerts']);
+        }
+
         return Cache::remember('stock_alerts', self::CACHE_TTL, function () {
             return $this->productRepository->getLowStockProducts(10)
                 ->map(function ($product) {
@@ -271,37 +300,5 @@ final class ProductAnalyticsService
         $cleanParams = array_filter($params, fn ($p) => $p !== null && $p !== '');
 
         return self::CACHE_PREFIX.'_'.$type.'_'.md5(serialize($cleanParams));
-    }
-
-    /**
-     * Check if the cache store supports tagging
-     */
-    private function supportsTagging(): bool
-    {
-        return method_exists(Cache::getStore(), 'tags');
-    }
-
-    /**
-     * Remember with tags if supported, otherwise use regular cache
-     */
-    private function cacheRemember(string $key, int $ttl, callable $callback, array $tags = [])
-    {
-        if ($this->supportsTagging() && ! empty($tags)) {
-            return Cache::tags($tags)->remember($key, $ttl, $callback);
-        }
-
-        return Cache::remember($key, $ttl, $callback);
-    }
-
-    /**
-     * Enhanced cache invalidation
-     */
-    private function forgetCacheWithTags(string $key, array $tags = []): void
-    {
-        if ($this->supportsTagging() && ! empty($tags)) {
-            Cache::tags($tags)->forget($key);
-        } else {
-            Cache::forget($key);
-        }
     }
 }
