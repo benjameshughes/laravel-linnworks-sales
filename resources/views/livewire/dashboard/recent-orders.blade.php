@@ -1,8 +1,8 @@
 <div wire:loading.class="opacity-50">
     <div class="flex items-center justify-between mb-3">
         <div>
-            <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">Recent Orders</flux:heading>
-            <p class="text-sm text-zinc-500 mt-1">
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Recent Orders</span>
+            <p class="text-xs text-zinc-500 mt-0.5">
                 Showing {{ $this->recentOrders->count() }} of {{ number_format($this->totalOrders) }} orders
             </p>
         </div>
@@ -34,8 +34,8 @@
                             <div class="text-xs text-zinc-500 mt-1">{{ $order->subsource }}</div>
                         @endif
                     </flux:table.cell>
-                    <flux:table.cell variant="strong">
-                        £{{ number_format($order->total_charge, 2) }}
+                    <flux:table.cell>
+                        <span class="font-semibold text-emerald-600 dark:text-emerald-400">£{{ number_format($order->total_charge, 2) }}</span>
                     </flux:table.cell>
                     <flux:table.cell>
                         <flux:badge color="{{ $order->status ? 'blue' : 'zinc' }}" size="sm">
@@ -46,9 +46,9 @@
             @empty
                 <flux:table.row>
                     <flux:table.cell colspan="5" class="text-center py-12">
-                        <flux:icon name="shopping-bag" class="size-12 mx-auto mb-4 text-zinc-300 dark:text-zinc-600" />
-                        <p class="text-lg font-medium text-zinc-500">No orders found</p>
-                        <p class="text-sm text-zinc-500">Try adjusting your filters or sync some orders</p>
+                        <flux:icon name="shopping-bag" class="size-10 mx-auto mb-3 text-zinc-300 dark:text-zinc-600" />
+                        <p class="text-sm font-medium text-zinc-500">No orders found</p>
+                        <p class="text-xs text-zinc-400">Try adjusting your filters or sync some orders</p>
                     </flux:table.cell>
                 </flux:table.row>
             @endforelse
