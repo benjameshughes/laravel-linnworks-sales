@@ -4,16 +4,24 @@
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             {{-- Left: Info --}}
             <div class="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                {{-- Clickable date range to open custom modal --}}
-                <flux:modal.trigger name="custom-date-range">
-                    <button type="button" class="inline-flex items-center gap-1.5 px-2 py-1 -mx-2 -my-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors group cursor-pointer">
-                        <flux:icon name="calendar-days" class="size-4 text-zinc-400 group-hover:text-blue-500 transition-colors" />
-                        <span class="group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{{ $this->formattedDateRange }}</span>
-                        @if($period === 'custom')
-                            <flux:badge color="blue" size="sm">Custom</flux:badge>
-                        @endif
-                    </button>
-                </flux:modal.trigger>
+                {{-- Inline date-picker with custom trigger --}}
+                <flux:date-picker
+                    wire:model.live="dateRange"
+                    wire:change="applyCustomRange"
+                    mode="range"
+                    with-presets
+                    max="{{ now()->format('Y-m-d') }}"
+                >
+                    <x-slot name="trigger">
+                        <flux:button variant="ghost" size="sm" class="gap-1.5 -mx-1 font-normal text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">
+                            <flux:icon name="calendar-days" variant="outline" class="size-4" />
+                            <span>{{ $this->formattedDateRange }}</span>
+                            @if($period === 'custom')
+                                <flux:badge color="blue" size="sm">Custom</flux:badge>
+                            @endif
+                        </flux:button>
+                    </x-slot>
+                </flux:date-picker>
                 <span class="text-zinc-400">•</span>
                 <span class="font-medium text-zinc-900 dark:text-zinc-100 transition-all duration-300"
                       x-data="{ orders: {{ $this->totalOrders }} }"
@@ -193,34 +201,5 @@
             </div>
         @endif
     </div>
-
-    {{-- Custom Date Range Modal --}}
-    <flux:modal name="custom-date-range" class="max-w-sm">
-        <div class="space-y-6">
-            <div>
-                <flux:heading size="lg">Custom Date Range</flux:heading>
-                <flux:subheading>Select a date range for your report</flux:subheading>
-            </div>
-
-            <flux:date-picker
-                wire:model="dateRange"
-                mode="range"
-                with-presets
-                max="{{ now()->format('Y-m-d') }}"
-            />
-
-            <div class="flex justify-end gap-2">
-                <flux:modal.close>
-                    <flux:button variant="subtle">Cancel</flux:button>
-                </flux:modal.close>
-
-                <flux:modal.close>
-                    <flux:button variant="primary" wire:click="applyCustomRange" icon="check">
-                        Apply Range
-                    </flux:button>
-                </flux:modal.close>
-            </div>
-        </div>
-    </flux:modal>
 
 </div>
