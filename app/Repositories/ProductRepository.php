@@ -234,6 +234,31 @@ final class ProductRepository
         });
     }
 
+    /**
+     * Count distinct products with sales in a period (DB aggregation, no limit).
+     */
+    public function countProductsWithSales(int $period, ?string $search = null, ?string $category = null): int
+    {
+        $fromDate = Carbon::now()->subDays($period);
+        $toDate = Carbon::now();
+
+        $query = OrderItem::query()
+            ->whereHas('order', fn ($q) => $q->whereBetween('received_at', [$fromDate, $toDate]));
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('item_title', 'LIKE', '%'.$search.'%')
+                    ->orWhere('sku', 'LIKE', '%'.$search.'%');
+            });
+        }
+
+        if ($category) {
+            $query->where('category_name', $category);
+        }
+
+        return $query->distinct('sku')->count('sku');
+    }
+
     private function calculateItemRevenue(OrderItem $item): float
     {
         $lineTotal = (float) $item->line_total;

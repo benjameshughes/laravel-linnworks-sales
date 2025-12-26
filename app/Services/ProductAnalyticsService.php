@@ -40,8 +40,11 @@ final class ProductAnalyticsService
             $categories = $this->getTopCategories($period);
             $stockAlerts = $this->getStockAlerts();
 
+            // Use DB count for accurate total (not limited by collection size)
+            $totalProducts = $this->productRepository->countProductsWithSales($period, $search, $category);
+
             return [
-                'total_products' => $products->count(),
+                'total_products' => $totalProducts,
                 'total_units_sold' => $products->sum('total_sold'),
                 'total_revenue' => $products->sum('total_revenue'),
                 'avg_profit_margin' => $products->where('total_revenue', '>', 0)->avg('profit_margin_percent') ?? 0,
