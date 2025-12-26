@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property-read float $profit
+ * @property-read float $profitMargin
  */
 class OrderItem extends Model
 {

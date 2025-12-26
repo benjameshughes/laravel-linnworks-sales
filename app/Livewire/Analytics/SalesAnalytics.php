@@ -6,6 +6,7 @@ namespace App\Livewire\Analytics;
 
 use App\Factories\Metrics\Sales\SalesFactory;
 use App\Models\Order;
+use App\Services\Metrics\Sales\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -18,6 +19,12 @@ use Livewire\WithPagination;
  * @property-read Collection $orders
  * @property-read SalesFactory $salesMetrics
  * @property-read array $chartData
+ * @property-read string $dateLabel
+ * @property-read int $channelCount
+ * @property-read int $ordersCount
+ * @property-read array|null $bestDay
+ * @property-read array $tabs
+ * @property-read Collection $channelPerformance
  */
 class SalesAnalytics extends Component
 {
@@ -200,6 +207,53 @@ class SalesAnalytics extends Component
     public function availableChannels(): Collection
     {
         return Order::distinct()->pluck('source')->filter()->sort()->values();
+    }
+
+    #[Computed]
+    public function dateLabel(): string
+    {
+        return Carbon::parse($this->startDate)->format('M j, Y').' – '.Carbon::parse($this->endDate)->format('M j, Y');
+    }
+
+    #[Computed]
+    public function channelCount(): int
+    {
+        return is_array($this->selectedChannels) ? count($this->selectedChannels) : 0;
+    }
+
+    #[Computed]
+    public function ordersCount(): int
+    {
+        return $this->orders->count();
+    }
+
+    #[Computed]
+    public function bestDay(): ?array
+    {
+        return app(SalesMetrics::class)->getBestPerformingDay(
+            period: 'custom',
+            channel: 'all',
+            customFrom: $this->startDate,
+            customTo: $this->endDate
+        );
+    }
+
+    #[Computed]
+    public function tabs(): array
+    {
+        return [
+            'overview' => 'Overview',
+            'trends' => 'Trends',
+            'channels' => 'Channels',
+            'orders' => 'Orders',
+            'products' => 'Products',
+        ];
+    }
+
+    #[Computed]
+    public function channelPerformance(): Collection
+    {
+        return $this->salesMetrics->topChannels(limit: 20);
     }
 
     #[Computed]

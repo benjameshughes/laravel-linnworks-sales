@@ -82,4 +82,31 @@ final class SalesRepository
     {
         return Order::with('orderItems')->whereBetween('received_at', [$start, $end])->get();
     }
+
+    /**
+     * Get best performing day using DB aggregation (memory efficient).
+     *
+     * @return array{date: string, revenue: float, orders: int}|null
+     */
+    public function getBestPerformingDayAggregated(Carbon $start, Carbon $end, ?string $channel = null): ?array
+    {
+        /** @var object{date: string, revenue: float, orders: int}|null $result */
+        $result = Order::query()
+            ->selectRaw('DATE(received_at) as date, SUM(total_charge) as revenue, COUNT(*) as orders')
+            ->whereBetween('received_at', [$start, $end])
+            ->when($channel && $channel !== 'all', fn ($q) => $q->where('source', $channel))
+            ->groupByRaw('DATE(received_at)')
+            ->orderByDesc('revenue')
+            ->first();
+
+        if (! $result || $result->revenue <= 0) {
+            return null;
+        }
+
+        return [
+            'date' => $result->date,
+            'revenue' => (float) $result->revenue,
+            'orders' => (int) $result->orders,
+        ];
+    }
 }

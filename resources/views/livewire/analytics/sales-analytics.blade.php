@@ -1,12 +1,4 @@
 <div class="space-y-10">
-    @php
-        use Carbon\Carbon;
-
-        $dateLabel = Carbon::parse($startDate)->format('M j, Y') . ' – ' . Carbon::parse($endDate)->format('M j, Y');
-        $channelCount = is_array($selectedChannels) ? count($selectedChannels) : 0;
-        $ordersCount = $this->orders->count();
-    @endphp
-
     <!-- Page Heading -->
     <div class="flex flex-wrap items-start justify-between gap-6">
         <div class="space-y-2">
@@ -22,9 +14,9 @@
             </div>
             <h1 class="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Sales Analytics</h1>
             <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                Monitoring <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ number_format($ordersCount) }}</span> orders between
-                <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ $dateLabel }}</span>
-                across <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ $channelCount }}</span> channel{{ $channelCount === 1 ? '' : 's' }}.
+                Monitoring <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ number_format($this->ordersCount) }}</span> orders between
+                <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ $this->dateLabel }}</span>
+                across <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ $this->channelCount }}</span> channel{{ $this->channelCount === 1 ? '' : 's' }}.
             </p>
         </div>
 
@@ -77,7 +69,7 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <span class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ $ordersCount }} orders</span>
+                <span class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ $this->ordersCount }} orders</span>
                 <flux:button variant="outline" size="sm" icon="arrow-path" wire:click="resetFilters">Reset</flux:button>
             </div>
         </div>
@@ -109,17 +101,14 @@
             <p class="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">£{{ number_format($this->salesMetrics->averageOrderValue(), 2) }}</p>
         </div>
 
-        @php
-            $bestDay = $this->salesMetrics->bestPerformingDay($this->startDate, $this->endDate);
-        @endphp
-        @if($bestDay)
+        @if($this->bestDay)
             <div class="rounded-2xl border border-primary-200 bg-primary-50 px-5 py-4 shadow-sm dark:border-primary-800 dark:bg-primary-900/20">
                 <div class="flex items-center gap-2">
                     <p class="text-xs font-medium uppercase tracking-wide text-primary-700 dark:text-primary-300">Best day</p>
                     <flux:icon name="star" class="size-3 text-primary-600 dark:text-primary-400" />
                 </div>
-                <p class="mt-1 text-2xl font-semibold text-primary-900 dark:text-primary-50">£{{ number_format($bestDay['revenue'], 2) }}</p>
-                <p class="mt-1 text-xs text-primary-600 dark:text-primary-400">{{ $bestDay['date'] }} • {{ $bestDay['orders'] }} orders</p>
+                <p class="mt-1 text-2xl font-semibold text-primary-900 dark:text-primary-50">£{{ number_format($this->bestDay['revenue'], 2) }}</p>
+                <p class="mt-1 text-xs text-primary-600 dark:text-primary-400">{{ $this->bestDay['date'] }} • {{ $this->bestDay['orders'] }} orders</p>
             </div>
         @endif
 
@@ -154,7 +143,7 @@
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Avg. items/order</p>
                     <p class="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-                        {{ number_format($ordersCount > 0 ? $this->salesMetrics->totalItemsSold() / $ordersCount : 0, 1) }}
+                        {{ number_format($this->ordersCount > 0 ? $this->salesMetrics->totalItemsSold() / $this->ordersCount : 0, 1) }}
                     </p>
                 </div>
                 <div class="rounded-full bg-primary-100 p-3 text-primary-600 dark:bg-primary-900/40 dark:text-primary-300">
@@ -166,18 +155,8 @@
     </div>
 
     <!-- Tabs -->
-    @php
-        $tabs = [
-            'overview' => 'Overview',
-            'trends' => 'Trends',
-            'channels' => 'Channels',
-            'orders' => 'Orders',
-            'products' => 'Products',
-        ];
-    @endphp
-
     <div class="flex flex-wrap items-center gap-2">
-        @foreach($tabs as $key => $label)
+        @foreach($this->tabs as $key => $label)
             <button
                 wire:click="setTab('{{ $key }}')"
                 class="rounded-full border px-4 py-2 text-sm font-medium transition {{ $activeTab === $key
@@ -308,27 +287,20 @@
             </div>
 
             <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-                @php
-                    $channels = $this->salesMetrics->topChannels(limit: 20);
-                    $totalRevenue = $this->salesMetrics->totalRevenue();
-                @endphp
-
-                @forelse($channels as $index => $channel)
+                @forelse($this->channelPerformance as $index => $channel)
                     <button
                         wire:click="toggleChannel('{{ $channel['name'] }}')"
                         class="w-full p-5 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors text-left"
                     >
                         <div class="flex items-start justify-between gap-4">
                             <div class="flex items-start gap-4 flex-1">
-                                @php
-                                    $badgeClass = match($index) {
-                                        0 => 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
-                                        1 => 'bg-accent-100 text-accent-700 dark:bg-accent-900/40 dark:text-accent-300',
-                                        2 => 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300',
-                                        default => 'bg-secondary-100 text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200',
-                                    };
-                                @endphp
-                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold {{ $badgeClass }}">
+                                <span @class([
+                                    'inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold',
+                                    'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300' => $index === 0,
+                                    'bg-accent-100 text-accent-700 dark:bg-accent-900/40 dark:text-accent-300' => $index === 1,
+                                    'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300' => $index === 2,
+                                    'bg-secondary-100 text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200' => $index > 2,
+                                ])>
                                     {{ $index + 1 }}
                                 </span>
 

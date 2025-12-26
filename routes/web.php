@@ -4,6 +4,8 @@ use App\Http\Controllers\LinnworksCallbackController;
 use App\Livewire\Analytics\SalesAnalytics;
 use App\Livewire\Dashboard\ChannelComparison;
 use App\Livewire\Dashboard\SalesDashboard;
+use App\Livewire\OrderDetail;
+use App\Livewire\Orders\OrdersIndex;
 use App\Livewire\ProductDetail;
 use App\Livewire\Products\ProductsIndex;
 use App\Livewire\Reports\ReportComparison;
@@ -24,6 +26,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('analytics', SalesAnalytics::class)->name('analytics');
     Route::get('products', ProductsIndex::class)->name('products.analytics');
     Route::get('products/{sku}', ProductDetail::class)->name('products.detail');
+    Route::get('orders', OrdersIndex::class)->name('orders.analytics');
+    Route::get('orders/{number}', OrderDetail::class)->name('orders.detail');
     Route::get('channels', ChannelComparison::class)->name('channels.comparison');
     Route::get('reports', ReportsIndex::class)->name('reports');
     Route::get('reports/compare', ReportComparison::class)->name('reports.compare');

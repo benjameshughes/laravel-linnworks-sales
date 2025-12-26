@@ -210,29 +210,31 @@ final readonly class SalesMetrics
     }
 
     /**
-     * Calculate the highest revenue on a period
+     * Calculate the highest revenue on a period using DB aggregation (memory efficient).
+     *
+     * @return array{date: string, revenue: float, orders: int}|null
      */
     public function getBestPerformingDay(
         string $period,
         string $channel = 'all',
         ?string $customFrom = null,
         ?string $customTo = null
-    ): Collection|array|null {
+    ): ?array {
         $dates = (new CalculatePeriodDates)($period, $customFrom, $customTo);
-        $orders = $this->salesRepo->getOrdersForPeriod($dates['start'], $dates['end']);
+        $result = $this->salesRepo->getBestPerformingDayAggregated(
+            $dates['start'],
+            $dates['end'],
+            $channel
+        );
 
-        // Filter by channel if not 'all'
-        if ($channel !== 'all') {
-            $orders = $orders->where('source', $channel);
+        if (! $result) {
+            return null;
         }
 
-        // Get daily breakdown
-        $dateRange = (new BuildDateRangeForPeriod)($period, $customFrom, $customTo);
-        $dailyBreakdown = (new BuildDailyBreakdown)($orders, $dateRange);
-
-        // Find the day with highest revenue
-        $bestDay = $dailyBreakdown->sortByDesc('revenue')->first();
-
-        return $bestDay ?: null;
+        return [
+            'date' => Carbon::parse($result['date'])->format('M j, Y'),
+            'revenue' => $result['revenue'],
+            'orders' => $result['orders'],
+        ];
     }
 }
