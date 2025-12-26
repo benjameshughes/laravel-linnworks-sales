@@ -47,6 +47,9 @@ final class DashboardFilters extends Component
 
     public int $rateLimitSeconds = 0;
 
+    // Loading state for custom date range calculations
+    public bool $isLoadingData = false;
+
     public function mount(): void
     {
         $defaultPeriod = config('dashboard.default_period', \App\Enums\Period::SEVEN_DAYS);
@@ -123,6 +126,9 @@ final class DashboardFilters extends Component
             return;
         }
 
+        // Show loading indicator
+        $this->isLoadingData = true;
+
         // Sync the DateRange to our string properties
         $this->syncDateRangeToProperties();
 
@@ -136,6 +142,18 @@ final class DashboardFilters extends Component
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );
+
+        // Clear loading after components have processed (next tick)
+        $this->dispatch('data-loaded')->self();
+    }
+
+    /**
+     * Clear loading state after data is loaded.
+     */
+    #[On('data-loaded')]
+    public function clearLoadingState(): void
+    {
+        $this->isLoadingData = false;
     }
 
     public function syncOrders(): void
