@@ -23,13 +23,13 @@ final class SalesRepository
     }
 
     /**
-     * Recent orders
+     * Recent orders ordered by received_at (most recent first)
      *
      * @params limit<int>
      */
     public function getRecentOrders(int $limit = 50): Collection
     {
-        return Order::latest()->limit($limit)->get();
+        return Order::latest('received_at')->limit($limit)->get();
     }
 
     /**

@@ -73,15 +73,92 @@ final class DashboardFilters extends Component
             $this->customTo = null;
         }
 
-        if (in_array($property, ['period', 'channel', 'status', 'customFrom', 'customTo'])) {
+        // Don't auto-dispatch for custom date changes - wait for Apply button
+        if (in_array($property, ['period', 'channel', 'status']) && $this->period !== 'custom') {
             $this->dispatch('filters-updated',
                 period: $this->period,
                 channel: $this->channel,
                 status: $this->status,
-                customFrom: $this->period === 'custom' ? $this->customFrom : null,
-                customTo: $this->period === 'custom' ? $this->customTo : null
+                customFrom: null,
+                customTo: null
             );
         }
+
+        // For non-custom periods, dispatch immediately on change
+        if (in_array($property, ['channel', 'status']) && $this->period === 'custom' && $this->customFrom && $this->customTo) {
+            $this->dispatch('filters-updated',
+                period: $this->period,
+                channel: $this->channel,
+                status: $this->status,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo
+            );
+        }
+    }
+
+    /**
+     * Apply the custom date range and dispatch filters.
+     */
+    public function applyCustomRange(): void
+    {
+        if (! $this->customFrom || ! $this->customTo) {
+            return;
+        }
+
+        // Validate dates
+        $from = Carbon::parse($this->customFrom);
+        $to = Carbon::parse($this->customTo);
+
+        if ($from->isAfter($to)) {
+            // Swap if reversed
+            $this->customFrom = $to->format('Y-m-d');
+            $this->customTo = $from->format('Y-m-d');
+        }
+
+        // Switch to custom period mode
+        $this->period = 'custom';
+
+        $this->dispatch('filters-updated',
+            period: 'custom',
+            channel: $this->channel,
+            status: $this->status,
+            customFrom: $this->customFrom,
+            customTo: $this->customTo
+        );
+    }
+
+    /**
+     * Set quick date range presets.
+     */
+    public function setQuickRange(string $range): void
+    {
+        $now = Carbon::now();
+
+        [$from, $to] = match ($range) {
+            'this_month' => [
+                $now->copy()->startOfMonth(),
+                $now->copy()->endOfMonth(),
+            ],
+            'last_month' => [
+                $now->copy()->subMonth()->startOfMonth(),
+                $now->copy()->subMonth()->endOfMonth(),
+            ],
+            'this_quarter' => [
+                $now->copy()->startOfQuarter(),
+                $now->copy()->endOfQuarter(),
+            ],
+            'this_year' => [
+                $now->copy()->startOfYear(),
+                $now->copy(),
+            ],
+            default => [
+                $now->copy()->subDays(7),
+                $now->copy(),
+            ],
+        };
+
+        $this->customFrom = $from->format('Y-m-d');
+        $this->customTo = $to->format('Y-m-d');
     }
 
     public function syncOrders(): void

@@ -40,15 +40,18 @@ describe('TopChannels Livewire Component', function () {
     });
 
     it('computes top channels correctly', function () {
+        // Set subsource explicitly to ensure grouping works as expected
         Order::factory()->count(3)->create([
             'received_at' => now()->subDays(3),
             'source' => 'Amazon',
+            'subsource' => null,
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(2)->create([
             'received_at' => now()->subDays(3),
             'source' => 'eBay',
+            'subsource' => null,
             'total_charge' => 150.00,
         ]);
 
@@ -62,7 +65,7 @@ describe('TopChannels Livewire Component', function () {
         expect($topChannels)
             ->toBeInstanceOf(\Illuminate\Support\Collection::class)
             ->toHaveCount(2)
-            ->and($topChannels[0]['source'])
+            ->and($topChannels[0]['channel'])
             ->toBe('Amazon')
             ->and($topChannels[0]['revenue'])
             ->toBe(300.00);
@@ -73,6 +76,7 @@ describe('TopChannels Livewire Component', function () {
             Order::factory()->create([
                 'received_at' => now()->subDays(3),
                 'source' => $channel,
+                'subsource' => null,
                 'total_charge' => 100.00,
             ]);
         }
@@ -101,12 +105,14 @@ describe('TopChannels Livewire Component', function () {
         Order::factory()->create([
             'received_at' => Carbon::parse('2025-01-05'),
             'source' => 'Amazon',
+            'subsource' => null,
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->create([
             'received_at' => Carbon::parse('2025-01-20'),
             'source' => 'eBay',
+            'subsource' => null,
             'total_charge' => 200.00,
         ]);
 
@@ -118,25 +124,28 @@ describe('TopChannels Livewire Component', function () {
         $topChannels = $component->get('topChannels');
 
         expect($topChannels)->toHaveCount(1)
-            ->and($topChannels[0]['source'])->toBe('Amazon');
+            ->and($topChannels[0]['channel'])->toBe('Amazon');
     });
 
     it('sorts channels by revenue descending', function () {
         Order::factory()->create([
             'received_at' => now()->subDays(3),
             'source' => 'Amazon',
+            'subsource' => null,
             'total_charge' => 500.00,
         ]);
 
         Order::factory()->create([
             'received_at' => now()->subDays(3),
             'source' => 'eBay',
+            'subsource' => null,
             'total_charge' => 800.00,
         ]);
 
         Order::factory()->create([
             'received_at' => now()->subDays(3),
             'source' => 'Website',
+            'subsource' => null,
             'total_charge' => 200.00,
         ]);
 
@@ -147,8 +156,8 @@ describe('TopChannels Livewire Component', function () {
 
         $topChannels = $component->get('topChannels');
 
-        expect($topChannels[0]['source'])->toBe('eBay')
-            ->and($topChannels[1]['source'])->toBe('Amazon')
-            ->and($topChannels[2]['source'])->toBe('Website');
+        expect($topChannels[0]['channel'])->toBe('eBay')
+            ->and($topChannels[1]['channel'])->toBe('Amazon')
+            ->and($topChannels[2]['channel'])->toBe('Website');
     });
 });

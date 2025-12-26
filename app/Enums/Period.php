@@ -56,13 +56,16 @@ enum Period: string
     }
 
     /**
-     * Get all periods for dropdown UI
+     * Get all periods for dropdown UI (excludes custom - that's triggered via date click)
      *
      * @return array<Period>
      */
     public static function all(): array
     {
-        return self::cases();
+        return array_filter(
+            self::cases(),
+            fn (Period $period) => $period !== self::CUSTOM
+        );
     }
 
     /**
