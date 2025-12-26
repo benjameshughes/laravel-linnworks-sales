@@ -114,7 +114,7 @@ readonly class ProductBadgeService
 
     private function getQuantityForPeriod(string $sku, DateRange $dateRange): int
     {
-        return OrderItem::query()
+        return (int) OrderItem::query()
             ->where('sku', $sku)
             ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_at', [$dateRange->from, $dateRange->to])
             )
