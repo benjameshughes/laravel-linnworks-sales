@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
+use App\Services\Metrics\ChunkedMetricsCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
@@ -58,16 +58,20 @@ final class DailyRevenueChart extends Component
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Can't cache custom periods
+        // Custom periods: Use ChunkedMetricsCalculator (memory-safe DB aggregation)
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            $dailyBreakdownCollection = app(SalesMetricsService::class)->getDailyRevenueData(
+            $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
+                channel: $this->channel,
+                status: $this->status,
                 customFrom: $this->customFrom,
                 customTo: $this->customTo
             );
 
+            $data = $calculator->calculate();
+
             // Store raw data - Alpine will format for Chart.js
-            $this->dailyBreakdown = $dailyBreakdownCollection->toArray();
+            $this->dailyBreakdown = $data['daily_breakdown'];
 
             return;
         }
