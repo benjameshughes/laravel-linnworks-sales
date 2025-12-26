@@ -6,6 +6,8 @@ namespace App\Livewire\Orders;
 
 use App\Enums\Period;
 use App\Services\Metrics\Orders\OrderService;
+use Carbon\Carbon;
+use Flux\DateRange;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -19,6 +21,7 @@ use Livewire\Component;
  *
  * @property-read Collection $channels
  * @property-read Collection $periods
+ * @property-read string $formattedDateRange
  */
 final class OrderFilters extends Component
 {
@@ -34,27 +37,43 @@ final class OrderFilters extends Component
 
     public ?string $customTo = null;
 
-    public bool $showCustomRange = false;
+    public ?DateRange $dateRange = null;
 
     public function mount(): void
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
+
+        // Initialize date range for the Flux date picker (default to last 7 days)
+        $this->dateRange = new DateRange(
+            Carbon::now()->subDays(7)->startOfDay(),
+            Carbon::now()->endOfDay()
+        );
+
         $this->dispatchFiltersUpdated();
     }
 
     public function updated(string $property): void
     {
-        if (in_array($property, ['period', 'channel', 'status'])) {
-            $this->customFrom = null;
-            $this->customTo = null;
-            $this->showCustomRange = false;
+        // Don't auto-dispatch for dateRange changes - wait for applyCustomRange
+        if (in_array($property, ['channel', 'status'])) {
             $this->dispatchFiltersUpdated();
         }
 
         if ($property === 'search') {
             $this->dispatchFiltersUpdated();
+        }
+    }
+
+    /**
+     * Sync the DateRange object to the customFrom/customTo properties.
+     */
+    private function syncDateRangeToProperties(): void
+    {
+        if ($this->dateRange) {
+            $this->customFrom = $this->dateRange->start()->format('Y-m-d');
+            $this->customTo = $this->dateRange->end()->format('Y-m-d');
         }
     }
 
@@ -72,21 +91,16 @@ final class OrderFilters extends Component
 
     public function applyCustomRange(): void
     {
-        if (! $this->customFrom || ! $this->customTo) {
+        if (! $this->dateRange) {
             return;
         }
 
-        $this->period = 'custom';
-        $this->showCustomRange = true;
-        $this->dispatchFiltersUpdated();
-    }
+        // Sync the DateRange to our string properties
+        $this->syncDateRangeToProperties();
 
-    public function clearCustomRange(): void
-    {
-        $this->customFrom = null;
-        $this->customTo = null;
-        $this->period = '7';
-        $this->showCustomRange = false;
+        // Switch to custom period mode
+        $this->period = 'custom';
+
         $this->dispatchFiltersUpdated();
     }
 
@@ -114,7 +128,15 @@ final class OrderFilters extends Component
         $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
-        $this->showCustomRange = $customFrom !== null && $customTo !== null;
+
+        // Sync the DateRange object if custom dates are provided
+        if ($customFrom && $customTo) {
+            $this->dateRange = new DateRange(
+                Carbon::parse($customFrom)->startOfDay(),
+                Carbon::parse($customTo)->endOfDay()
+            );
+        }
+
         $this->dispatchFiltersUpdated();
     }
 
@@ -129,14 +151,21 @@ final class OrderFilters extends Component
     }
 
     #[Computed]
-    public function periods(): Collection
+    public function formattedDateRange(): string
     {
-        return collect(Period::cases())
-            ->filter(fn (Period $period) => $period->isCacheable() || $period === Period::CUSTOM)
-            ->map(fn (Period $period) => [
-                'value' => $period->value,
-                'label' => $period->label(),
-            ]);
+        if ($this->dateRange) {
+            $start = $this->dateRange->start();
+            $end = $this->dateRange->end();
+
+            // Same year - don't repeat it
+            if ($start->year === $end->year && $start->year === now()->year) {
+                return $start->format('M j').' - '.$end->format('M j');
+            }
+
+            return $start->format('M j, Y').' - '.$end->format('M j, Y');
+        }
+
+        return 'Select dates';
     }
 
     #[Computed]

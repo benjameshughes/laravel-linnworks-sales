@@ -1,7 +1,27 @@
 <div class="flex items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-700">
     <div class="flex items-center gap-2">
         <flux:heading size="xl" class="text-zinc-900 dark:text-zinc-100">Orders</flux:heading>
-        <span class="text-sm text-zinc-400">{{ $this->periodLabel }}</span>
+
+        {{-- Date Picker with custom trigger --}}
+        <flux:date-picker
+            wire:model.live="dateRange"
+            wire:change="applyCustomRange"
+            mode="range"
+            with-presets
+            with-inputs
+            selectable-header
+            max="{{ now()->format('Y-m-d') }}"
+        >
+            <x-slot name="trigger">
+                <flux:button variant="ghost" size="sm" class="gap-1.5 font-normal text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">
+                    <flux:icon name="calendar-days" variant="outline" class="size-4" />
+                    <span>{{ $this->formattedDateRange }}</span>
+                    @if($period === 'custom')
+                        <flux:badge color="blue" size="sm">Custom</flux:badge>
+                    @endif
+                </flux:button>
+            </x-slot>
+        </flux:date-picker>
     </div>
 
     {{-- Inline Filter Bar --}}
@@ -13,14 +33,6 @@
             icon="magnifying-glass"
             class="w-32"
         />
-
-        <flux:select wire:model.live="period" size="sm" class="!w-auto">
-            @foreach($this->periods as $periodOption)
-                <flux:select.option value="{{ $periodOption['value'] }}">
-                    {{ $periodOption['label'] }}
-                </flux:select.option>
-            @endforeach
-        </flux:select>
 
         <flux:select wire:model.live="channel" size="sm" class="!w-auto">
             @foreach($this->channels as $value => $label)
@@ -44,13 +56,3 @@
         />
     </div>
 </div>
-
-{{-- Custom Date Range --}}
-@if($showCustomRange || $period === 'custom')
-    <div class="flex items-end gap-2 pt-3">
-        <flux:input wire:model="customFrom" type="date" size="sm" label="From" class="w-32" />
-        <flux:input wire:model="customTo" type="date" size="sm" label="To" class="w-32" />
-        <flux:button wire:click="applyCustomRange" variant="primary" size="sm">Apply</flux:button>
-        <flux:button wire:click="clearCustomRange" variant="ghost" size="sm">Clear</flux:button>
-    </div>
-@endif
