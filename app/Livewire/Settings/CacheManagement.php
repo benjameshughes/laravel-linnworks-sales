@@ -13,6 +13,9 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
+/**
+ * @property-read array $cacheStatus
+ */
 #[Layout('components.layouts.app')]
 class CacheManagement extends Component
 {

@@ -14,6 +14,15 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/**
+ * @property-read \Illuminate\Support\Collection|null $performance
+ * @property-read \Illuminate\Support\Collection $salesTrend
+ * @property-read \Illuminate\Support\Collection $channelPerformance
+ * @property-read array $profitAnalysis
+ * @property-read \Illuminate\Support\Collection $recentOrders
+ * @property-read \Illuminate\Support\Collection $productBadges
+ * @property-read array $stockInfo
+ */
 #[Layout('components.layouts.app')]
 #[Title('Product Detail')]
 final class ProductDetail extends Component

@@ -258,7 +258,7 @@ class BatchInventoryService
                 $delayMs = $this->calculateRateLimitDelay($chunkSize);
                 if ($delayMs > 0) {
                     Log::debug("Rate limit delay: {$delayMs}ms");
-                    usleep($delayMs * 1000);
+                    usleep((int) ($delayMs * 1000));
                 }
             }
 

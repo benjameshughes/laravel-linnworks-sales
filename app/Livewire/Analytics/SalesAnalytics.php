@@ -13,6 +13,12 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+/**
+ * @property-read Collection $availableChannels
+ * @property-read Collection $orders
+ * @property-read SalesFactory $salesMetrics
+ * @property-read array $chartData
+ */
 class SalesAnalytics extends Component
 {
     use WithPagination;

@@ -14,12 +14,29 @@ use Illuminate\Support\Collection;
 final class SalesRepository
 {
     /**
-     * Get all orders
-     * Probably not best to use this as this will result in a huge amount of data
+     * Get all orders with optional filtering
+     *
+     * @param  int|null  $period  Days to look back (null for all)
+     * @param  string|null  $source  Channel/source filter
+     * @param  int|null  $status  Status filter (0=open, 1=processed, 2=cancelled)
      */
-    public function getAllOrders(): Collection
+    public function getAllOrders(?int $period = null, ?string $source = null, ?int $status = null): Collection
     {
-        return Order::all();
+        $query = Order::query();
+
+        if ($period !== null) {
+            $query->where('received_at', '>=', Carbon::now()->subDays($period));
+        }
+
+        if ($source !== null) {
+            $query->where('source', $source);
+        }
+
+        if ($status !== null) {
+            $query->where('status', $status);
+        }
+
+        return $query->get();
     }
 
     /**

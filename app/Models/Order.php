@@ -12,9 +12,49 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 
 /**
+ * @property int $id
+ * @property string|null $order_id
+ * @property string|null $number
+ * @property string|null $linnworks_order_id
+ * @property string|null $order_number
+ * @property \Carbon\Carbon|null $received_at
+ * @property \Carbon\Carbon|null $processed_at
+ * @property \Carbon\Carbon|null $paid_at
+ * @property \Carbon\Carbon|null $despatch_by_at
+ * @property string|null $source
+ * @property string|null $subsource
+ * @property string|null $currency
+ * @property float $total_charge
+ * @property float|null $postage_cost
+ * @property float|null $postage_cost_ex_tax
+ * @property float|null $tax
+ * @property float|null $profit_margin
+ * @property float|null $total_discount
+ * @property int $status
+ * @property bool $is_paid
+ * @property bool $is_cancelled
+ * @property string|null $payment_method
+ * @property string|null $channel_reference_number
+ * @property int|null $num_items
+ * @property int|null $count
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
  * @property-read Collection $items_collection
  * @property-read float $net_profit
  * @property-read int $age_in_days
+ * @property-read string $channel_display
+ * @property-read int $total_items
+ * @property-read bool $is_open
+ * @property-read float $profit_margin_percentage
+ * @property-read string $formatted_total
+ * @property-read bool $is_recent
+ * @property-read string $status_color
+ * @property-read bool $is_profitable
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $orderItems
+ * @property-read \App\Models\OrderShipping|null $shipping
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderNote> $notes
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderProperty> $properties
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderIdentifier> $identifiers
  */
 class Order extends Model
 {

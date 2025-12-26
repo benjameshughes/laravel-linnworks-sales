@@ -6,6 +6,11 @@ use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
+/**
+ * @property-read \Illuminate\Support\Collection $channelComparison
+ * @property-read array|null $channelDetails
+ * @property-read array $chartData
+ */
 class ChannelComparison extends Component
 {
     public string $period = '30';

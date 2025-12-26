@@ -8,6 +8,29 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string|null $application_id
+ * @property string|null $application_secret
+ * @property string|null $access_token
+ * @property string|null $session_token
+ * @property string|null $server_location
+ * @property \Carbon\Carbon|null $session_expires_at
+ * @property bool $is_active
+ * @property string|null $status
+ * @property array|null $application_data
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property-read int|null $preferred_open_orders_view_id
+ * @property-read string|null $preferred_open_orders_location_id
+ * @property-read bool $is_session_valid
+ * @property-read bool $needs_new_session
+ * @property-read string $session_expires_in
+ * @property-read string $connection_status
+ * @property-read string $status_color
+ * @property-read \App\Models\User $user
+ */
 class LinnworksConnection extends Model
 {
     use HasFactory;

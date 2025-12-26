@@ -21,6 +21,9 @@ use Livewire\Component;
  * 4. This component listens and refreshes from database
  *
  * Single source of truth: SyncLog model
+ *
+ * @property-read \App\Models\SyncLog|null $syncLog
+ * @property-read array $recentSyncs
  */
 class ImportProgress extends Component
 {

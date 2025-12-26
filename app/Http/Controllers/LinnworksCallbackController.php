@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response as BaseResponse;
 
 class LinnworksCallbackController extends Controller
 {
@@ -18,7 +19,7 @@ class LinnworksCallbackController extends Controller
     /**
      * Handle Linnworks installation callback (postback)
      */
-    public function handleCallback(Request $request): Response
+    public function handleCallback(Request $request): BaseResponse
     {
         try {
             // Log everything for debugging
@@ -67,12 +68,17 @@ class LinnworksCallbackController extends Controller
                 ], 400);
             }
 
-            // For most apps, we don't need the secret for the callback
-            // The secret is only needed for API calls, not for receiving the token
-            $applicationSecret = config('linnworks.application_secret', 'not_required_for_callback');
+            // Get credentials from config for the connection
+            $applicationIdConfig = config('linnworks.application_id');
+            $applicationSecretConfig = config('linnworks.application_secret');
 
             // Create the connection using new service
-            $connection = $this->authService->createConnection($ourUserId, $token);
+            $connection = $this->authService->createConnection(
+                $ourUserId,
+                $applicationId,
+                $applicationSecretConfig,
+                $token
+            );
 
             if (! $connection) {
                 Log::error('Failed to create Linnworks connection', [
@@ -124,6 +130,9 @@ class LinnworksCallbackController extends Controller
         }
 
         $applicationId = config('linnworks.application_id');
+        $applicationSecret = config('linnworks.application_secret');
+        $redirectUri = config('linnworks.redirect_uri', route('linnworks.callback'));
+
         if (! $applicationId) {
             abort(500, 'Linnworks application not configured');
         }
@@ -132,7 +141,11 @@ class LinnworksCallbackController extends Controller
         $tracking = 'user_'.$user->id;
 
         // Generate installation URL using new service
-        $installUrl = $this->authService->generateInstallUrl();
+        $installUrl = $this->authService->generateInstallUrl(
+            $applicationId,
+            $applicationSecret,
+            $redirectUri
+        );
 
         // Add tracking parameter
         $installUrlWithTracking = "{$installUrl}&Tracking={$tracking}";

@@ -13,6 +13,38 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Scout\Searchable;
 
+/**
+ * @property int $id
+ * @property string|null $linnworks_id
+ * @property string $sku
+ * @property string|null $title
+ * @property string|null $description
+ * @property string|null $category_id
+ * @property string|null $category_name
+ * @property string|null $brand
+ * @property float|null $purchase_price
+ * @property float|null $retail_price
+ * @property float|null $weight
+ * @property array|null $dimensions
+ * @property string|null $barcode
+ * @property int $stock_level
+ * @property int $stock_minimum
+ * @property int $stock_in_orders
+ * @property int $stock_due
+ * @property int $stock_available
+ * @property bool $is_active
+ * @property \Carbon\Carbon|null $created_date
+ * @property array|null $metadata
+ * @property \Carbon\Carbon|null $last_synced_at
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property-read int $total_sold
+ * @property-read float $total_revenue
+ * @property-read float $average_selling_price
+ * @property-read bool $is_low_stock
+ * @property-read bool $is_out_of_stock
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $orderItems
+ */
 final class Product extends Model
 {
     use HasFactory, Searchable;

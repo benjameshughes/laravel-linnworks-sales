@@ -21,6 +21,8 @@ use Livewire\WithPagination;
  *
  * Main product listing with sorting and pagination.
  * Listens for 'products-filters-updated' event to refresh data.
+ *
+ * @property-read Collection $topSellingProducts
  */
 final class ProductsTable extends Component
 {

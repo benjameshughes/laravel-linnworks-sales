@@ -6,6 +6,9 @@ use Carbon\Carbon;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Collection;
 
+/**
+ * @property-read int|null $orderNumber Alias for $number
+ */
 readonly class LinnworksOrder implements Arrayable
 {
     public function __construct(
@@ -333,7 +336,11 @@ readonly class LinnworksOrder implements Arrayable
 
     public function daysSinceReceived(): ?int
     {
-        return $this->receivedDate?->diffInDays(now());
+        if ($this->receivedDate === null) {
+            return null;
+        }
+
+        return (int) $this->receivedDate->diffInDays(now());
     }
 
     public function channel(): string

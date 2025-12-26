@@ -9,6 +9,26 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $sync_type
+ * @property string|null $source
+ * @property \Carbon\Carbon|null $last_sync_at
+ * @property \Carbon\Carbon|null $sync_started_at
+ * @property \Carbon\Carbon|null $sync_completed_at
+ * @property string $status
+ * @property int $records_synced
+ * @property int $records_created
+ * @property int $records_updated
+ * @property int $records_failed
+ * @property array|null $metadata
+ * @property string|null $error_message
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property-read int|null $sync_duration
+ * @property-read float $success_rate
+ * @property-read bool $is_successful
+ */
 class SyncCheckpoint extends Model
 {
     protected $fillable = [

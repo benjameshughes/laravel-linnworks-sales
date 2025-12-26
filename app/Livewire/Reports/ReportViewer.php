@@ -13,6 +13,9 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+/**
+ * @property-read AbstractReport|null $report
+ */
 class ReportViewer extends Component
 {
     use WithPagination;

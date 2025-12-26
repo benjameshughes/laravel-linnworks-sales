@@ -8,6 +8,10 @@ use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
+/**
+ * @property-read AbstractReport|null $reportA
+ * @property-read AbstractReport|null $reportB
+ */
 class ReportComparison extends Component
 {
     public ?string $reportClassA = null;

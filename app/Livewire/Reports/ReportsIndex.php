@@ -13,6 +13,12 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+/**
+ * @property-read \App\Reports\AbstractReport|null $selectedReport
+ * @property-read array $reportFilters
+ * @property-read \Illuminate\Support\Collection $availableReports
+ * @property-read \Illuminate\Support\Collection $recentExecutions
+ */
 #[Layout('components.layouts.app')]
 class ReportsIndex extends Component
 {

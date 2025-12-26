@@ -13,6 +13,9 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+/**
+ * @property-read Collection $topSellingProducts
+ */
 class ProductAnalytics extends Component
 {
     use WithPagination;

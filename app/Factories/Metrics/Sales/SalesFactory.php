@@ -147,4 +147,95 @@ final class SalesFactory
         // TODO: implement this, for now return a float
         return 9999.99;
     }
+
+    /**
+     * Get line chart data for revenue trend
+     *
+     * @param  string|null  $period  Optional period string (unused, data comes from factory)
+     * @param  string|null  $start  Optional start date (unused, data comes from factory)
+     * @param  string|null  $end  Optional end date (unused, data comes from factory)
+     */
+    public function getLineChartData(?string $period = null, ?string $start = null, ?string $end = null): array
+    {
+        $daily = $this->dailySalesData();
+
+        return [
+            'labels' => $daily->pluck('date')->toArray(),
+            'datasets' => [
+                [
+                    'label' => 'Revenue',
+                    'data' => $daily->pluck('revenue')->toArray(),
+                    'borderColor' => 'rgb(59, 130, 246)',
+                    'tension' => 0.1,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Get bar chart data for order counts
+     *
+     * @param  string|null  $period  Optional period string (unused, data comes from factory)
+     * @param  string|null  $start  Optional start date (unused, data comes from factory)
+     * @param  string|null  $end  Optional end date (unused, data comes from factory)
+     */
+    public function getBarChartData(?string $period = null, ?string $start = null, ?string $end = null): array
+    {
+        $daily = $this->dailySalesData();
+
+        return [
+            'labels' => $daily->pluck('date')->toArray(),
+            'datasets' => [
+                [
+                    'label' => 'Orders',
+                    'data' => $daily->pluck('orders')->toArray(),
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.5)',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Get order count chart data
+     *
+     * @param  string|null  $period  Optional period string (unused, data comes from factory)
+     * @param  string|null  $start  Optional start date (unused, data comes from factory)
+     * @param  string|null  $end  Optional end date (unused, data comes from factory)
+     */
+    public function getOrderCountChartData(?string $period = null, ?string $start = null, ?string $end = null): array
+    {
+        return [
+            'labels' => ['Processed', 'Open'],
+            'datasets' => [
+                [
+                    'data' => [(int) $this->totalProcessedOrders(), (int) $this->totalOpenOrders()],
+                    'backgroundColor' => ['rgb(34, 197, 94)', 'rgb(234, 179, 8)'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Get doughnut chart data for channel breakdown
+     */
+    public function getDoughnutChartData(): array
+    {
+        $channels = $this->topChannels(5);
+
+        return [
+            'labels' => $channels->pluck('name')->toArray(),
+            'datasets' => [
+                [
+                    'data' => $channels->pluck('revenue')->toArray(),
+                    'backgroundColor' => [
+                        'rgb(59, 130, 246)',
+                        'rgb(34, 197, 94)',
+                        'rgb(234, 179, 8)',
+                        'rgb(239, 68, 68)',
+                        'rgb(168, 85, 247)',
+                    ],
+                ],
+            ],
+        ];
+    }
 }
