@@ -10,6 +10,8 @@
                     wire:change="applyCustomRange"
                     mode="range"
                     with-presets
+                    with-inputs
+                    selectable-header
                     max="{{ now()->format('Y-m-d') }}"
                 >
                     <x-slot name="trigger">
