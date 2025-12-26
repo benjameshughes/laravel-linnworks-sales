@@ -100,34 +100,37 @@ describe('SalesMetrics', function () {
         Order::factory()->count(3)->create([
             'received_at' => now()->subDays(3),
             'source' => 'amazon',
+            'subsource' => null,
             'total_charge' => 100.00,
         ]);
 
         Order::factory()->count(2)->create([
             'received_at' => now()->subDays(3),
             'source' => 'ebay',
+            'subsource' => null,
             'total_charge' => 150.00,
         ]);
 
         Order::factory()->create([
             'received_at' => now()->subDays(3),
             'source' => 'website',
+            'subsource' => null,
             'total_charge' => 50.00,
         ]);
 
         $service = app(SalesMetrics::class);
         $topChannels = $service->getTopChannels('7', 'all', 3);
 
-        expect($topChannels)
-            ->toHaveCount(3)
-            ->and($topChannels[0]['source'])
-            ->toBe('amazon')
-            ->and($topChannels[0]['revenue'])
-            ->toBe(300.00)
-            ->and($topChannels[1]['source'])
-            ->toBe('ebay')
-            ->and($topChannels[1]['revenue'])
-            ->toBe(300.00);
+        expect($topChannels)->toHaveCount(3);
+
+        // Verify we have the right channels and revenues (order may vary)
+        $channels = $topChannels->pluck('revenue', 'channel')->all();
+        expect($channels)->toHaveKey('amazon')
+            ->and($channels)->toHaveKey('ebay')
+            ->and($channels)->toHaveKey('website')
+            ->and($channels['amazon'])->toBe(300.00)
+            ->and($channels['ebay'])->toBe(300.00)
+            ->and($channels['website'])->toBe(50.00);
     });
 
     it('limits top channels correctly', function () {

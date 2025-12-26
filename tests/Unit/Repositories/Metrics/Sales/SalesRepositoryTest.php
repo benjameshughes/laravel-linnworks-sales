@@ -57,12 +57,12 @@ describe('SalesRepository', function () {
 
     it('orders recent orders by most recent first', function () {
         $oldOrder = Order::factory()->create([
-            'created_at' => now()->subDays(5),
+            'received_at' => now()->subDays(5),
             'number' => 'OLD',
         ]);
 
         $newOrder = Order::factory()->create([
-            'created_at' => now()->subDay(),
+            'received_at' => now()->subDay(),
             'number' => 'NEW',
         ]);
 
@@ -111,7 +111,7 @@ describe('SalesRepository', function () {
             ->toHaveCount(3);
 
         $orders->each(function ($order) {
-            expect($order->is_processed)->toBeTrue();
+            expect($order->status)->toBe(1);
         });
     });
 

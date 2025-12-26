@@ -46,24 +46,24 @@ describe('BuildDailyBreakdown', function () {
             (object) [
                 'received_at' => Carbon::parse('2025-01-13'),
                 'total_charge' => 100.00,
-                'items' => [
-                    ['sku' => 'ABC123', 'quantity' => 2],
-                    ['sku' => 'DEF456', 'quantity' => 1],
-                ],
+                'orderItems' => collect([
+                    (object) ['sku' => 'ABC123', 'quantity' => 2],
+                    (object) ['sku' => 'DEF456', 'quantity' => 1],
+                ]),
             ],
             (object) [
                 'received_at' => Carbon::parse('2025-01-13'),
                 'total_charge' => 50.00,
-                'items' => [
-                    ['sku' => 'GHI789', 'quantity' => 1],
-                ],
+                'orderItems' => collect([
+                    (object) ['sku' => 'GHI789', 'quantity' => 1],
+                ]),
             ],
             (object) [
                 'received_at' => Carbon::parse('2025-01-14'),
                 'total_charge' => 200.00,
-                'items' => [
-                    ['sku' => 'JKL012', 'quantity' => 5],
-                ],
+                'orderItems' => collect([
+                    (object) ['sku' => 'JKL012', 'quantity' => 5],
+                ]),
             ],
         ]);
 
@@ -108,17 +108,17 @@ describe('BuildDailyBreakdown', function () {
             ->toBe(0);
     });
 
-    it('skips orders without received_date', function () {
+    it('skips orders without received_at', function () {
         $orders = collect([
             (object) [
                 'received_at' => null,
                 'total_charge' => 100.00,
-                'items' => [['sku' => 'ABC123', 'quantity' => 1]],
+                'orderItems' => collect([(object) ['sku' => 'ABC123', 'quantity' => 1]]),
             ],
             (object) [
                 'received_at' => Carbon::parse('2025-01-13'),
                 'total_charge' => 50.00,
-                'items' => [['sku' => 'DEF456', 'quantity' => 1]],
+                'orderItems' => collect([(object) ['sku' => 'DEF456', 'quantity' => 1]]),
             ],
         ]);
 
@@ -154,12 +154,12 @@ describe('BuildDailyBreakdown', function () {
             (object) [
                 'received_at' => Carbon::parse('2025-01-13'),
                 'total_charge' => 100.00,
-                'items' => null,
+                'orderItems' => collect([]),
             ],
             (object) [
                 'received_at' => Carbon::parse('2025-01-13'),
                 'total_charge' => 50.00,
-                'items' => [],
+                'orderItems' => collect([]),
             ],
         ]);
 
@@ -183,12 +183,12 @@ describe('BuildDailyBreakdown', function () {
         expect($result[0]['avg_order_value'])->toBe(0);
     });
 
-    it('handles string received_date correctly', function () {
+    it('handles string received_at correctly', function () {
         $orders = collect([
             (object) [
                 'received_at' => '2025-01-13 10:30:00',
                 'total_charge' => 100.00,
-                'items' => [['sku' => 'ABC123', 'quantity' => 1]],
+                'orderItems' => collect([(object) ['sku' => 'ABC123', 'quantity' => 1]]),
             ],
         ]);
 
@@ -206,12 +206,12 @@ describe('BuildDailyBreakdown', function () {
             (object) [
                 'received_at' => Carbon::parse('2025-01-10'),
                 'total_charge' => 100.00,
-                'items' => [['sku' => 'ABC123', 'quantity' => 1]],
+                'orderItems' => collect([(object) ['sku' => 'ABC123', 'quantity' => 1]]),
             ],
             (object) [
                 'received_at' => Carbon::parse('2025-01-13'),
                 'total_charge' => 50.00,
-                'items' => [['sku' => 'DEF456', 'quantity' => 1]],
+                'orderItems' => collect([(object) ['sku' => 'DEF456', 'quantity' => 1]]),
             ],
         ]);
 
@@ -229,17 +229,17 @@ describe('BuildDailyBreakdown', function () {
             (object) [
                 'received_at' => Carbon::parse('2025-01-13 09:00:00'),
                 'total_charge' => 100.00,
-                'items' => [['sku' => 'ABC', 'quantity' => 1]],
+                'orderItems' => collect([(object) ['sku' => 'ABC', 'quantity' => 1]]),
             ],
             (object) [
                 'received_at' => Carbon::parse('2025-01-13 14:00:00'),
                 'total_charge' => 50.00,
-                'items' => [['sku' => 'DEF', 'quantity' => 2]],
+                'orderItems' => collect([(object) ['sku' => 'DEF', 'quantity' => 2]]),
             ],
             (object) [
                 'received_at' => Carbon::parse('2025-01-13 23:30:00'),
                 'total_charge' => 75.00,
-                'items' => [['sku' => 'GHI', 'quantity' => 1]],
+                'orderItems' => collect([(object) ['sku' => 'GHI', 'quantity' => 1]]),
             ],
         ]);
 
