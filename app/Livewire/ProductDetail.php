@@ -1,13 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire;
 
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Product;
-use App\Services\Metrics\ProductMetrics;
+use App\Services\Metrics\Products\ProductService;
 use App\Services\ProductBadgeService;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -16,7 +16,7 @@ use Livewire\Component;
 
 #[Layout('components.layouts.app')]
 #[Title('Product Detail')]
-class ProductDetail extends Component
+final class ProductDetail extends Component
 {
     public string $sku;
 
@@ -34,142 +34,118 @@ class ProductDetail extends Component
         }
     }
 
+    /**
+     * Main performance data from ProductService - single query, all data.
+     */
     #[Computed]
-    public function metrics(): ProductMetrics
+    public function performance(): ?Collection
     {
-        $fromDate = Carbon::now()->subDays($this->period);
-        $toDate = Carbon::now();
-
-        $orders = Order::whereBetween('received_at', [$fromDate, $toDate])
-            ->whereHas('orderItems', function ($query) {
-                $query->where('sku', $this->sku);
-            })
-            ->with(['orderItems' => function ($query) {
-                $query->where('sku', $this->sku);
-            }])
-            ->get();
-
-        return new ProductMetrics($orders);
+        return app(ProductService::class)->getProductPerformance(
+            sku: $this->sku,
+            period: (string) $this->period
+        );
     }
 
+    /**
+     * Sales trend for chart - derived from performance.
+     */
     #[Computed]
     public function salesTrend(): Collection
     {
-        $fromDate = Carbon::now()->subDays($this->period);
-        $trend = collect();
+        $performance = $this->performance;
 
-        for ($i = $this->period; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i);
-            $dayStart = $date->copy()->startOfDay();
-            $dayEnd = $date->copy()->endOfDay();
-
-            $dayData = OrderItem::where('sku', $this->sku)
-                ->whereHas('order', function ($query) use ($dayStart, $dayEnd) {
-                    $query->whereBetween('received_at', [$dayStart, $dayEnd]);
-                })
-                ->selectRaw('
-                    SUM(quantity) as total_quantity,
-                    SUM(line_total) as total_revenue,
-                    COUNT(DISTINCT order_id) as order_count
-                ')
-                ->first();
-
-            $trend->push([
-                'date' => $date->format('M j'),
-                'full_date' => $date->format('Y-m-d'),
-                'quantity' => $dayData->total_quantity ?? 0,
-                'revenue' => $dayData->total_revenue ?? 0,
-                'orders' => $dayData->order_count ?? 0,
-            ]);
+        if (! $performance || ! $performance->get('daily_sales')) {
+            return collect();
         }
 
-        return $trend;
+        return $performance->get('daily_sales')->map(fn ($day) => [
+            'date' => \Carbon\Carbon::parse($day->date)->format('M j'),
+            'full_date' => $day->date,
+            'quantity' => (int) $day->quantity,
+            'revenue' => (float) $day->revenue,
+            'orders' => 0, // Not available in daily aggregation
+        ]);
     }
 
+    /**
+     * Channel performance - derived from performance.
+     */
     #[Computed]
     public function channelPerformance(): Collection
     {
-        $fromDate = Carbon::now()->subDays($this->period);
-        $toDate = Carbon::now();
+        $performance = $this->performance;
 
-        return OrderItem::where('sku', $this->sku)
-            ->whereHas('order', function ($query) use ($fromDate, $toDate) {
-                $query->whereBetween('received_at', [$fromDate, $toDate]);
-            })
-            ->with('order')
-            ->get()
-            ->groupBy('order.source')
-            ->map(function ($items, $channel) {
-                return [
-                    'channel' => $channel ?? 'Unknown',
-                    'quantity_sold' => $items->sum('quantity'),
-                    'revenue' => $items->sum('line_total'),
-                    'order_count' => $items->unique('order_id')->count(),
-                    'avg_order_value' => $items->count() > 0 ? $items->sum('line_total') / $items->unique('order_id')->count() : 0,
-                ];
-            })
-            ->sortByDesc('revenue')
-            ->values();
+        if (! $performance || ! $performance->get('channel_breakdown')) {
+            return collect();
+        }
+
+        return $performance->get('channel_breakdown')->map(fn ($channel) => [
+            'channel' => $channel->channel ?? 'Unknown',
+            'quantity_sold' => (int) $channel->quantity,
+            'revenue' => (float) $channel->revenue,
+            'order_count' => (int) $channel->order_count,
+            'avg_order_value' => $channel->order_count > 0
+                ? (float) $channel->revenue / $channel->order_count
+                : 0,
+        ])->sortByDesc('revenue')->values();
     }
 
-    #[Computed]
-    public function recentOrders(): Collection
-    {
-        $fromDate = Carbon::now()->subDays($this->period);
-        $toDate = Carbon::now();
-
-        return Order::whereHas('orderItems', function ($query) {
-            $query->where('sku', $this->sku);
-        })
-            ->whereBetween('received_at', [$fromDate, $toDate])
-            ->with(['orderItems' => function ($query) {
-                $query->where('sku', $this->sku);
-            }])
-            ->orderByDesc('received_at')
-            ->limit(10)
-            ->get()
-            ->map(function ($order) {
-                $item = $order->orderItems->first();
-
-                return [
-                    'number' => $order->number,
-                    'date' => $order->received_at->format('M j, Y'),
-                    'channel' => $order->source,
-                    'quantity' => $item->quantity,
-                    'revenue' => $item->line_total,
-                    'price_per_unit' => $item->price_per_unit,
-                ];
-            });
-    }
-
+    /**
+     * Profit analysis - derived from performance.
+     */
     #[Computed]
     public function profitAnalysis(): array
     {
-        $fromDate = Carbon::now()->subDays($this->period);
-        $toDate = Carbon::now();
+        $performance = $this->performance;
 
-        $items = OrderItem::where('sku', $this->sku)
-            ->whereHas('order', function ($query) use ($fromDate, $toDate) {
-                $query->whereBetween('received_at', [$fromDate, $toDate]);
-            })
-            ->get();
+        if (! $performance) {
+            return [
+                'total_revenue' => 0,
+                'total_cost' => 0,
+                'total_profit' => 0,
+                'profit_margin' => 0,
+                'total_sold' => 0,
+                'avg_selling_price' => 0,
+                'avg_unit_cost' => 0,
+            ];
+        }
 
-        $totalRevenue = $items->sum('line_total');
-        $totalCost = $items->sum(function ($item) {
-            return $item->unit_cost * $item->quantity;
-        });
+        $totalRevenue = (float) $performance->get('total_revenue', 0);
+        $totalCost = (float) $performance->get('total_cost', 0);
+        $totalQuantity = (int) $performance->get('total_quantity', 0);
         $totalProfit = $totalRevenue - $totalCost;
-        $profitMargin = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;
 
         return [
             'total_revenue' => $totalRevenue,
             'total_cost' => $totalCost,
             'total_profit' => $totalProfit,
-            'profit_margin' => $profitMargin,
-            'total_sold' => $items->sum('quantity'),
-            'avg_selling_price' => $items->count() > 0 ? $totalRevenue / $items->sum('quantity') : 0,
-            'avg_unit_cost' => $items->count() > 0 ? $totalCost / $items->sum('quantity') : 0,
+            'profit_margin' => $performance->get('margin_percentage') ?? 0,
+            'total_sold' => $totalQuantity,
+            'avg_selling_price' => (float) $performance->get('avg_selling_price', 0),
+            'avg_unit_cost' => $totalQuantity > 0 ? $totalCost / $totalQuantity : 0,
         ];
+    }
+
+    /**
+     * Recent orders - kept as direct query (already efficient with limit).
+     */
+    #[Computed]
+    public function recentOrders(): Collection
+    {
+        return Order::whereHas('orderItems', fn ($query) => $query->where('sku', $this->sku))
+            ->whereBetween('received_at', [now()->subDays($this->period), now()])
+            ->with(['orderItems' => fn ($query) => $query->where('sku', $this->sku)])
+            ->orderByDesc('received_at')
+            ->limit(10)
+            ->get()
+            ->map(fn ($order) => [
+                'number' => $order->number,
+                'date' => $order->received_at->format('M j, Y'),
+                'channel' => $order->source,
+                'quantity' => $order->orderItems->first()->quantity,
+                'revenue' => $order->orderItems->first()->line_total,
+                'price_per_unit' => $order->orderItems->first()->price_per_unit,
+            ]);
     }
 
     #[Computed]
@@ -194,6 +170,9 @@ class ProductDetail extends Component
 
     public function updatedPeriod(): void
     {
+        // Clear cached computed properties when period changes
+        unset($this->performance, $this->salesTrend, $this->channelPerformance, $this->profitAnalysis, $this->recentOrders);
+
         $this->dispatch('period-changed');
     }
 
@@ -206,9 +185,9 @@ class ProductDetail extends Component
             return 'out_of_stock';
         } elseif ($currentStock <= $minimumStock) {
             return 'low_stock';
-        } else {
-            return 'in_stock';
         }
+
+        return 'in_stock';
     }
 
     public function render()
