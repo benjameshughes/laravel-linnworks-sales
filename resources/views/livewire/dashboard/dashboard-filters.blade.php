@@ -190,10 +190,26 @@
             </div>
         </div>
 
-        {{-- Loading indicator for custom date range calculations --}}
+        {{-- Loading indicator for custom date range calculations (delayed to prevent flicker) --}}
         <div
-            x-data="{ show: @entangle('isLoadingData') }"
-            x-show="show"
+            x-data="{
+                isLoading: @entangle('isLoadingData'),
+                showIndicator: false,
+                timeout: null,
+                init() {
+                    this.$watch('isLoading', (value) => {
+                        if (value) {
+                            // Delay showing by 400ms - fast requests won't flicker
+                            this.timeout = setTimeout(() => { this.showIndicator = true }, 400);
+                        } else {
+                            // Clear timeout if request finished before delay
+                            clearTimeout(this.timeout);
+                            this.showIndicator = false;
+                        }
+                    });
+                }
+            }"
+            x-show="showIndicator"
             x-transition:enter="transition ease-out duration-200"
             x-transition:enter-start="opacity-0 -translate-y-2"
             x-transition:enter-end="opacity-100 translate-y-0"
