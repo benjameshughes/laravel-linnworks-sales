@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -112,7 +113,7 @@ class SyncLog extends Model
             return null;
         }
 
-        return $this->completed_at->diffInSeconds($this->started_at);
+        return (int) $this->completed_at->diffInSeconds($this->started_at);
     }
 
     /**
@@ -124,7 +125,7 @@ class SyncLog extends Model
             return null;
         }
 
-        return Carbon::now()->subSeconds($this->duration)->diffForHumans(null, true);
+        return Carbon::now()->subSeconds($this->duration)->diffForHumans(syntax: CarbonInterface::DIFF_ABSOLUTE);
     }
 
     /**

@@ -30,12 +30,12 @@ readonly class DateRange implements JsonSerializable
 
     public function days(): int
     {
-        return $this->from->diffInDays($this->to);
+        return (int) $this->from->diffInDays($this->to);
     }
 
     public function hours(): int
     {
-        return $this->from->diffInHours($this->to);
+        return (int) $this->from->diffInHours($this->to);
     }
 
     public function contains(Carbon $date): bool

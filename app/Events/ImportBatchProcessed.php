@@ -19,7 +19,7 @@ class ImportBatchProcessed
         public int $updated,
         public float $ordersPerSecond,
         public float $memoryMb,
-        public string $timeElapsed,
-        public string $estimatedRemaining
+        public float $timeElapsed,
+        public ?float $estimatedRemaining
     ) {}
 }

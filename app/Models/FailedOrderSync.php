@@ -103,7 +103,7 @@ class FailedOrderSync extends Model
      */
     public function scopeReadyForRetry(Builder $query): Builder
     {
-        return $query->unresolved()
+        return $this->scopeUnresolved($query)
             ->where('next_retry_at', '<=', now())
             ->orderBy('next_retry_at');
     }

@@ -6,6 +6,8 @@ parameters:
         - app/
 
     # Rule level (0-9, 9 is the strictest)
+    # Level 1: 54 errors remaining (mostly Eloquent property PHPDoc annotations needed)
+    # Level 0: Clean baseline
     level: 0
 
     # Don't report unmatched ignored errors

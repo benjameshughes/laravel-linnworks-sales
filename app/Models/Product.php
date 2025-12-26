@@ -453,4 +453,32 @@ final class Product extends Model
     {
         return $query->whereDoesntHave('orderItems');
     }
+
+    /**
+     * Get profit analysis for this product
+     *
+     * @return array{sku: string|null, title: string|null, total_sold: int, total_revenue: float, total_cost: float, total_profit: float, profit_margin_percent: float, avg_selling_price: float, purchase_price: float|null}
+     */
+    public function getProfitAnalysis(): array
+    {
+        $totalSold = $this->orderItems()->sum('quantity');
+        $totalRevenue = $this->orderItems()->sum('line_total');
+        $purchasePrice = $this->purchase_price ?? 0;
+        $totalCost = $totalSold * $purchasePrice;
+        $totalProfit = $totalRevenue - $totalCost;
+        $profitMargin = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;
+        $avgSellingPrice = $totalSold > 0 ? $totalRevenue / $totalSold : 0;
+
+        return [
+            'sku' => $this->sku,
+            'title' => $this->title,
+            'total_sold' => (int) $totalSold,
+            'total_revenue' => (float) $totalRevenue,
+            'total_cost' => $totalCost,
+            'total_profit' => $totalProfit,
+            'profit_margin_percent' => $profitMargin,
+            'avg_selling_price' => $avgSellingPrice,
+            'purchase_price' => $purchasePrice,
+        ];
+    }
 }

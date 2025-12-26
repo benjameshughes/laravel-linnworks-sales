@@ -107,6 +107,29 @@ final class SalesFactory
         return $this->orders->where('status', 1)->sum('total_charge');
     }
 
+    public function openOrdersRevenue(): float
+    {
+        return $this->orders->where('status', 0)->sum('total_charge');
+    }
+
+    /**
+     * Get daily sales breakdown for the current orders
+     */
+    public function dailySalesData(): Collection
+    {
+        return $this->orders
+            ->groupBy(fn ($order) => $order->received_at?->format('Y-m-d') ?? 'unknown')
+            ->map(function ($dayOrders, $date) {
+                return collect([
+                    'date' => $date,
+                    'revenue' => $dayOrders->sum('total_charge'),
+                    'orders' => $dayOrders->count(),
+                ]);
+            })
+            ->sortKeys()
+            ->values();
+    }
+
     public function growthRate(SalesFactory $previousFactory): float
     {
         $currentRevenue = $this->totalRevenue();

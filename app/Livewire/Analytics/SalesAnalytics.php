@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Analytics;
 
+use App\Factories\Metrics\Sales\SalesFactory;
 use App\Models\Order;
-use App\Services\Metrics\Sales\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -185,9 +185,9 @@ class SalesAnalytics extends Component
     }
 
     #[Computed]
-    public function salesMetrics(): SalesMetrics
+    public function salesMetrics(): SalesFactory
     {
-        return new SalesMetrics($this->orders);
+        return new SalesFactory($this->orders);
     }
 
     #[Computed]

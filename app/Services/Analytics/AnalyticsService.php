@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics;
 
+use App\Factories\Metrics\Sales\SalesFactory;
 use App\Models\Order;
-use App\Services\Metrics\Sales\SalesMetrics;
 use App\ValueObjects\Analytics\AnalyticsFilter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -32,9 +32,9 @@ final class AnalyticsService
     /**
      * Get sales metrics for the filtered dataset
      */
-    public function getMetrics(AnalyticsFilter $filter): SalesMetrics
+    public function getMetrics(AnalyticsFilter $filter): SalesFactory
     {
-        return new SalesMetrics($this->getOrders($filter));
+        return new SalesFactory($this->getOrders($filter));
     }
 
     /**
@@ -55,9 +55,9 @@ final class AnalyticsService
     public function getChannelBreakdown(AnalyticsFilter $filter): Collection
     {
         $orders = $this->getOrders($filter);
-        $metrics = new SalesMetrics($orders);
+        $factory = new SalesFactory($orders);
 
-        return $metrics->topChannels(limit: 20)->map(function (Collection $channel) use ($filter) {
+        return $factory->topChannels(limit: 20)->map(function (Collection $channel) use ($filter) {
             return [
                 'name' => $channel['name'],
                 'subsource' => $channel['subsource'] ?? null,
@@ -80,9 +80,9 @@ final class AnalyticsService
     public function getProductBreakdown(AnalyticsFilter $filter, int $limit = 20): Collection
     {
         $orders = $this->getOrders($filter);
-        $metrics = new SalesMetrics($orders);
+        $factory = new SalesFactory($orders);
 
-        return $metrics->topProducts(limit: $limit)->map(function (Collection $product) {
+        return $factory->topProducts(limit: $limit)->map(function (Collection $product) {
             return [
                 'sku' => $product['sku'],
                 'title' => $product['title'],
@@ -102,10 +102,9 @@ final class AnalyticsService
     public function getDailyTrend(AnalyticsFilter $filter): Collection
     {
         $orders = $this->getOrders($filter);
-        $metrics = new SalesMetrics($orders);
-        $days = (string) $filter->dateRange->diffInDays();
+        $factory = new SalesFactory($orders);
 
-        return $metrics->dailySalesData($days);
+        return $factory->dailySalesData();
     }
 
     /**
