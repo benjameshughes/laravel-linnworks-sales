@@ -4,7 +4,7 @@
     <x-settings.layout :heading="__('Import Orders')" :subheading="__('Import historical orders from Linnworks with real-time progress tracking')">
         <div class="my-6 w-full space-y-10">
             {{-- Import Configuration --}}
-            @if (!$isImporting && !$isCompleted)
+            @if (!$this->showProgress)
                 <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                     <div class="flex items-start gap-3">
                         <div class="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
@@ -66,7 +66,27 @@
             @endif
 
             {{-- Progress Display --}}
-            @if ($isImporting || $isCompleted)
+            @if ($this->showProgress && $this->syncLog)
+                @php
+                    $sync = $this->syncLog;
+                    $data = $sync->progress_data ?? [];
+                    $isImporting = $sync->isInProgress();
+                    $isCompleted = !$isImporting;
+                    $success = $sync->isCompleted();
+                    $percentage = $sync->progress_percentage;
+                    $message = $data['message'] ?? ($isCompleted ? ($success ? 'Import completed!' : 'Import failed') : 'Importing...');
+                    $totalProcessed = $data['total_processed'] ?? $sync->total_fetched ?? 0;
+                    $totalOrders = $data['total_expected'] ?? $totalProcessed;
+                    $batchNumber = $data['current_batch'] ?? 0;
+                    $created = $isCompleted ? ($sync->total_created ?? 0) : ($data['created'] ?? 0);
+                    $updated = $isCompleted ? ($sync->total_updated ?? 0) : ($data['updated'] ?? 0);
+                    $totalErrors = $isCompleted ? ($sync->total_failed ?? 0) : ($data['failed'] ?? 0);
+                    $ordersPerSecond = $data['orders_per_second'] ?? 0;
+                    $memoryMb = $data['memory_mb'] ?? 0;
+                    $timeElapsed = $data['time_elapsed'] ?? 0;
+                    $estimatedRemaining = $data['estimated_remaining'] ?? null;
+                @endphp
+
                 <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                     {{-- Status Header --}}
                     <div class="flex items-center justify-between">
@@ -106,7 +126,7 @@
                                     <div class="text-xs text-blue-600 dark:text-blue-400">
                                         {{ number_format($totalProcessed) }}/{{ number_format($totalOrders) }} orders
                                         @if($batchNumber > 0)
-                                            • Batch {{ number_format($batchNumber) }}
+                                            - Batch {{ number_format($batchNumber) }}
                                         @endif
                                     </div>
                                 @endif
@@ -184,25 +204,91 @@
                         </div>
                     @endif
 
-                    {{-- Additional Stats --}}
-                    @if ($totalSkipped > 0 || $startedAt)
+                    {{-- Started At --}}
+                    @if ($sync->started_at)
                         <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4 space-y-2 text-sm">
-                            @if ($totalSkipped > 0)
+                            <div class="flex justify-between">
+                                <span class="text-zinc-600 dark:text-zinc-400">Started at</span>
+                                <span class="font-medium text-zinc-900 dark:text-zinc-100">
+                                    {{ $sync->started_at->format('Y-m-d H:i:s') }}
+                                </span>
+                            </div>
+                            @if ($sync->error_message)
                                 <div class="flex justify-between">
-                                    <span class="text-zinc-600 dark:text-zinc-400">Skipped (already exists)</span>
-                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ number_format($totalSkipped) }}</span>
-                                </div>
-                            @endif
-                            @if ($startedAt)
-                                <div class="flex justify-between">
-                                    <span class="text-zinc-600 dark:text-zinc-400">Started at</span>
-                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">
-                                        {{ \Carbon\Carbon::parse($startedAt)->format('Y-m-d H:i:s') }}
+                                    <span class="text-zinc-600 dark:text-zinc-400">Error</span>
+                                    <span class="font-medium text-red-600 dark:text-red-400">
+                                        {{ Str::limit($sync->error_message, 100) }}
                                     </span>
                                 </div>
                             @endif
                         </div>
                     @endif
+                </x-animations.fade-in-up>
+            @endif
+
+            {{-- Sync History --}}
+            @if (count($syncHistory) > 0)
+                <x-animations.fade-in-up :delay="300" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <flux:heading size="lg">Import History</flux:heading>
+                        <flux:badge color="zinc">{{ count($syncHistory) }} syncs</flux:badge>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-zinc-200 dark:border-zinc-700">
+                                    <th class="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Status</th>
+                                    <th class="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Date Range</th>
+                                    <th class="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Started</th>
+                                    <th class="text-right py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Processed</th>
+                                    <th class="text-right py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Created</th>
+                                    <th class="text-right py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Updated</th>
+                                    <th class="text-right py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Failed</th>
+                                    <th class="text-right py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                @foreach ($syncHistory as $historyItem)
+                                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                                        <td class="py-3 px-2">
+                                            <flux:badge size="sm" :color="$historyItem['status_color']">
+                                                {{ $historyItem['status_label'] }}
+                                            </flux:badge>
+                                        </td>
+                                        <td class="py-3 px-2 text-zinc-600 dark:text-zinc-400">
+                                            {{ $historyItem['date_range'] ?? '-' }}
+                                        </td>
+                                        <td class="py-3 px-2 text-zinc-900 dark:text-zinc-100">
+                                            {{ $historyItem['started_at'] }}
+                                        </td>
+                                        <td class="py-3 px-2 text-right font-medium text-zinc-900 dark:text-zinc-100">
+                                            {{ number_format($historyItem['total_processed']) }}
+                                        </td>
+                                        <td class="py-3 px-2 text-right text-green-600 dark:text-green-400">
+                                            {{ number_format($historyItem['created']) }}
+                                        </td>
+                                        <td class="py-3 px-2 text-right text-amber-600 dark:text-amber-400">
+                                            {{ number_format($historyItem['updated']) }}
+                                        </td>
+                                        <td class="py-3 px-2 text-right {{ $historyItem['failed'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-zinc-500' }}">
+                                            {{ number_format($historyItem['failed']) }}
+                                        </td>
+                                        <td class="py-3 px-2 text-right text-zinc-600 dark:text-zinc-400">
+                                            {{ $historyItem['duration'] ?? '-' }}
+                                        </td>
+                                    </tr>
+                                    @if ($historyItem['error_message'])
+                                        <tr class="bg-red-50 dark:bg-red-900/10">
+                                            <td colspan="8" class="py-2 px-4 text-sm text-red-700 dark:text-red-400">
+                                                <span class="font-medium">Error:</span> {{ Str::limit($historyItem['error_message'], 200) }}
+                                            </td>
+                                        </tr>
+                                    @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </x-animations.fade-in-up>
             @endif
         </div>

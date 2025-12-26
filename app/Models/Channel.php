@@ -26,7 +26,7 @@ class Channel extends Model
 
     public function orders(): HasMany
     {
-        return $this->hasMany(Order::class, 'channel_name', 'name');
+        return $this->hasMany(Order::class, 'source', 'name');
     }
 
     public function getTotalOrdersAttribute(): int

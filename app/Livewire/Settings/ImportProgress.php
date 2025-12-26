@@ -1,129 +1,139 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Settings;
 
 use App\Jobs\SyncHistoricalOrdersJob;
 use App\Models\SyncLog;
+use Carbon\Carbon;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
+/**
+ * Import Progress Component
+ *
+ * Simple flow:
+ * 1. User configures import -> dispatches job
+ * 2. Job updates SyncLog in database
+ * 3. Job broadcasts SyncProgressUpdated/SyncCompleted via Reverb
+ * 4. This component listens and refreshes from database
+ *
+ * Single source of truth: SyncLog model
+ */
 class ImportProgress extends Component
 {
-    public bool $isImporting = false;
-
-    public bool $isCompleted = false;
-
-    public bool $success = false;
-
-    public int $totalProcessed = 0;
-
-    public int $totalImported = 0;
-
-    public int $totalSkipped = 0;
-
-    public int $totalErrors = 0;
-
-    public int $currentPage = 0;
-
-    public int $totalOrders = 0;
-
-    public float $percentage = 0;
-
-    public string $status = 'idle';
-
-    public ?string $message = null;
-
-    // Performance metrics
-    public int $batchNumber = 0;
-
-    public int $totalBatches = 0;
-
-    public int $ordersInBatch = 0;
-
-    public int $created = 0;
-
-    public int $updated = 0;
-
-    public float $ordersPerSecond = 0;
-
-    public float $memoryMb = 0;
-
-    public float $timeElapsed = 0;
-
-    public ?float $estimatedRemaining = null;
-
-    public float $avgSpeed = 0;
-
-    public float $peakMemory = 0;
-
+    // Form inputs
     public string $fromDate = '';
 
     public string $toDate = '';
 
     public int $batchSize = 200;
 
-    public ?string $startedAt = null;
+    // Active sync tracking
+    public ?int $activeSyncId = null;
 
-    public int $currentStage = 1;
+    // Sync history for display
+    public array $syncHistory = [];
+
+    // Version counter to force re-renders on WebSocket events
+    public int $refreshKey = 0;
 
     public function mount(): void
     {
-        // Set default date range (maximum 730 days)
         $this->toDate = now()->format('Y-m-d');
         $this->fromDate = now()->subDays(730)->format('Y-m-d');
 
-        // Load persisted state if there's an active sync
-        $this->loadPersistedState();
+        $this->loadActiveSyncId();
+        $this->loadSyncHistory();
     }
 
     /**
-     * Load persisted sync state from database
+     * The current sync log - single source of truth
      */
-    public function loadPersistedState(): void
+    #[Computed]
+    public function syncLog(): ?SyncLog
     {
-        $activeSync = SyncLog::getActiveSync(SyncLog::TYPE_HISTORICAL_ORDERS);
-
-        if (! $activeSync) {
-            return;
+        if ($this->activeSyncId) {
+            return SyncLog::find($this->activeSyncId);
         }
 
-        // Load progress data if available
-        if ($activeSync->progress_data) {
-            $data = $activeSync->progress_data;
+        // Check for active or recent sync
+        $sync = SyncLog::getActiveSync(SyncLog::TYPE_HISTORICAL_ORDERS)
+            ?? SyncLog::getRecentSync(SyncLog::TYPE_HISTORICAL_ORDERS, 60);
 
-            // Determine current stage (cast to int for strict comparison)
-            $this->currentStage = (int) ($data['stage'] ?? 1);
-
-            // ONLY show UI for Stage 2 (importing)
-            // Stage 1 (streaming IDs) is completely hidden from user
-            if ($this->currentStage === 1) {
-                // Stage 1: Don't show anything to user
-                $this->isImporting = false;
-                $this->isCompleted = false;
-
-                return;
-            }
-
-            // Stage 2: Show import progress
-            $this->isImporting = true;
-            $this->isCompleted = false;
-            $this->startedAt = $activeSync->started_at->toISOString();
-            $this->percentage = $activeSync->progress_percentage;
-            $this->message = $data['message'] ?? 'Importing orders...';
-            $this->totalProcessed = $data['total_processed'] ?? 0;
-            $this->created = $data['created'] ?? 0;
-            $this->updated = $data['updated'] ?? 0;
-            $this->totalErrors = $data['failed'] ?? 0;
-            $this->batchNumber = $data['current_batch'] ?? 0;
-            $this->totalOrders = $data['total_expected'] ?? 0;
-            $this->totalBatches = $data['total_batches'] ?? 0;
-            $this->ordersPerSecond = $data['orders_per_second'] ?? 0;
-            $this->memoryMb = $data['memory_mb'] ?? 0;
-            $this->timeElapsed = $data['time_elapsed'] ?? 0;
-            $this->estimatedRemaining = $data['estimated_remaining'] ?? null;
+        if ($sync) {
+            $this->activeSyncId = $sync->id;
         }
+
+        return $sync;
     }
 
+    /**
+     * Whether to show the import form or progress display
+     */
+    #[Computed]
+    public function showProgress(): bool
+    {
+        $sync = $this->syncLog;
+
+        if (! $sync) {
+            return false;
+        }
+
+        // Show progress for active syncs
+        if ($sync->isInProgress()) {
+            // But hide Stage 1 (ID streaming) from user
+            $stage = $sync->progress_data['stage'] ?? 2;
+
+            return $stage >= 2;
+        }
+
+        // Show completed/failed syncs from the last hour
+        return $sync->started_at->isAfter(now()->subHour());
+    }
+
+    /**
+     * Load the active sync ID if one exists
+     */
+    protected function loadActiveSyncId(): void
+    {
+        $sync = SyncLog::getActiveSync(SyncLog::TYPE_HISTORICAL_ORDERS)
+            ?? SyncLog::getRecentSync(SyncLog::TYPE_HISTORICAL_ORDERS, 60);
+
+        $this->activeSyncId = $sync?->id;
+    }
+
+    /**
+     * Load sync history for display
+     */
+    public function loadSyncHistory(): void
+    {
+        $history = SyncLog::getSyncHistory(SyncLog::TYPE_HISTORICAL_ORDERS, 10);
+
+        $this->syncHistory = $history->map(fn (SyncLog $log) => [
+            'id' => $log->id,
+            'status' => $log->status,
+            'status_label' => $log->status_label,
+            'status_color' => $log->status_color,
+            'started_at' => $log->started_at->format('M j, Y g:i A'),
+            'completed_at' => $log->completed_at?->format('M j, Y g:i A'),
+            'duration' => $log->duration_for_humans,
+            'total_processed' => $log->progress_data['total_processed'] ?? $log->total_fetched ?? 0,
+            'created' => $log->total_created ?? 0,
+            'updated' => $log->total_updated ?? 0,
+            'failed' => $log->total_failed ?? 0,
+            'error_message' => $log->error_message,
+            'date_range' => isset($log->metadata['date_range'])
+                ? $log->metadata['date_range']['from'].' to '.$log->metadata['date_range']['to']
+                : null,
+        ])->toArray();
+    }
+
+    /**
+     * Start the import job
+     */
     public function startImport(): void
     {
         $this->validate([
@@ -132,181 +142,60 @@ class ImportProgress extends Component
             'batchSize' => 'required|integer|min:50|max:200',
         ]);
 
-        $this->reset([
-            'isCompleted',
-            'success',
-            'totalProcessed',
-            'totalImported',
-            'totalSkipped',
-            'totalErrors',
-            'currentPage',
-            'totalOrders',
-            'percentage',
-            'message',
-        ]);
-
-        $this->isImporting = true;
-        $this->status = 'queued';
-        $this->startedAt = now()->toISOString();
-
-        // Dispatch historical import job
         SyncHistoricalOrdersJob::dispatch(
-            fromDate: \Carbon\Carbon::parse($this->fromDate)->startOfDay(),
-            toDate: \Carbon\Carbon::parse($this->toDate)->endOfDay(),
+            fromDate: Carbon::parse($this->fromDate)->startOfDay(),
+            toDate: Carbon::parse($this->toDate)->endOfDay(),
             startedBy: auth()->user()?->name ?? 'UI Import',
         );
 
-        $this->message = 'Historical import queued. Waiting for background workers...';
+        // Clear cached computed property to pick up the new sync
+        unset($this->syncLog);
+        $this->activeSyncId = null;
     }
 
+    /**
+     * Handle sync progress updates from Reverb
+     * Clear computed cache and re-render with fresh data from database
+     */
     #[On('echo:sync-progress,SyncProgressUpdated')]
     public function handleSyncProgress(array $data): void
     {
-        // Only reload state when database has been updated
         $stage = $data['stage'] ?? null;
 
-        // Ignore Stage 1 streaming events (Stage 1 is hidden from UI)
-        if ($stage === 'historical-import') {
+        // Ignore Stage 1 and intermediate events
+        if (in_array($stage, ['historical-import', 'fetching-batch', 'importing-batch'])) {
             return;
         }
 
-        // Ignore intermediate batch events (fired BEFORE database update)
-        if ($stage === 'fetching-batch' || $stage === 'importing-batch') {
-            return;
-        }
+        // Clear computed cache - next render will fetch fresh data
+        unset($this->syncLog);
+        unset($this->showProgress);
 
-        // Handle 'batch-completed' event (fired AFTER database update)
-        if ($stage === 'batch-completed') {
-            $this->loadPersistedState();
-
-            // Force Livewire to detect changes and re-render
-            $this->dispatch('$refresh');
-
-            return;
-        }
-
-        // Fallback: reload for any other events
-        $this->loadPersistedState();
-        $this->dispatch('$refresh');
+        // Increment to trigger Livewire re-render
+        $this->refreshKey++;
     }
 
+    /**
+     * Handle sync completion from Reverb
+     */
     #[On('echo:sync-progress,SyncCompleted')]
     public function handleSyncCompleted(array $data): void
     {
-        $this->isImporting = false;
-        $this->isCompleted = true;
-        $this->success = $data['success'];
-        $this->totalProcessed = $data['processed'];
-        $this->created = $data['created'];
-        $this->updated = $data['updated'];
-        $this->totalErrors = $data['failed'];
-        $this->percentage = $data['success'] ? 100 : $this->percentage;
-        $this->status = $data['success'] ? 'completed' : 'failed';
-        $this->message = $data['success']
-            ? "Import completed! Processed {$data['processed']} orders."
-            : "Import failed after processing {$data['processed']} orders. Check logs for details.";
+        unset($this->syncLog);
+        unset($this->showProgress);
+        $this->loadSyncHistory();
+
+        // Increment to trigger Livewire re-render
+        $this->refreshKey++;
     }
 
-    #[On('echo:import-progress,ImportStarted')]
-    public function handleImportStarted(array $data): void
-    {
-        $this->isImporting = true;
-        $this->isCompleted = false;
-        $this->status = 'processing';
-        $this->totalOrders = $data['total_orders'];
-        $this->startedAt = $data['started_at'];
-        $this->message = "Import started: {$data['total_orders']} orders found";
-    }
-
-    #[On('echo:import-progress,ImportProgressUpdated')]
-    public function handleProgressUpdate(array $data): void
-    {
-        $this->totalProcessed = $data['total_processed'];
-        $this->totalImported = $data['total_imported'];
-        $this->totalSkipped = $data['total_skipped'];
-        $this->totalErrors = $data['total_errors'];
-        $this->currentPage = $data['current_page'];
-        $this->totalOrders = $data['total_orders'];
-        $this->percentage = $data['percentage'];
-        $this->status = $data['status'];
-        $this->message = $data['message'];
-    }
-
-    #[On('echo:orders,import.batch.processed')]
-    public function handleBatchProcessed(array $data): void
-    {
-        $this->batchNumber = $data['batch_number'];
-        $this->totalBatches = $data['total_batches'];
-        $this->ordersInBatch = $data['orders_in_batch'];
-        $this->totalProcessed = $data['total_processed'];
-        $this->created = $data['created'];
-        $this->updated = $data['updated'];
-        $this->ordersPerSecond = $data['orders_per_second'];
-        $this->memoryMb = $data['memory_mb'];
-        $this->timeElapsed = $data['time_elapsed'];
-        $this->estimatedRemaining = $data['estimated_remaining'];
-        $this->percentage = $data['percentage'];
-        $this->message = "Processing batch {$this->batchNumber}/{$this->totalBatches}...";
-    }
-
-    #[On('echo:orders,import.performance.update')]
-    public function handlePerformanceUpdate(array $data): void
-    {
-        $this->totalProcessed = $data['total_processed'];
-        $this->created = $data['created'];
-        $this->updated = $data['updated'];
-        $this->totalErrors = $data['failed'];
-        $this->avgSpeed = $data['avg_speed'];
-        $this->peakMemory = $data['peak_memory'];
-        $this->timeElapsed = $data['duration'];
-        $this->message = $data['current_operation'];
-    }
-
-    #[On('echo:import-progress,ImportCompleted')]
-    public function handleImportCompleted(array $data): void
-    {
-        $this->isImporting = false;
-        $this->isCompleted = true;
-        $this->success = $data['success'];
-        $this->totalProcessed = $data['total_processed'];
-        $this->totalImported = $data['total_imported'];
-        $this->totalSkipped = $data['total_skipped'];
-        $this->totalErrors = $data['total_errors'];
-        $this->percentage = 100;
-        $this->status = $data['success'] ? 'completed' : 'failed';
-        $this->message = $data['success']
-            ? 'Import completed successfully!'
-            : 'Import failed. Check logs for details.';
-    }
-
+    /**
+     * Reset to show the import form again
+     */
     public function resetImport(): void
     {
-        $this->reset([
-            'isImporting',
-            'isCompleted',
-            'success',
-            'totalProcessed',
-            'totalImported',
-            'totalSkipped',
-            'totalErrors',
-            'currentPage',
-            'totalOrders',
-            'percentage',
-            'status',
-            'message',
-            'startedAt',
-            'batchNumber',
-            'totalBatches',
-            'ordersInBatch',
-            'created',
-            'updated',
-            'ordersPerSecond',
-            'memoryMb',
-            'timeElapsed',
-            'estimatedRemaining',
-            'avgSpeed',
-            'peakMemory',
-        ]);
+        $this->activeSyncId = null;
+        unset($this->syncLog);
     }
 
     public function render()

@@ -167,7 +167,7 @@ class OrderItem extends Model
     protected function profit(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->total_price - ($this->cost_price * $this->quantity)
+            get: fn () => $this->line_total - ($this->unit_cost * $this->quantity)
         );
     }
 
@@ -177,7 +177,7 @@ class OrderItem extends Model
     protected function profitMargin(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->total_price == 0 ? 0 : ($this->profit / $this->total_price) * 100
+            get: fn () => $this->line_total == 0 ? 0 : ($this->profit / $this->line_total) * 100
         );
     }
 
@@ -187,7 +187,7 @@ class OrderItem extends Model
     protected function formattedTotalPrice(): Attribute
     {
         return Attribute::make(
-            get: fn () => '£'.number_format($this->total_price, 2)
+            get: fn () => '£'.number_format($this->line_total, 2)
         );
     }
 
@@ -197,7 +197,7 @@ class OrderItem extends Model
     protected function formattedCostPrice(): Attribute
     {
         return Attribute::make(
-            get: fn () => '£'.number_format($this->cost_price, 2)
+            get: fn () => '£'.number_format($this->unit_cost, 2)
         );
     }
 
@@ -263,7 +263,7 @@ class OrderItem extends Model
 
     public function scopeProfitable(Builder $query): Builder
     {
-        return $query->whereRaw('total_price > (cost_price * quantity)');
+        return $query->whereRaw('line_total > (unit_cost * quantity)');
     }
 
     public function scopeHighVolume(Builder $query, int $threshold = 10): Builder

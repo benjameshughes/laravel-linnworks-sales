@@ -177,4 +177,77 @@ class SyncLog extends Model
             ->orderByDesc('started_at')
             ->first();
     }
+
+    /**
+     * Get the most recent sync log regardless of status
+     * Useful for showing completed/failed syncs on page load
+     */
+    public static function getRecentSync(string $type, int $withinMinutes = 60): ?self
+    {
+        return self::where('sync_type', $type)
+            ->where('started_at', '>=', now()->subMinutes($withinMinutes))
+            ->orderByDesc('started_at')
+            ->first();
+    }
+
+    /**
+     * Get sync history for a given type
+     */
+    public static function getSyncHistory(string $type, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return self::where('sync_type', $type)
+            ->orderByDesc('started_at')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Check if sync is in progress
+     */
+    public function isInProgress(): bool
+    {
+        return $this->status === self::STATUS_STARTED;
+    }
+
+    /**
+     * Check if sync completed successfully
+     */
+    public function isCompleted(): bool
+    {
+        return $this->status === self::STATUS_COMPLETED;
+    }
+
+    /**
+     * Check if sync failed
+     */
+    public function isFailed(): bool
+    {
+        return $this->status === self::STATUS_FAILED;
+    }
+
+    /**
+     * Get formatted status for display
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            self::STATUS_STARTED => 'In Progress',
+            self::STATUS_COMPLETED => 'Completed',
+            self::STATUS_FAILED => 'Failed',
+            default => 'Unknown',
+        };
+    }
+
+    /**
+     * Get status color for UI
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match ($this->status) {
+            self::STATUS_STARTED => 'amber',
+            self::STATUS_COMPLETED => 'green',
+            self::STATUS_FAILED => 'red',
+            default => 'zinc',
+        };
+    }
 }

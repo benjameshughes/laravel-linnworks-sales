@@ -156,7 +156,7 @@ class ProductDetail extends Component
 
         $totalRevenue = $items->sum('line_total');
         $totalCost = $items->sum(function ($item) {
-            return $item->cost_price * $item->quantity;
+            return $item->unit_cost * $item->quantity;
         });
         $totalProfit = $totalRevenue - $totalCost;
         $profitMargin = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;

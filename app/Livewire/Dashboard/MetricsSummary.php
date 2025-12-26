@@ -45,6 +45,21 @@ final class MetricsSummary extends Component
         $this->customTo = $customTo;
     }
 
+    /**
+     * Handle cache warming completion - refresh dashboard data
+     *
+     * This is the only event that matters for the dashboard.
+     * When cache is warmed, fresh data is available.
+     */
+    #[On('echo:cache-management,CacheWarmingCompleted')]
+    public function handleCacheWarmingCompleted(array $data): void
+    {
+        // Clear cached computed properties to force fresh data
+        unset($this->metrics);
+        unset($this->dateRange);
+        unset($this->bestDay);
+    }
+
     #[Computed]
     public function metrics(): Collection
     {

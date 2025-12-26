@@ -310,8 +310,11 @@ final readonly class ChunkedMetricsCalculator
             $quantity = (int) $product->quantity;
             $revenue = (float) $product->revenue;
 
-            // Prefer product table title, fall back to item title
-            $title = $products[$product->sku] ?? $product->item_title ?? 'Unknown Product';
+            // Prefer product table title (if real), fall back to item title
+            $productTitle = $products[$product->sku] ?? null;
+            $title = ($productTitle && $productTitle !== 'Unknown Product')
+                ? $productTitle
+                : ($product->item_title ?? 'Unknown Product');
 
             // Wrap in collect() to match SalesMetrics format (blade template expects Collection)
             return collect([

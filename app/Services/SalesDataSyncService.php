@@ -175,21 +175,19 @@ class SalesDataSyncService
         foreach ($items as $itemData) {
             $itemAttributes = [
                 'order_id' => $order->id,
-                'linnworks_item_id' => $itemData['pkOrderItemID'] ?? $itemData['ItemId'] ?? '',
+                'item_id' => $itemData['pkOrderItemID'] ?? $itemData['ItemId'] ?? '',
                 'sku' => $itemData['SKU'] ?? '',
-                'title' => $itemData['ItemTitle'] ?? $itemData['Title'] ?? '',
-                'description' => $itemData['ItemDescription'] ?? $itemData['Description'] ?? null,
-                'category' => $itemData['Category'] ?? null,
+                'item_title' => $itemData['ItemTitle'] ?? $itemData['Title'] ?? '',
+                'category_name' => $itemData['Category'] ?? null,
                 'quantity' => $itemData['nQty'] ?? $itemData['Quantity'] ?? 1,
-                'unit_price' => $itemData['PricePerUnit'] ?? $itemData['UnitPrice'] ?? 0,
-                'total_price' => $itemData['TotalPrice'] ?? ($itemData['PricePerUnit'] ?? 0) * ($itemData['nQty'] ?? 1),
-                'cost_price' => $itemData['StockCostPrice'] ?? $itemData['CostPrice'] ?? null,
-                'profit_margin' => $itemData['ProfitMargin'] ?? null,
+                'price_per_unit' => $itemData['PricePerUnit'] ?? $itemData['UnitPrice'] ?? 0,
+                'line_total' => $itemData['TotalPrice'] ?? ($itemData['PricePerUnit'] ?? 0) * ($itemData['nQty'] ?? 1),
+                'unit_cost' => $itemData['StockCostPrice'] ?? $itemData['CostPrice'] ?? null,
                 'tax_rate' => $itemData['TaxRate'] ?? 0,
-                'discount_amount' => $itemData['DiscountAmount'] ?? 0,
+                'discount' => $itemData['DiscountAmount'] ?? 0,
                 'bin_rack' => $itemData['BinRack'] ?? null,
                 'is_service' => $itemData['IsService'] ?? false,
-                'item_attributes' => $itemData,
+                'additional_info' => $itemData,
             ];
 
             OrderItem::create($itemAttributes);

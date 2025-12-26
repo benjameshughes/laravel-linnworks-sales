@@ -8,69 +8,41 @@ use App\Events\CacheWarmingCompleted;
 use App\Events\CacheWarmingStarted;
 use App\Events\OrdersSynced;
 use App\Jobs\WarmPeriodCacheJob;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Warm metrics cache when orders are synced
  *
- * Dispatches individual jobs for each period to avoid memory issues.
- * Jobs are dispatched to queue and processed sequentially by queue worker.
+ * Simple flow:
+ * 1. OrdersSynced fires → this listener runs
+ * 2. Broadcasts CacheWarmingStarted → UI shows "Crunching numbers..."
+ * 3. Dispatches batch of WarmPeriodCacheJob jobs
+ * 4. When batch completes → broadcasts CacheWarmingCompleted → UI resets
  */
-final class WarmMetricsCache implements ShouldQueue
+final class WarmMetricsCache
 {
-    /**
-     * The name of the queue the job should be sent to.
-     */
-    public string $queue = 'low';
-
-    /**
-     * Determine the time at which the listener should timeout.
-     */
-    public function retryUntil(): \DateTime
-    {
-        return now()->addMinutes(5);
-    }
-
-    /**
-     * Get the number of seconds before the job should be processed.
-     *
-     * Manual warming has no delay for immediate feedback.
-     * Auto warming after sync waits 30s to ensure sync is fully complete.
-     */
-    public function delay(OrdersSynced $event): int
-    {
-        return $event->syncType === 'manual_warm' ? 0 : 30;
-    }
-
-    /**
-     * Handle the event.
-     *
-     * Dispatches individual WarmPeriodCacheJob for each period/channel/status combination.
-     * This prevents memory issues by processing one combination at a time in the queue worker.
-     */
     public function handle(OrdersSynced $event): void
     {
         $periods = \App\Enums\Period::cacheable();
 
-        // Get all available channels from database
-        $channels = \Illuminate\Support\Facades\DB::table('orders')
+        $channels = DB::table('orders')
             ->select('source')
             ->where('source', '!=', 'DIRECT')
             ->distinct()
             ->pluck('source')
-            ->prepend('all') // Always include 'all' channel
+            ->prepend('all')
             ->toArray();
 
-        // All status filter options
         $statuses = ['all', 'open', 'processed', 'open_paid'];
 
-        // Broadcast that warming has started
-        CacheWarmingStarted::dispatch(collect($periods)->map(fn ($p) => "{$p->value}d")->toArray());
+        // Broadcast start - UI shows "Crunching numbers..."
+        CacheWarmingStarted::dispatch(
+            collect($periods)->map(fn ($p) => "{$p->value}d")->toArray()
+        );
 
-        // Dispatch individual jobs for each period/channel/status combination
-        // Jobs are queued and processed sequentially, preventing memory buildup
+        // Build jobs for each period/channel/status combination
         $jobs = collect($periods)->flatMap(function (\App\Enums\Period $period) use ($channels, $statuses) {
             return collect($channels)->flatMap(function (string $channel) use ($period, $statuses) {
                 return collect($statuses)->map(function (string $status) use ($period, $channel) {
@@ -79,27 +51,16 @@ final class WarmMetricsCache implements ShouldQueue
             });
         });
 
-        // Dispatch all jobs to the 'low' priority queue
+        Log::info('Dispatching cache warming batch', ['jobs' => $jobs->count()]);
+
+        // Dispatch batch - finally() fires when all complete
         Bus::batch($jobs->all())
             ->onQueue('low')
             ->name('warm-metrics-cache')
             ->finally(function () use ($periods) {
-                Log::info('Cache warming batch completed');
+                Log::info('Cache warming complete, broadcasting CacheWarmingCompleted');
                 CacheWarmingCompleted::dispatch(count($periods));
             })
             ->dispatch();
-    }
-
-    /**
-     * Handle a job failure.
-     */
-    public function failed(OrdersSynced $event, \Throwable $exception): void
-    {
-        Log::error('WarmMetricsCache listener failed to dispatch jobs', [
-            'orders_processed' => $event->ordersProcessed,
-            'sync_type' => $event->syncType,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
     }
 }

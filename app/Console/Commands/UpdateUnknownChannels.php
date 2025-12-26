@@ -43,8 +43,8 @@ class UpdateUnknownChannels extends Command
         $this->info('🔄 Updating orders with Unknown channel...');
 
         // Get orders with Unknown channel that have Linnworks IDs
-        $query = Order::where('channel_name', 'Unknown')
-            ->whereNotNull('linnworks_order_id');
+        $query = Order::where('source', 'Unknown')
+            ->whereNotNull('order_id');
 
         if ($limit) {
             $query->limit($limit);
@@ -72,7 +72,7 @@ class UpdateUnknownChannels extends Command
 
         // Process in chunks of 50 to respect rate limits
         foreach ($unknownOrders->chunk(50) as $chunk) {
-            $orderIds = $chunk->pluck('linnworks_order_id')->filter()->toArray();
+            $orderIds = $chunk->pluck('order_id')->filter()->toArray();
 
             if (empty($orderIds)) {
                 $progressBar->advance($chunk->count());
@@ -94,7 +94,7 @@ class UpdateUnknownChannels extends Command
                                 ? ($order['GeneralInfo']['pkOrderID'] ?? null)
                                 : null;
 
-                            return $orderId === $localOrder->linnworks_order_id;
+                            return $orderId === $localOrder->order_id;
                         });
 
                         if (! $detailedOrder || ! isset($detailedOrder['GeneralInfo'])) {
@@ -116,10 +116,10 @@ class UpdateUnknownChannels extends Command
 
                         if ($isDryRun) {
                             $this->newLine();
-                            $this->line("[DRY RUN] Would update order {$localOrder->order_number}: {$source}".($subSource ? " / {$subSource}" : ''));
+                            $this->line("[DRY RUN] Would update order {$localOrder->number}: {$source}".($subSource ? " / {$subSource}" : ''));
                             $this->totalUpdated++;
                         } else {
-                            $updateData = ['channel_name' => \Illuminate\Support\Str::lower(str_replace(' ', '_', $source))];
+                            $updateData = ['source' => \Illuminate\Support\Str::lower(str_replace(' ', '_', $source))];
                             if ($subSource) {
                                 $updateData['subsource'] = \Illuminate\Support\Str::lower(str_replace(' ', '_', $subSource));
                             }
@@ -137,7 +137,7 @@ class UpdateUnknownChannels extends Command
                         $this->totalErrors++;
                         Log::error('Failed to update order channel', [
                             'order_id' => $localOrder->id,
-                            'order_number' => $localOrder->order_number,
+                            'number' => $localOrder->number,
                             'error' => $e->getMessage(),
                         ]);
                     }
@@ -183,14 +183,14 @@ class UpdateUnknownChannels extends Command
 
             $this->newLine();
             $this->info('📈 Channel Distribution:');
-            $channels = Order::selectRaw('channel_name, COUNT(*) as count')
-                ->groupBy('channel_name')
+            $channels = Order::selectRaw('source, COUNT(*) as count')
+                ->groupBy('source')
                 ->orderByDesc('count')
                 ->limit(10)
                 ->get();
 
             foreach ($channels as $channel) {
-                $this->line('   '.str_pad($channel->channel_name ?? 'NULL', 20).': '.number_format($channel->count));
+                $this->line('   '.str_pad($channel->source ?? 'NULL', 20).': '.number_format($channel->count));
             }
         }
 

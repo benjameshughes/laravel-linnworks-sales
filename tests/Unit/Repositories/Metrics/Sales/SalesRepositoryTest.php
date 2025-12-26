@@ -69,8 +69,8 @@ describe('SalesRepository', function () {
         $repository = new SalesRepository;
         $orders = $repository->getRecentOrders(10);
 
-        expect($orders->first()->order_number)->toBe('NEW')
-            ->and($orders->last()->order_number)->toBe('OLD');
+        expect($orders->first()->number)->toBe('NEW')
+            ->and($orders->last()->number)->toBe('OLD');
     });
 
     it('gets all open orders', function () {

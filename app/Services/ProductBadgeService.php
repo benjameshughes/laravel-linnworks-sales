@@ -74,9 +74,9 @@ readonly class ProductBadgeService
 
     private function calculateProductMetrics(Collection $salesData, int $period): ProductMetrics
     {
-        $totalRevenue = $salesData->sum('total_price');
+        $totalRevenue = $salesData->sum('line_total');
         $totalQuantity = $salesData->sum('quantity');
-        $totalCost = $salesData->sum(fn (OrderItem $item) => $item->cost_price * $item->quantity);
+        $totalCost = $salesData->sum(fn (OrderItem $item) => $item->unit_cost * $item->quantity);
         $orderCount = $salesData->unique('order_id')->count();
 
         return new ProductMetrics(

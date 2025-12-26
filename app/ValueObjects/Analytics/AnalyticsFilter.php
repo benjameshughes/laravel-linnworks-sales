@@ -14,7 +14,7 @@ readonly class AnalyticsFilter
         public array $products = [],
         public ?int $status = null,
         public ?string $searchTerm = null,
-        public string $sortBy = 'received_date',
+        public string $sortBy = 'received_at',
         public string $sortDirection = 'desc',
     ) {}
 
@@ -39,7 +39,7 @@ readonly class AnalyticsFilter
             products: $data['products'] ?? [],
             status: isset($data['status']) ? (int) $data['status'] : null,
             searchTerm: $data['search'] ?? null,
-            sortBy: $data['sort_by'] ?? 'received_date',
+            sortBy: $data['sort_by'] ?? 'received_at',
             sortDirection: $data['sort_direction'] ?? 'desc',
         );
     }
@@ -49,14 +49,14 @@ readonly class AnalyticsFilter
         return $query
             ->when(
                 $this->dateRange,
-                fn (Builder $q) => $q->whereBetween('received_date', [
+                fn (Builder $q) => $q->whereBetween('received_at', [
                     $this->dateRange->start,
                     $this->dateRange->end,
                 ])
             )
             ->when(
                 ! empty($this->channels),
-                fn (Builder $q) => $q->whereIn('channel_name', $this->channels)
+                fn (Builder $q) => $q->whereIn('source', $this->channels)
             )
             ->when(
                 ! empty($this->products),
@@ -71,8 +71,8 @@ readonly class AnalyticsFilter
             ->when(
                 $this->searchTerm,
                 fn (Builder $q) => $q->where(function (Builder $query) {
-                    $query->where('order_number', 'like', "%{$this->searchTerm}%")
-                        ->orWhere('channel_name', 'like', "%{$this->searchTerm}%");
+                    $query->where('number', 'like', "%{$this->searchTerm}%")
+                        ->orWhere('source', 'like', "%{$this->searchTerm}%");
                 })
             )
             ->orderBy($this->sortBy, $this->sortDirection);

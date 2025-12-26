@@ -57,9 +57,7 @@ final class ProductRepository
     {
         // Use the normalized order_items table for better performance
         $items = OrderItem::where('sku', $sku)
-            ->whereHas('order', function ($q) {
-                $q->whereNull('deleted_at');
-            })
+            ->whereHas('order')
             ->get();
 
         if ($items->isEmpty()) {
@@ -74,7 +72,7 @@ final class ProductRepository
         $orderCount = $items->pluck('order_id')->unique()->count();
         $totalSold = $items->sum('quantity');
         $totalRevenue = $items->sum(fn ($item) => $this->calculateItemRevenue($item));
-        $avgPrice = $items->filter(fn ($item) => (float) $item->unit_price > 0)->avg('unit_price');
+        $avgPrice = $items->filter(fn ($item) => (float) $item->price_per_unit > 0)->avg('price_per_unit');
         if (! $avgPrice && $totalSold > 0) {
             $avgPrice = $totalRevenue / $totalSold;
         }
@@ -91,18 +89,16 @@ final class ProductRepository
     {
         // Use the normalized order_items table with eager loading
         $items = OrderItem::where('sku', $sku)
-            ->with('order:id,channel_name')
-            ->whereHas('order', function ($q) {
-                $q->whereNull('deleted_at');
-            })
+            ->with('order:id,source')
+            ->whereHas('order')
             ->get();
 
-        return $items->groupBy('order.channel_name')
+        return $items->groupBy('order.source')
             ->map(function ($channelItems, $channel) {
                 $orderIds = $channelItems->pluck('order_id')->unique();
                 $quantity = $channelItems->sum('quantity');
                 $revenue = $channelItems->sum(fn ($item) => $this->calculateItemRevenue($item));
-                $avgPrice = $channelItems->filter(fn ($item) => (float) $item->unit_price > 0)->avg('unit_price');
+                $avgPrice = $channelItems->filter(fn ($item) => (float) $item->price_per_unit > 0)->avg('price_per_unit');
                 if (! $avgPrice && $quantity > 0) {
                     $avgPrice = $revenue / $quantity;
                 }
@@ -124,12 +120,11 @@ final class ProductRepository
         // Use the normalized order_items table with proper joins
         $dailySales = OrderItem::where('sku', $sku)
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->where('orders.received_date', '>=', $startDate)
-            ->whereNull('orders.deleted_at')
+            ->where('orders.received_at', '>=', $startDate)
             ->select(
-                DB::raw('DATE(orders.received_date) as sale_date'),
+                DB::raw('DATE(orders.received_at) as sale_date'),
                 DB::raw('SUM(order_items.quantity) as quantity'),
-                DB::raw('SUM(CASE WHEN order_items.total_price > 0 THEN order_items.total_price ELSE order_items.quantity * order_items.unit_price END) as revenue')
+                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as revenue')
             )
             ->groupBy('sale_date')
             ->get();
@@ -150,14 +145,13 @@ final class ProductRepository
         $categoryData = OrderItem::query()
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->leftJoin('products', 'order_items.sku', '=', 'products.sku')
-            ->whereNull('orders.deleted_at')
             ->select(
-                DB::raw('COALESCE(NULLIF(json_extract(order_items.item_attributes, "$.original_category"), ""), products.category_name, "Uncategorized") as category'),
+                DB::raw('COALESCE(order_items.category_name, products.category_name, "Uncategorized") as category'),
                 DB::raw('COUNT(DISTINCT order_items.sku) as product_count'),
                 DB::raw('SUM(order_items.quantity) as total_quantity'),
-                DB::raw('SUM(CASE WHEN order_items.total_price > 0 THEN order_items.total_price ELSE order_items.quantity * order_items.unit_price END) as total_revenue')
+                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue')
             )
-            ->groupByRaw('COALESCE(NULLIF(json_extract(order_items.item_attributes, "$.original_category"), ""), products.category_name, "Uncategorized")')
+            ->groupByRaw('COALESCE(order_items.category_name, products.category_name, "Uncategorized")')
             ->orderByDesc('total_revenue')
             ->limit(10)
             ->get();
@@ -194,10 +188,10 @@ final class ProductRepository
             ->with(['orderItems' => function ($q) use ($sku) {
                 $q->where('sku', $sku);
             }])
-            ->select(['id', 'order_number', 'channel_name', 'received_date', 'total_charge']);
+            ->select(['id', 'number', 'source', 'received_at', 'total_charge']);
 
         if ($startDate) {
-            $query->where('received_date', '>=', $startDate);
+            $query->where('received_at', '>=', $startDate);
         }
 
         return $query->get();
@@ -212,12 +206,11 @@ final class ProductRepository
         // Use the normalized order_items table for bulk operations
         $salesData = OrderItem::whereIn('sku', $skus)
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->whereNull('orders.deleted_at')
             ->select(
                 'order_items.sku',
                 DB::raw('SUM(order_items.quantity) as total_sold'),
-                DB::raw('SUM(CASE WHEN order_items.total_price > 0 THEN order_items.total_price ELSE order_items.quantity * order_items.unit_price END) as total_revenue'),
-                DB::raw('AVG(NULLIF(order_items.unit_price, 0)) as avg_selling_price'),
+                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue'),
+                DB::raw('AVG(NULLIF(order_items.price_per_unit, 0)) as avg_selling_price'),
                 DB::raw('COUNT(DISTINCT order_items.order_id) as order_count')
             )
             ->groupBy('order_items.sku')
@@ -243,20 +236,20 @@ final class ProductRepository
 
     private function calculateItemRevenue(OrderItem $item): float
     {
-        $totalPrice = (float) $item->total_price;
-        if ($totalPrice > 0) {
-            return $totalPrice;
+        $lineTotal = (float) $item->line_total;
+        if ($lineTotal > 0) {
+            return $lineTotal;
         }
 
-        $unitPrice = (float) $item->unit_price;
+        $pricePerUnit = (float) $item->price_per_unit;
         $quantity = (int) $item->quantity;
 
-        if ($unitPrice > 0 && $quantity > 0) {
-            return $unitPrice * $quantity;
+        if ($pricePerUnit > 0 && $quantity > 0) {
+            return $pricePerUnit * $quantity;
         }
 
-        $attributes = $item->item_attributes ?? [];
-        $metaPrice = isset($attributes['unit_price']) ? (float) $attributes['unit_price'] : 0.0;
+        $attributes = $item->additional_info ?? [];
+        $metaPrice = isset($attributes['price_per_unit']) ? (float) $attributes['price_per_unit'] : 0.0;
         if ($metaPrice > 0 && $quantity > 0) {
             return $metaPrice * $quantity;
         }
