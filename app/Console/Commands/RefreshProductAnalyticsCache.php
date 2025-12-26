@@ -125,8 +125,8 @@ class RefreshProductAnalyticsCache extends Command
             ->where('is_active', true)
             ->whereNotNull('category_name')
             ->distinct()
+            ->limit(5)
             ->pluck('category_name')
-            ->take(5)
             ->toArray();
 
         return $categories;

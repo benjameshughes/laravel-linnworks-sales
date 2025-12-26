@@ -98,7 +98,7 @@ readonly class SearchCriteria implements JsonSerializable
 
         // Add field-specific search
         if ($this->type !== SearchType::COMBINED) {
-            $scoutOptions['fields'] = $this->searchFields;
+            $scoutOptions['fields'] = $this->searchFields();
         }
 
         return $scoutOptions;

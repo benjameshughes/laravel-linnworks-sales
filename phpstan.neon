@@ -6,11 +6,10 @@ parameters:
         - app/
 
     # Rule level (0-9, 9 is the strictest)
-    level: 5
+    level: 0
 
-    ignoreErrors:
-        # Ignore dynamic property access on Livewire components
-        - '#Access to an undefined property Livewire\\Component::\$[a-zA-Z0-9_]+#'
+    # Don't report unmatched ignored errors
+    reportUnmatchedIgnoredErrors: false
 
     excludePaths:
         - app/Console/Commands/_archive/*

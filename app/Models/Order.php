@@ -251,12 +251,10 @@ class Order extends Model
     {
         return Attribute::make(
             get: function (): int {
-                /** @phpstan-ignore-next-line */
                 if (! $this->received_at || ! $this->received_at instanceof Carbon) {
                     return 0;
                 }
 
-                /** @phpstan-ignore-next-line */
                 return $this->received_at->diffInDays(now());
             }
         );

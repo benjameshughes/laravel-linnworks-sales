@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Analytics;
 
 use App\Models\Order;
-use App\Services\Metrics\SalesMetrics;
+use App\Services\Metrics\Sales\SalesMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;

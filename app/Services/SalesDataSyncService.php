@@ -100,7 +100,6 @@ class SalesDataSyncService
                 'number' => $orderData['nOrderId'] ?? $orderData['OrderNumber'] ?? '',
                 'source' => $orderData['Source'] ?? 'unknown',
                 'channel_reference_number' => $orderData['ExternalReference'] ?? null,
-                'source' => $orderData['Source'] ?? null,
                 'subsource' => $orderData['SubSource'] ?? null,
                 'external_reference_num' => $orderData['ExternalReference'] ?? null,
                 'total_value' => $orderData['TotalValue'] ?? 0,
@@ -167,7 +166,7 @@ class SalesDataSyncService
     {
         // Clear existing items if force updating
         if ($forceUpdate) {
-            $order->items()->delete();
+            $order->orderItems()->delete();
         }
 
         $items = $orderData['Items'] ?? [];

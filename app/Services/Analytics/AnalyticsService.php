@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Analytics;
 
 use App\Models\Order;
-use App\Services\Metrics\SalesMetrics;
+use App\Services\Metrics\Sales\SalesMetrics;
 use App\ValueObjects\Analytics\AnalyticsFilter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
