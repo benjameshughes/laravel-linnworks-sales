@@ -34,8 +34,11 @@ class ReportComparison extends Component
     {
         $reports = ReportRegistry::all();
 
-        $this->reportClassA = $reportClassA ?? $reports->first()?->let(fn ($r) => get_class($r));
-        $this->reportClassB = $reportClassB ?? $reports->skip(1)->first()?->let(fn ($r) => get_class($r));
+        $firstReport = $reports->first();
+        $secondReport = $reports->skip(1)->first();
+
+        $this->reportClassA = $reportClassA ?? ($firstReport ? get_class($firstReport) : null);
+        $this->reportClassB = $reportClassB ?? ($secondReport ? get_class($secondReport) : null);
 
         if ($this->reportClassA) {
             $this->filtersA = $this->reportA->getDefaultFilters();
