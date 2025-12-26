@@ -7,6 +7,7 @@ namespace App\Livewire\Dashboard;
 use App\Jobs\SyncRecentOrdersJob;
 use App\Models\SyncLog;
 use Carbon\Carbon;
+use Flux\DateRange;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
@@ -37,6 +38,8 @@ final class DashboardFilters extends Component
 
     public ?string $customTo = null;
 
+    public ?DateRange $dateRange = null;
+
     // Simple sync state - no caching needed
     public bool $isSyncing = false;
 
@@ -49,10 +52,25 @@ final class DashboardFilters extends Component
         $defaultPeriod = config('dashboard.default_period', \App\Enums\Period::SEVEN_DAYS);
         $this->period = $defaultPeriod instanceof \App\Enums\Period ? $defaultPeriod->value : $defaultPeriod;
 
-        $this->customTo = Carbon::now()->format('Y-m-d');
-        $this->customFrom = Carbon::now()->subDays(7)->format('Y-m-d');
+        // Initialize date range for the Flux date picker
+        $this->dateRange = new DateRange(
+            Carbon::now()->subDays(7)->startOfDay(),
+            Carbon::now()->endOfDay()
+        );
+        $this->syncDateRangeToProperties();
 
         $this->checkRateLimit();
+    }
+
+    /**
+     * Sync the DateRange object to the customFrom/customTo properties.
+     */
+    private function syncDateRangeToProperties(): void
+    {
+        if ($this->dateRange) {
+            $this->customFrom = $this->dateRange->start()->format('Y-m-d');
+            $this->customTo = $this->dateRange->end()->format('Y-m-d');
+        }
     }
 
     public function checkRateLimit(): void
@@ -101,19 +119,12 @@ final class DashboardFilters extends Component
      */
     public function applyCustomRange(): void
     {
-        if (! $this->customFrom || ! $this->customTo) {
+        if (! $this->dateRange) {
             return;
         }
 
-        // Validate dates
-        $from = Carbon::parse($this->customFrom);
-        $to = Carbon::parse($this->customTo);
-
-        if ($from->isAfter($to)) {
-            // Swap if reversed
-            $this->customFrom = $to->format('Y-m-d');
-            $this->customTo = $from->format('Y-m-d');
-        }
+        // Sync the DateRange to our string properties
+        $this->syncDateRangeToProperties();
 
         // Switch to custom period mode
         $this->period = 'custom';
@@ -125,40 +136,6 @@ final class DashboardFilters extends Component
             customFrom: $this->customFrom,
             customTo: $this->customTo
         );
-    }
-
-    /**
-     * Set quick date range presets.
-     */
-    public function setQuickRange(string $range): void
-    {
-        $now = Carbon::now();
-
-        [$from, $to] = match ($range) {
-            'this_month' => [
-                $now->copy()->startOfMonth(),
-                $now->copy()->endOfMonth(),
-            ],
-            'last_month' => [
-                $now->copy()->subMonth()->startOfMonth(),
-                $now->copy()->subMonth()->endOfMonth(),
-            ],
-            'this_quarter' => [
-                $now->copy()->startOfQuarter(),
-                $now->copy()->endOfQuarter(),
-            ],
-            'this_year' => [
-                $now->copy()->startOfYear(),
-                $now->copy(),
-            ],
-            default => [
-                $now->copy()->subDays(7),
-                $now->copy(),
-            ],
-        };
-
-        $this->customFrom = $from->format('Y-m-d');
-        $this->customTo = $to->format('Y-m-d');
     }
 
     public function syncOrders(): void

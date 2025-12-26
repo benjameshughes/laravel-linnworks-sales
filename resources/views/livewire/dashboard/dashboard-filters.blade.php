@@ -195,42 +195,19 @@
     </div>
 
     {{-- Custom Date Range Modal --}}
-    <flux:modal name="custom-date-range" class="max-w-md">
+    <flux:modal name="custom-date-range" class="max-w-sm">
         <div class="space-y-6">
             <div>
                 <flux:heading size="lg">Custom Date Range</flux:heading>
-                <flux:subheading>Select a start and end date for your report</flux:subheading>
+                <flux:subheading>Select a date range for your report</flux:subheading>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <flux:field>
-                    <flux:label>From</flux:label>
-                    <flux:input
-                        type="date"
-                        wire:model="customFrom"
-                        max="{{ now()->format('Y-m-d') }}"
-                    />
-                </flux:field>
-
-                <flux:field>
-                    <flux:label>To</flux:label>
-                    <flux:input
-                        type="date"
-                        wire:model="customTo"
-                        max="{{ now()->format('Y-m-d') }}"
-                    />
-                </flux:field>
-            </div>
-
-            {{-- Quick presets --}}
-            <div class="flex flex-wrap gap-2">
-                <flux:button size="sm" variant="subtle" wire:click="setQuickRange('this_month')">This Month</flux:button>
-                <flux:button size="sm" variant="subtle" wire:click="setQuickRange('last_month')">Last Month</flux:button>
-                <flux:button size="sm" variant="subtle" wire:click="setQuickRange('this_quarter')">This Quarter</flux:button>
-                <flux:button size="sm" variant="subtle" wire:click="setQuickRange('this_year')">This Year</flux:button>
-            </div>
-
-            <flux:separator />
+            <flux:date-picker
+                wire:model="dateRange"
+                mode="range"
+                with-presets
+                max="{{ now()->format('Y-m-d') }}"
+            />
 
             <div class="flex justify-end gap-2">
                 <flux:modal.close>
