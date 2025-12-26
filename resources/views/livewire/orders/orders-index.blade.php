@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+<div class="min-h-screen">
     <div class="space-y-4 p-4 lg:p-6">
         {{-- Filters Island - NOT lazy loaded (user needs this immediately) --}}
         <livewire:orders.order-filters />
