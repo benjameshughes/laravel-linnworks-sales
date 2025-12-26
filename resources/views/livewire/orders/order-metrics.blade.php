@@ -9,9 +9,9 @@
     </div>
 
     {{-- Metrics Grid --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {{-- Total Orders --}}
-        <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
+        <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
             <div class="flex items-center justify-between mb-1">
                 <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Orders</span>
                 <flux:icon name="shopping-bag" class="size-4 text-zinc-400" />
@@ -34,7 +34,7 @@
         </div>
 
         {{-- Total Revenue --}}
-        <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
+        <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
             <div class="flex items-center justify-between mb-1">
                 <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Revenue</span>
                 <flux:icon name="currency-pound" class="size-4 text-zinc-400" />
@@ -57,7 +57,7 @@
         </div>
 
         {{-- Average Order Value --}}
-        <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
+        <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
             <div class="flex items-center justify-between mb-1">
                 <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Avg Value</span>
                 <flux:icon name="chart-bar" class="size-4 text-zinc-400" />
@@ -80,7 +80,7 @@
         </div>
 
         {{-- Items Sold --}}
-        <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
+        <div class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
             <div class="flex items-center justify-between mb-1">
                 <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Items</span>
                 <flux:icon name="cube" class="size-4 text-zinc-400" />

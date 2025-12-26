@@ -1,5 +1,5 @@
-<div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-    <div class="flex items-center justify-between mb-4">
+<div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+    <div class="flex items-center justify-between mb-2">
         <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Trend</span>
         <div class="flex items-center gap-1">
             {{-- Metric Toggle --}}
@@ -39,7 +39,7 @@
     </div>
 
     @if($this->chartData->isNotEmpty())
-        <div class="h-48"
+        <div class="h-40"
              wire:key="orders-chart-{{ $period }}-{{ $metric }}-{{ $chartType }}"
              wire:ignore
              x-init="
@@ -81,7 +81,7 @@
             <canvas x-ref="canvas"></canvas>
         </div>
     @else
-        <div class="flex flex-col items-center justify-center h-48 text-zinc-400">
+        <div class="flex flex-col items-center justify-center h-40 text-zinc-400">
             <flux:icon name="chart-bar" class="size-8 mb-2" />
             <p class="text-sm">No data for this period</p>
         </div>

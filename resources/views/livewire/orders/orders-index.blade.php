@@ -1,5 +1,5 @@
 <div class="min-h-screen">
-    <div class="space-y-4 p-4 lg:p-6">
+    <div class="space-y-3 p-3 lg:p-4">
         {{-- Filters Island - NOT lazy loaded (user needs this immediately) --}}
         <livewire:orders.order-filters />
 
@@ -10,7 +10,7 @@
         <livewire:orders.orders-chart lazy />
 
         {{-- Analytics Grid --}}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
             {{-- Orders Table - lazy loaded --}}
             <div class="lg:col-span-2">
                 <livewire:orders.orders-table lazy />

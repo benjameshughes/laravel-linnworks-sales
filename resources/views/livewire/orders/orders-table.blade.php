@@ -1,5 +1,5 @@
 <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700" wire:loading.class="opacity-50">
-    <div class="px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
+    <div class="px-3 py-2 border-b border-zinc-200 dark:border-zinc-700">
         <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Recent Orders</span>
             <span class="text-xs text-zinc-500">{{ $this->orders->total() }} total</span>
