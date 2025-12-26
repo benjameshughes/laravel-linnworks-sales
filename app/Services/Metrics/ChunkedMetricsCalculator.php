@@ -16,13 +16,16 @@ use Illuminate\Support\Facades\DB;
  * without loading all orders into memory at once.
  *
  * Designed for 365d and 730d periods with 100K+ orders.
+ * Also handles custom date ranges without OOM issues.
  */
 final readonly class ChunkedMetricsCalculator
 {
     public function __construct(
         private string $period,
         private string $channel = 'all',
-        private string $status = 'all'
+        private string $status = 'all',
+        private ?string $customFrom = null,
+        private ?string $customTo = null
     ) {}
 
     /**
@@ -594,10 +597,18 @@ final readonly class ChunkedMetricsCalculator
     }
 
     /**
-     * Get date range for period
+     * Get date range for period (or custom dates)
      */
     private function getDateRange(): array
     {
+        // Custom date range takes priority
+        if ($this->customFrom && $this->customTo) {
+            return [
+                Carbon::parse($this->customFrom)->startOfDay(),
+                Carbon::parse($this->customTo)->endOfDay(),
+            ];
+        }
+
         // Special case: period '0' means "today" (not last 24 hours)
         if ($this->period === '0') {
             return [
@@ -621,6 +632,14 @@ final readonly class ChunkedMetricsCalculator
             $now->copy()->subDays($days)->startOfDay(),
             $now->endOfDay(),
         ];
+    }
+
+    /**
+     * Check if this is a custom date range (not a standard period)
+     */
+    public function isCustomRange(): bool
+    {
+        return $this->customFrom !== null && $this->customTo !== null;
     }
 
     /**

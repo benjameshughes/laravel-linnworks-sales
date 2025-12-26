@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
+use App\Services\Metrics\ChunkedMetricsCalculator;
 use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -65,22 +66,31 @@ final class MetricsSummary extends Component
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Can't cache custom periods
+        // Custom periods: Use ChunkedMetricsCalculator (memory-safe DB aggregation)
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            return app(SalesMetricsService::class)->getMetricsSummary(
+            $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
                 channel: $this->channel,
+                status: $this->status,
                 customFrom: $this->customFrom,
                 customTo: $this->customTo
             );
+
+            $data = $calculator->calculate();
+
+            return collect([
+                'total_revenue' => $data['revenue'],
+                'total_orders' => $data['orders'],
+                'total_items' => $data['items'],
+                'average_order_value' => $data['avg_order_value'],
+            ]);
         }
 
-        // Check cache
+        // Check cache for standard periods
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 
         if ($cached) {
-            // Extract needed data from cache array
             return collect([
                 'total_revenue' => $cached['revenue'],
                 'total_orders' => $cached['orders'],
@@ -113,17 +123,22 @@ final class MetricsSummary extends Component
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Can't cache custom periods
+        // Custom periods: Use ChunkedMetricsCalculator (memory-safe DB aggregation)
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            return app(SalesMetricsService::class)->getBestPerformingDay(
+            $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
                 channel: $this->channel,
+                status: $this->status,
                 customFrom: $this->customFrom,
                 customTo: $this->customTo
             );
+
+            $data = $calculator->calculate();
+
+            return $data['best_day'];
         }
 
-        // Check cache
+        // Check cache for standard periods
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 
