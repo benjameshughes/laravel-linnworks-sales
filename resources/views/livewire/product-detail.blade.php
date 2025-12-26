@@ -1,13 +1,13 @@
-<div class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
-    <div class="space-y-6 p-6">
+<div class="min-h-screen">
+    <div class="space-y-3 p-3 lg:p-4">
         {{-- Header with Product Info --}}
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div class="flex items-center gap-6">
+        <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div class="flex items-center gap-4">
                     <div class="flex items-center gap-3">
-                        <flux:button 
-                            variant="ghost" 
-                            size="sm" 
+                        <flux:button
+                            variant="ghost"
+                            size="sm"
                             href="{{ route('products.analytics') }}"
                             icon="arrow-left"
                         >
@@ -28,13 +28,13 @@
                             <span class="text-zinc-400">•</span>
                             <span>{{ $this->period }}-day analysis</span>
                         </div>
-                        
+
                         {{-- Product Badges --}}
                         @if($this->productBadges->isNotEmpty())
-                            <div class="flex flex-wrap gap-2 mt-3">
+                            <div class="flex flex-wrap gap-2 mt-2">
                                 @foreach($this->productBadges as $badge)
-                                    <flux:badge 
-                                        color="{{ $badge['color'] }}" 
+                                    <flux:badge
+                                        color="{{ $badge['color'] }}"
                                         size="sm"
                                         title="{{ $badge['description'] }}"
                                     >
@@ -46,7 +46,7 @@
                         @endif
                     </div>
                 </div>
-                
+
                 {{-- Controls --}}
                 <div class="flex flex-wrap gap-2">
                     <flux:select wire:model.live="period" size="sm" class="min-w-32">
@@ -58,7 +58,7 @@
                             @endif
                         @endforeach
                     </flux:select>
-                    
+
                     <flux:button variant="ghost" size="sm" wire:click="$refresh" icon="arrow-path">
                         Refresh
                     </flux:button>
@@ -67,25 +67,25 @@
         </div>
 
         {{-- Key Metrics Grid - Expandable Cards --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {{-- Total Revenue - Expandable --}}
             <div
                 x-data="{ expanded: false }"
                 @click="expanded = !expanded"
-                class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+                class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer transition-all duration-200 hover:border-zinc-300 dark:hover:border-zinc-600"
             >
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-2">
-                            <p class="text-blue-100 text-sm font-medium">Total Revenue</p>
-                            <flux:icon name="chevron-down" class="size-3 text-blue-200 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
+                            <p class="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Total Revenue</p>
+                            <flux:icon name="chevron-down" class="size-3 text-zinc-400 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
                         </div>
-                        <p class="text-3xl font-bold">£{{ number_format($this->profitAnalysis['total_revenue'], 2) }}</p>
-                        <p class="text-sm text-blue-100 mt-1">
+                        <p class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">£{{ number_format($this->profitAnalysis['total_revenue'], 2) }}</p>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                             £{{ number_format($this->profitAnalysis['avg_selling_price'], 2) }} avg price
                         </p>
                     </div>
-                    <flux:icon name="currency-pound" class="size-8 text-blue-200" />
+                    <flux:icon name="currency-pound" class="size-8 text-blue-500" />
                 </div>
 
                 {{-- Expanded Details --}}
@@ -97,20 +97,20 @@
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100 translate-y-0"
                     x-transition:leave-end="opacity-0 -translate-y-2"
-                    class="mt-4 pt-3 border-t border-white/20 space-y-2"
+                    class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 space-y-2"
                     @click.stop
                 >
                     <div class="flex justify-between text-sm">
-                        <span class="text-white/80">Avg Selling Price:</span>
-                        <span class="font-medium">£{{ number_format($this->profitAnalysis['avg_selling_price'], 2) }}</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">Avg Selling Price:</span>
+                        <span class="font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($this->profitAnalysis['avg_selling_price'], 2) }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-white/80">Avg Unit Cost:</span>
-                        <span class="font-medium">£{{ number_format($this->profitAnalysis['avg_unit_cost'], 2) }}</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">Avg Unit Cost:</span>
+                        <span class="font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($this->profitAnalysis['avg_unit_cost'], 2) }}</span>
                     </div>
-                    <div class="flex justify-between text-sm border-t border-white/20 pt-2">
-                        <span class="text-white/80">Markup:</span>
-                        <span class="font-bold">
+                    <div class="flex justify-between text-sm border-t border-zinc-200 dark:border-zinc-700 pt-2">
+                        <span class="text-zinc-500 dark:text-zinc-400">Markup:</span>
+                        <span class="font-bold text-zinc-900 dark:text-zinc-100">
                             {{ $this->profitAnalysis['avg_unit_cost'] > 0 ? number_format((($this->profitAnalysis['avg_selling_price'] - $this->profitAnalysis['avg_unit_cost']) / $this->profitAnalysis['avg_unit_cost']) * 100, 1) : 0 }}%
                         </span>
                     </div>
@@ -121,20 +121,20 @@
             <div
                 x-data="{ expanded: false }"
                 @click="expanded = !expanded"
-                class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-sm p-6 text-white cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+                class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer transition-all duration-200 hover:border-zinc-300 dark:hover:border-zinc-600"
             >
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-2">
-                            <p class="text-green-100 text-sm font-medium">Total Profit</p>
-                            <flux:icon name="chevron-down" class="size-3 text-green-200 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
+                            <p class="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Total Profit</p>
+                            <flux:icon name="chevron-down" class="size-3 text-zinc-400 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
                         </div>
-                        <p class="text-3xl font-bold">£{{ number_format($this->profitAnalysis['total_profit'], 2) }}</p>
-                        <p class="text-sm text-green-100 mt-1">
+                        <p class="text-3xl font-bold {{ $this->profitAnalysis['total_profit'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">£{{ number_format($this->profitAnalysis['total_profit'], 2) }}</p>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                             {{ number_format($this->profitAnalysis['profit_margin'], 1) }}% margin
                         </p>
                     </div>
-                    <flux:icon name="chart-bar" class="size-8 text-green-200" />
+                    <flux:icon name="chart-bar" class="size-8 text-emerald-500" />
                 </div>
 
                 {{-- Expanded Details --}}
@@ -146,20 +146,20 @@
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100 translate-y-0"
                     x-transition:leave-end="opacity-0 -translate-y-2"
-                    class="mt-4 pt-3 border-t border-white/20 space-y-2"
+                    class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 space-y-2"
                     @click.stop
                 >
                     <div class="flex justify-between text-sm">
-                        <span class="text-white/80">Revenue:</span>
-                        <span class="font-medium">£{{ number_format($this->profitAnalysis['total_revenue'], 2) }}</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">Revenue:</span>
+                        <span class="font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($this->profitAnalysis['total_revenue'], 2) }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-white/80">Cost:</span>
-                        <span class="font-medium">£{{ number_format($this->profitAnalysis['total_cost'], 2) }}</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">Cost:</span>
+                        <span class="font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($this->profitAnalysis['total_cost'], 2) }}</span>
                     </div>
-                    <div class="flex justify-between text-sm border-t border-white/20 pt-2">
-                        <span class="text-white/80">Profit:</span>
-                        <span class="font-bold">£{{ number_format($this->profitAnalysis['total_profit'], 2) }}</span>
+                    <div class="flex justify-between text-sm border-t border-zinc-200 dark:border-zinc-700 pt-2">
+                        <span class="text-zinc-500 dark:text-zinc-400">Profit:</span>
+                        <span class="font-bold {{ $this->profitAnalysis['total_profit'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">£{{ number_format($this->profitAnalysis['total_profit'], 2) }}</span>
                     </div>
                 </div>
             </div>
@@ -168,20 +168,20 @@
             <div
                 x-data="{ expanded: false }"
                 @click="expanded = !expanded"
-                class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 text-white cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+                class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer transition-all duration-200 hover:border-zinc-300 dark:hover:border-zinc-600"
             >
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-2">
-                            <p class="text-purple-100 text-sm font-medium">Units Sold</p>
-                            <flux:icon name="chevron-down" class="size-3 text-purple-200 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
+                            <p class="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Units Sold</p>
+                            <flux:icon name="chevron-down" class="size-3 text-zinc-400 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
                         </div>
-                        <p class="text-3xl font-bold">{{ number_format($this->profitAnalysis['total_sold']) }}</p>
-                        <p class="text-sm text-purple-100 mt-1">
+                        <p class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{{ number_format($this->profitAnalysis['total_sold']) }}</p>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                             {{ number_format($this->profitAnalysis['total_sold'] / max($this->period, 1), 1) }} per day
                         </p>
                     </div>
-                    <flux:icon name="cube" class="size-8 text-purple-200" />
+                    <flux:icon name="cube" class="size-8 text-purple-500" />
                 </div>
 
                 {{-- Expanded Details --}}
@@ -193,20 +193,20 @@
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100 translate-y-0"
                     x-transition:leave-end="opacity-0 -translate-y-2"
-                    class="mt-4 pt-3 border-t border-white/20 space-y-2"
+                    class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 space-y-2"
                     @click.stop
                 >
                     <div class="flex justify-between text-sm">
-                        <span class="text-white/80">Total Units:</span>
-                        <span class="font-medium">{{ number_format($this->profitAnalysis['total_sold']) }}</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">Total Units:</span>
+                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ number_format($this->profitAnalysis['total_sold']) }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-white/80">Daily Average:</span>
-                        <span class="font-medium">{{ number_format($this->profitAnalysis['total_sold'] / max($this->period, 1), 1) }}</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">Daily Average:</span>
+                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ number_format($this->profitAnalysis['total_sold'] / max($this->period, 1), 1) }}</span>
                     </div>
-                    <div class="flex justify-between text-sm border-t border-white/20 pt-2">
-                        <span class="text-white/80">Total Orders:</span>
-                        <span class="font-bold">{{ number_format($this->profitAnalysis['order_count'] ?? 0) }}</span>
+                    <div class="flex justify-between text-sm border-t border-zinc-200 dark:border-zinc-700 pt-2">
+                        <span class="text-zinc-500 dark:text-zinc-400">Total Orders:</span>
+                        <span class="font-bold text-zinc-900 dark:text-zinc-100">{{ number_format($this->profitAnalysis['order_count'] ?? 0) }}</span>
                     </div>
                 </div>
             </div>
@@ -215,16 +215,16 @@
             <div
                 x-data="{ expanded: false }"
                 @click="expanded = !expanded"
-                class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-sm p-6 text-white cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+                class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer transition-all duration-200 hover:border-zinc-300 dark:hover:border-zinc-600"
             >
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-2">
-                            <p class="text-orange-100 text-sm font-medium">Current Stock</p>
-                            <flux:icon name="chevron-down" class="size-3 text-orange-200 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
+                            <p class="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Current Stock</p>
+                            <flux:icon name="chevron-down" class="size-3 text-zinc-400 transition-transform duration-300" ::class="expanded && 'rotate-180'" />
                         </div>
-                        <p class="text-3xl font-bold">{{ number_format($this->stockInfo['current_stock']) }}</p>
-                        <p class="text-sm text-orange-100 mt-1">
+                        <p class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{{ number_format($this->stockInfo['current_stock']) }}</p>
+                        <p class="text-sm mt-1 {{ $this->stockInfo['stock_status'] === 'out_of_stock' ? 'text-red-500' : ($this->stockInfo['stock_status'] === 'low_stock' ? 'text-amber-500' : 'text-zinc-500 dark:text-zinc-400') }}">
                             @if($this->stockInfo['stock_status'] === 'out_of_stock')
                                 Out of stock
                             @elseif($this->stockInfo['stock_status'] === 'low_stock')
@@ -234,7 +234,7 @@
                             @endif
                         </p>
                     </div>
-                    <flux:icon name="archive-box" class="size-8 text-orange-200" />
+                    <flux:icon name="archive-box" class="size-8 text-amber-500" />
                 </div>
 
                 {{-- Expanded Details --}}
@@ -246,20 +246,20 @@
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100 translate-y-0"
                     x-transition:leave-end="opacity-0 -translate-y-2"
-                    class="mt-4 pt-3 border-t border-white/20 space-y-2"
+                    class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 space-y-2"
                     @click.stop
                 >
                     <div class="flex justify-between text-sm">
-                        <span class="text-white/80">Current Stock:</span>
-                        <span class="font-medium">{{ number_format($this->stockInfo['current_stock']) }}</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">Current Stock:</span>
+                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ number_format($this->stockInfo['current_stock']) }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-white/80">Minimum Stock:</span>
-                        <span class="font-medium">{{ number_format($this->stockInfo['minimum_stock']) }}</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">Minimum Stock:</span>
+                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ number_format($this->stockInfo['minimum_stock']) }}</span>
                     </div>
-                    <div class="flex justify-between text-sm border-t border-white/20 pt-2">
-                        <span class="text-white/80">Days of Stock:</span>
-                        <span class="font-bold">
+                    <div class="flex justify-between text-sm border-t border-zinc-200 dark:border-zinc-700 pt-2">
+                        <span class="text-zinc-500 dark:text-zinc-400">Days of Stock:</span>
+                        <span class="font-bold text-zinc-900 dark:text-zinc-100">
                             @php
                                 $dailySales = $this->profitAnalysis['total_sold'] / max($this->period, 1);
                                 $daysOfStock = $dailySales > 0 ? round($this->stockInfo['current_stock'] / $dailySales) : '∞';
@@ -272,8 +272,8 @@
         </div>
 
         {{-- Sales Trend Chart --}}
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-            <div class="flex items-center justify-between mb-6">
+        <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+            <div class="flex items-center justify-between mb-3">
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
                     Sales Trend
                 </flux:heading>
@@ -354,20 +354,20 @@
         </div>
 
         {{-- Two Column Layout --}}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {{-- Channel Performance --}}
-            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-                <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100 mb-6">
+            <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+                <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100 mb-3">
                     Channel Performance
                 </flux:heading>
-                
+
                 @if($this->channelPerformance->isNotEmpty())
-                    <div class="space-y-4">
+                    <div class="space-y-2">
                         @foreach($this->channelPerformance as $channel)
-                            <div class="flex items-center justify-between p-4 rounded-lg bg-zinc-50 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600">
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                                        <flux:icon name="shopping-cart" class="size-5 text-blue-600 dark:text-blue-400" />
+                                    <div class="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                        <flux:icon name="shopping-cart" class="size-4 text-blue-600 dark:text-blue-400" />
                                     </div>
                                     <div>
                                         <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $channel['channel'] }}</div>
@@ -390,15 +390,15 @@
             </div>
 
             {{-- Recent Orders --}}
-            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-                <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100 mb-6">
+            <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+                <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100 mb-3">
                     Recent Orders
                 </flux:heading>
-                
+
                 @if($this->recentOrders->isNotEmpty())
-                    <div class="space-y-3">
+                    <div class="space-y-2">
                         @foreach($this->recentOrders as $order)
-                            <div class="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600">
+                            <div class="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600">
                                 <div>
                                     <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $order['number'] }}</div>
                                     <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $order['date'] }} • {{ $order['channel'] }}</div>

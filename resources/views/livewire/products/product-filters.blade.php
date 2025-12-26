@@ -1,6 +1,6 @@
-<div class="space-y-4">
+<div class="space-y-3">
     {{-- Condensed Header with Controls --}}
-    <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-4">
+    <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div class="flex items-center gap-6">
                 <div>
@@ -135,8 +135,8 @@
 
     {{-- Advanced Filters Panel --}}
     @if($showFilters)
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-            <div class="flex items-center justify-between mb-6">
+        <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+            <div class="flex items-center justify-between mb-3">
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">Advanced Filters</flux:heading>
                 <div class="flex gap-2">
                     @if($this->activeFiltersCount > 0)
@@ -151,8 +151,8 @@
             </div>
 
             {{-- Filter Presets --}}
-            <div class="mb-6">
-                <flux:heading size="sm" class="text-zinc-700 dark:text-zinc-300 mb-3">Quick Filters</flux:heading>
+            <div class="mb-4">
+                <flux:heading size="sm" class="text-zinc-700 dark:text-zinc-300 mb-2">Quick Filters</flux:heading>
                 <div class="flex flex-wrap gap-2">
                     @foreach($this->filterPresets as $presetKey => $preset)
                         <flux:button
@@ -169,7 +169,7 @@
             </div>
 
             {{-- Individual Filters --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {{-- Profit Margin Filter --}}
                 <div>
                     <flux:field>
@@ -259,8 +259,8 @@
 
             {{-- Active Filters Summary --}}
             @if($this->activeFiltersCount > 0)
-                <div class="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-700">
-                    <flux:heading size="sm" class="text-zinc-700 dark:text-zinc-300 mb-3">Active Filters ({{ $this->activeFiltersCount }})</flux:heading>
+                <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                    <flux:heading size="sm" class="text-zinc-700 dark:text-zinc-300 mb-2">Active Filters ({{ $this->activeFiltersCount }})</flux:heading>
                     <div class="flex flex-wrap gap-2">
                         @foreach($filters as $filterType => $filterValue)
                             @if(!is_null($filterValue) && $filterValue !== '')
@@ -289,15 +289,15 @@
 
     {{-- Search Options Panel --}}
     @if($showSearchOptions && $search)
-        <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-6">
-            <div class="flex items-center justify-between mb-4">
+        <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+            <div class="flex items-center justify-between mb-3">
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">Search Options</flux:heading>
                 <flux:button variant="ghost" size="sm" wire:click="toggleSearchOptions" icon="x-mark">
                     Close
                 </flux:button>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {{-- Search Type Info --}}
                 <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                     <div class="flex items-center gap-2 mb-2">

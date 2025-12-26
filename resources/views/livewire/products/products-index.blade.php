@@ -1,5 +1,5 @@
-<div class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
-    <div class="space-y-6 p-6">
+<div class="min-h-screen">
+    <div class="space-y-3 p-3 lg:p-4">
         {{-- Filters Island - NOT lazy loaded (user needs this immediately) --}}
         <livewire:products.product-filters />
 
@@ -7,14 +7,14 @@
         <livewire:products.product-metrics lazy />
 
         {{-- Analytics Grid --}}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
             {{-- Products Table - lazy loaded --}}
             <div class="lg:col-span-2">
                 <livewire:products.products-table lazy />
             </div>
 
             {{-- Sidebar --}}
-            <div class="space-y-6">
+            <div class="space-y-3">
                 {{-- Top Categories - lazy loaded --}}
                 <livewire:products.top-categories lazy />
 
