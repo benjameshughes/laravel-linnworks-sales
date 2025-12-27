@@ -81,12 +81,9 @@ final class ChannelDistributionChart extends Component
             $this->channelData = is_array($cached['top_channels'])
                 ? $cached['top_channels']
                 : $cached['top_channels']->toArray();
-
-            return;
         }
 
-        // Cache miss - return empty array to prevent OOM
-        $this->channelData = [];
+        // Cache miss? Keep existing data - don't clear what we have
     }
 
     /**

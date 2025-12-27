@@ -81,14 +81,10 @@ final class SalesTrendChart extends Component
         $cached = Cache::get($cacheKey);
 
         if ($cached && isset($cached['daily_breakdown'])) {
-            // Store raw cached data - Alpine will format for Chart.js
             $this->dailyBreakdown = $cached['daily_breakdown'];
-
-            return;
         }
 
-        // Cache miss - return empty array to prevent OOM
-        $this->dailyBreakdown = [];
+        // Cache miss? Keep existing data - don't clear what we have
     }
 
     #[Computed]
