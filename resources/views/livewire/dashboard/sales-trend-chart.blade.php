@@ -14,46 +14,72 @@
         </flux:radio.group>
     </div>
 
-    @if(empty($dailyBreakdown))
-        <div class="text-center text-zinc-500 dark:text-zinc-400 py-8">
-            <p class="text-sm">No data available</p>
-        </div>
-    @else
-        <div
-            x-data="{
-                chart: null,
-                init() {
-                    this.chart = new Chart(this.$refs.canvas, {
-                        type: 'line',
-                        data: @js($this->chartData()),
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: { enabled: true, mode: 'index', intersect: false }
-                            },
-                            scales: {
-                                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                                x: { grid: { display: false } }
-                            },
-                            elements: {
-                                line: { tension: 0.3 },
-                                point: { radius: 3, hoverRadius: 5 }
-                            }
+    {{-- Chart container - wire:ignore prevents Livewire from touching it --}}
+    <div
+        wire:ignore
+        x-data="{
+            chart: null,
+            hasData: {{ empty($this->chartData()['labels']) ? 'false' : 'true' }},
+
+            init() {
+                if (this.hasData) {
+                    this.createChart(@js($this->chartData()));
+                }
+            },
+
+            createChart(data) {
+                if (this.chart) {
+                    this.chart.destroy();
+                }
+
+                this.chart = new Chart(this.$refs.canvas, {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: true, mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                            x: { grid: { display: false } }
+                        },
+                        elements: {
+                            line: { tension: 0.3 },
+                            point: { radius: 3, hoverRadius: 5 }
                         }
-                    });
-                },
-                destroy() {
+                    }
+                });
+            },
+
+            updateChart(data) {
+                if (!data.labels || data.labels.length === 0) {
+                    this.hasData = false;
                     if (this.chart) {
                         this.chart.destroy();
                         this.chart = null;
                     }
+                    return;
                 }
-            }"
-            class="h-64"
-        >
-            <canvas x-ref="canvas"></canvas>
+
+                this.hasData = true;
+
+                if (!this.chart) {
+                    this.createChart(data);
+                } else {
+                    this.chart.data = data;
+                    this.chart.update('none');
+                }
+            }
+        }"
+        @sales-trend-updated.window="updateChart($event.detail.data)"
+        class="h-64"
+    >
+        <div x-show="!hasData" class="flex items-center justify-center h-full text-zinc-500 dark:text-zinc-400">
+            <p class="text-sm">No data available</p>
         </div>
-    @endif
+        <canvas x-ref="canvas" x-show="hasData"></canvas>
+    </div>
 </div>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
+use App\Enums\Period;
 use App\Services\Metrics\ChunkedMetricsCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -11,6 +12,12 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
+/**
+ * Dead simple chart component.
+ * - Fetches data from cache
+ * - Passes to blade for Chart.js rendering
+ * - Dispatches event when data changes
+ */
 final class SalesTrendChart extends Component
 {
     public string $period = '7';
@@ -23,18 +30,13 @@ final class SalesTrendChart extends Component
 
     public ?string $customTo = null;
 
-    public string $viewMode = 'revenue'; // 'revenue' or 'orders'
-
-    // Public property for @entangle - raw daily breakdown data
-    public array $dailyBreakdown = [];
+    public string $viewMode = 'revenue';
 
     public function mount(): void
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
-
-        $this->calculateChartData();
     }
 
     #[On('filters-updated')]
@@ -51,40 +53,18 @@ final class SalesTrendChart extends Component
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
 
-        $this->calculateChartData();
+        $this->dispatchChartUpdate();
     }
 
-    private function calculateChartData(): void
+    #[On('echo:cache-management,CacheWarmingCompleted')]
+    public function handleCacheWarmed(): void
     {
-        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+        $this->dispatchChartUpdate();
+    }
 
-        // Custom periods: Use ChunkedMetricsCalculator (memory-safe DB aggregation)
-        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            $calculator = new ChunkedMetricsCalculator(
-                period: $this->period,
-                channel: $this->channel,
-                status: $this->status,
-                customFrom: $this->customFrom,
-                customTo: $this->customTo
-            );
-
-            $data = $calculator->calculate();
-
-            // Store raw data - Alpine will format for Chart.js
-            $this->dailyBreakdown = $data['daily_breakdown'];
-
-            return;
-        }
-
-        // Check cache
-        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
-        $cached = Cache::get($cacheKey);
-
-        if ($cached && isset($cached['daily_breakdown'])) {
-            $this->dailyBreakdown = $cached['daily_breakdown'];
-        }
-
-        // Cache miss? Keep existing data - don't clear what we have
+    private function dispatchChartUpdate(): void
+    {
+        $this->dispatch('sales-trend-updated', data: $this->chartData());
     }
 
     #[Computed]
@@ -94,17 +74,23 @@ final class SalesTrendChart extends Component
             return 'Custom: '.Carbon::parse($this->customFrom)->format('M j').' - '.Carbon::parse($this->customTo)->format('M j, Y');
         }
 
-        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+        $periodEnum = Period::tryFrom($this->period);
 
         return $periodEnum?->label() ?? "Last {$this->period} days";
     }
 
     /**
-     * Format data for Chart.js
+     * Get chart data from cache or calculate fresh
      */
     public function chartData(): array
     {
-        $labels = array_column($this->dailyBreakdown, 'date');
+        $breakdown = $this->getDailyBreakdown();
+
+        if (empty($breakdown)) {
+            return ['labels' => [], 'datasets' => []];
+        }
+
+        $labels = array_column($breakdown, 'date');
 
         if ($this->viewMode === 'revenue') {
             return [
@@ -112,7 +98,7 @@ final class SalesTrendChart extends Component
                 'datasets' => [
                     [
                         'label' => 'Revenue',
-                        'data' => array_column($this->dailyBreakdown, 'revenue'),
+                        'data' => array_column($breakdown, 'revenue'),
                         'borderColor' => 'rgba(34, 197, 94, 1)',
                         'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
                         'fill' => true,
@@ -126,7 +112,7 @@ final class SalesTrendChart extends Component
             'datasets' => [
                 [
                     'label' => 'Orders',
-                    'data' => array_column($this->dailyBreakdown, 'orders'),
+                    'data' => array_column($breakdown, 'orders'),
                     'borderColor' => 'rgba(59, 130, 246, 1)',
                     'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
                     'fill' => true,
@@ -135,14 +121,35 @@ final class SalesTrendChart extends Component
         ];
     }
 
+    private function getDailyBreakdown(): array
+    {
+        $periodEnum = Period::tryFrom($this->period);
+
+        // Custom periods: calculate fresh
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+            $calculator = new ChunkedMetricsCalculator(
+                period: $this->period,
+                channel: $this->channel,
+                status: $this->status,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo
+            );
+
+            return $calculator->calculate()['daily_breakdown'];
+        }
+
+        // Standard periods: get from cache
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        return $cached['daily_breakdown'] ?? [];
+    }
+
     public function render()
     {
         return view('livewire.dashboard.sales-trend-chart');
     }
 
-    /**
-     * Skeleton loader shown while lazy loading
-     */
     public function placeholder(array $params = [])
     {
         return view('livewire.placeholders.chart', $params);
