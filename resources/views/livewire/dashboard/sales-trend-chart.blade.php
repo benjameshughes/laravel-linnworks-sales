@@ -41,6 +41,8 @@
                     }
                 };
 
+                console.log('SalesTrendChart x-init running', { hasExistingChart: !!canvas._chart, dataLabels: data.labels?.length });
+
                 if (canvas._chart) {
                     canvas._chart.destroy();
                 }
