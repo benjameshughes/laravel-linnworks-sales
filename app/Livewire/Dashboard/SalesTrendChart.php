@@ -67,21 +67,6 @@ final class SalesTrendChart extends Component
         $this->dispatch('sales-trend-updated', data: $this->chartData());
     }
 
-    /**
-     * Cache key for wire:key - forces remount when filters change
-     */
-    #[Computed]
-    public function cacheKey(): string
-    {
-        $periodEnum = Period::tryFrom($this->period);
-
-        if ($this->customFrom || $this->customTo) {
-            return "chart_{$this->period}_{$this->channel}_{$this->status}_{$this->customFrom}_{$this->customTo}";
-        }
-
-        return $periodEnum?->cacheKey($this->channel, $this->status) ?? "chart_{$this->period}_{$this->channel}_{$this->status}";
-    }
-
     #[Computed]
     public function periodLabel(): string
     {

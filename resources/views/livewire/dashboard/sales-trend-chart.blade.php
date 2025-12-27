@@ -1,4 +1,4 @@
-<div wire:key="{{ $this->cacheKey }}" class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+<div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
     <div class="flex items-center justify-between mb-3">
         <div>
             <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Sales Trend</span>
