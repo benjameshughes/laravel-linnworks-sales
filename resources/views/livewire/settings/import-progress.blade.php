@@ -11,8 +11,10 @@
                     with-presets
                 >
                     <x-slot name="trigger">
-                        <flux:date-picker.input label="From" />
-                        <flux:date-picker.input label="To" />
+                        <div class="flex items-end gap-2">
+                            <flux:date-picker.input label="From" />
+                            <flux:date-picker.input label="To" />
+                        </div>
                     </x-slot>
                 </flux:date-picker>
 
