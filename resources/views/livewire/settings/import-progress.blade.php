@@ -19,20 +19,20 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <flux:field>
                             <flux:label>From Date</flux:label>
-                            <flux:input type="date" wire:model="fromDate" :disabled="$this->showProgress" />
+                            <flux:input type="date" wire:model="fromDate" :disabled="$this->isImportActive" />
                             <flux:error name="fromDate" />
                         </flux:field>
 
                         <flux:field>
                             <flux:label>To Date</flux:label>
-                            <flux:input type="date" wire:model="toDate" :disabled="$this->showProgress" />
+                            <flux:input type="date" wire:model="toDate" :disabled="$this->isImportActive" />
                             <flux:error name="toDate" />
                         </flux:field>
                     </div>
 
                     <flux:field>
                         <flux:label>Batch Size (50-200)</flux:label>
-                        <flux:input type="number" wire:model="batchSize" min="50" max="200" :disabled="$this->showProgress" />
+                        <flux:input type="number" wire:model="batchSize" min="50" max="200" :disabled="$this->isImportActive" />
                         <flux:error name="batchSize" />
                         <flux:description>Number of orders to fetch per API request. Higher values are faster but may hit rate limits</flux:description>
                     </flux:field>
@@ -40,7 +40,7 @@
                     <flux:separator />
 
                     <div class="flex justify-end">
-                        @if ($this->showProgress)
+                        @if ($this->isImportActive)
                             <flux:button variant="primary" disabled icon="arrow-path" class="animate-pulse">
                                 Import Running...
                             </flux:button>

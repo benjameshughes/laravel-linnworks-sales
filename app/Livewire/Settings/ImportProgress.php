@@ -77,7 +77,24 @@ class ImportProgress extends Component
     }
 
     /**
-     * Whether to show the import form or progress display
+     * Whether an import is actually running (not completed)
+     * Used to disable form fields and show "Import Running..." button
+     */
+    #[Computed]
+    public function isImportActive(): bool
+    {
+        if ($this->isStarting) {
+            return true;
+        }
+
+        $sync = $this->syncLog;
+
+        return $sync && $sync->isInProgress();
+    }
+
+    /**
+     * Whether to show the progress display panel
+     * Shows for active imports AND recently completed/failed imports
      */
     #[Computed]
     public function showProgress(): bool
@@ -184,6 +201,7 @@ class ImportProgress extends Component
         // Clear computed cache - next render will fetch fresh data
         unset($this->syncLog);
         unset($this->showProgress);
+        unset($this->isImportActive);
 
         // Increment to trigger Livewire re-render
         $this->refreshKey++;
@@ -200,6 +218,7 @@ class ImportProgress extends Component
 
         unset($this->syncLog);
         unset($this->showProgress);
+        unset($this->isImportActive);
         $this->loadSyncHistory();
 
         // Increment to trigger Livewire re-render
@@ -214,6 +233,8 @@ class ImportProgress extends Component
         $this->activeSyncId = null;
         $this->isStarting = false;
         unset($this->syncLog);
+        unset($this->showProgress);
+        unset($this->isImportActive);
     }
 
     public function render()
