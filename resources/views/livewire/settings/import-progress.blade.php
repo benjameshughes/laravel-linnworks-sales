@@ -4,28 +4,25 @@
     <x-settings.layout :heading="__('Import Orders')" :subheading="__('Import historical orders from Linnworks')">
         <div class="my-6 w-full space-y-6">
             {{-- Import Controls --}}
-            <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-                <div class="flex-1">
-                    <flux:date-picker
-                        wire:model.live="dateRange"
-                        mode="range"
-                        with-presets
-                    >
-                        <x-slot name="trigger">
-                            <flux:date-picker.input label="From" />
-                            <flux:date-picker.input label="To" />
-                        </x-slot>
-                    </flux:date-picker>
-                </div>
+            <div class="flex items-end gap-4">
+                <flux:date-picker
+                    wire:model.live="dateRange"
+                    mode="range"
+                    with-presets
+                >
+                    <x-slot name="trigger">
+                        <flux:date-picker.input label="From" />
+                        <flux:date-picker.input label="To" />
+                    </x-slot>
+                </flux:date-picker>
 
                 <flux:button
                     variant="primary"
                     wire:click="startImport"
                     :disabled="$this->activeSync !== null"
-                    icon="{{ $this->activeSync ? 'arrow-path' : 'arrow-down-tray' }}"
-                    :class="$this->activeSync ? 'animate-pulse' : ''"
+                    icon="arrow-down-tray"
                 >
-                    {{ $this->activeSync ? 'Import Running...' : 'Start Import' }}
+                    {{ $this->activeSync ? 'Importing...' : 'Start Import' }}
                 </flux:button>
             </div>
 
@@ -46,27 +43,22 @@
 
                     <flux:table.rows>
                         @foreach ($this->imports as $import)
-                            {{-- Active import row with progress --}}
+                            {{-- Active import row --}}
                             @if ($import['is_active'])
                                 <flux:table.row class="bg-blue-50 dark:bg-blue-900/20">
                                     <flux:table.cell>
-                                        <div class="flex items-center gap-2">
-                                            <flux:icon name="arrow-path" class="size-4 text-blue-500 animate-spin" />
-                                            <flux:badge size="sm" color="blue">
-                                                {{ number_format($import['progress']['percentage'] ?? 0, 0) }}%
-                                            </flux:badge>
-                                        </div>
+                                        <flux:badge size="sm" color="blue">
+                                            {{ number_format($import['progress']['percentage'] ?? 0, 0) }}%
+                                        </flux:badge>
                                     </flux:table.cell>
                                     <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
                                         {{ $import['date_range'] ?? '-' }}
                                     </flux:table.cell>
                                     <flux:table.cell>{{ $import['started_at'] }}</flux:table.cell>
-                                    <flux:table.cell align="end">
-                                        <span class="font-semibold text-blue-600 dark:text-blue-400">
-                                            {{ number_format($import['progress']['processed'] ?? 0) }}
-                                        </span>
+                                    <flux:table.cell align="end" variant="strong">
+                                        {{ number_format($import['progress']['processed'] ?? 0) }}
                                         @if (($import['progress']['expected'] ?? 0) > 0)
-                                            <span class="text-zinc-400">/{{ number_format($import['progress']['expected']) }}</span>
+                                            <span class="text-zinc-400 font-normal">/{{ number_format($import['progress']['expected']) }}</span>
                                         @endif
                                     </flux:table.cell>
                                     <flux:table.cell align="end" class="text-emerald-600 dark:text-emerald-400">
@@ -84,23 +76,6 @@
                                         @else
                                             -
                                         @endif
-                                    </flux:table.cell>
-                                </flux:table.row>
-
-                                {{-- Progress bar row --}}
-                                <flux:table.row class="bg-blue-50 dark:bg-blue-900/20 border-t-0">
-                                    <flux:table.cell colspan="8" class="pt-0">
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex-1 bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 overflow-hidden">
-                                                <div
-                                                    class="h-full bg-blue-500 transition-all duration-300"
-                                                    style="width: {{ $import['progress']['percentage'] ?? 0 }}%"
-                                                ></div>
-                                            </div>
-                                            <span class="text-xs text-zinc-500 whitespace-nowrap">
-                                                {{ $import['progress']['message'] ?? 'Processing...' }}
-                                            </span>
-                                        </div>
                                     </flux:table.cell>
                                 </flux:table.row>
                             @else
