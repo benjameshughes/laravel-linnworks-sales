@@ -13,12 +13,8 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * Sales Trend Chart - Livewire fetches data, Alpine renders chart.
- *
- * Pattern:
- * - Livewire: data fetching only
- * - Alpine: chart rendering via @entangle
- * - wire:ignore: prevents DOM thrashing
+ * Dead simple chart component.
+ * Livewire fetches data. Blade gives it to Chart.js. Done.
  */
 final class SalesTrendChart extends Component
 {
@@ -34,7 +30,6 @@ final class SalesTrendChart extends Component
 
     public string $viewMode = 'revenue';
 
-    // Public property for @entangle - Alpine watches this
     public array $chartData = [];
 
     public function mount(): void
@@ -43,7 +38,7 @@ final class SalesTrendChart extends Component
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
 
-        $this->refreshChartData();
+        $this->loadChartData();
     }
 
     #[On('filters-updated')]
@@ -60,19 +55,21 @@ final class SalesTrendChart extends Component
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
 
-        $this->refreshChartData();
+        $this->loadChartData();
     }
 
     #[On('echo:cache-management,CacheWarmingCompleted')]
     public function handleCacheWarmed(): void
     {
-        $this->refreshChartData();
+        $this->loadChartData();
     }
 
-    /**
-     * Refresh chart data from cache or calculate fresh
-     */
-    private function refreshChartData(): void
+    public function updatedViewMode(): void
+    {
+        $this->loadChartData();
+    }
+
+    private function loadChartData(): void
     {
         $breakdown = $this->getDailyBreakdown();
 
@@ -84,40 +81,33 @@ final class SalesTrendChart extends Component
 
         $labels = array_column($breakdown, 'date');
 
-        if ($this->viewMode === 'revenue') {
-            $this->chartData = [
+        $this->chartData = $this->viewMode === 'revenue'
+            ? [
                 'labels' => $labels,
-                'datasets' => [
-                    [
-                        'label' => 'Revenue',
-                        'data' => array_column($breakdown, 'revenue'),
-                        'borderColor' => 'rgba(34, 197, 94, 1)',
-                        'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
-                        'fill' => true,
-                    ],
-                ],
-            ];
-        } else {
-            $this->chartData = [
+                'datasets' => [[
+                    'label' => 'Revenue',
+                    'data' => array_column($breakdown, 'revenue'),
+                    'borderColor' => 'rgba(34, 197, 94, 1)',
+                    'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
+                    'fill' => true,
+                ]],
+            ]
+            : [
                 'labels' => $labels,
-                'datasets' => [
-                    [
-                        'label' => 'Orders',
-                        'data' => array_column($breakdown, 'orders'),
-                        'borderColor' => 'rgba(59, 130, 246, 1)',
-                        'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
-                        'fill' => true,
-                    ],
-                ],
+                'datasets' => [[
+                    'label' => 'Orders',
+                    'data' => array_column($breakdown, 'orders'),
+                    'borderColor' => 'rgba(59, 130, 246, 1)',
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
+                    'fill' => true,
+                ]],
             ];
-        }
     }
 
     private function getDailyBreakdown(): array
     {
         $periodEnum = Period::tryFrom($this->period);
 
-        // Custom periods: calculate fresh
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
             $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
@@ -130,7 +120,6 @@ final class SalesTrendChart extends Component
             return $calculator->calculate()['daily_breakdown'];
         }
 
-        // Standard periods: get from cache
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 
