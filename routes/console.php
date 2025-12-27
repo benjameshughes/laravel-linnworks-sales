@@ -34,13 +34,6 @@ Schedule::command('analytics:refresh-cache --force')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/analytics-cache.log'));
 
-// Refresh metrics cache every 15 minutes with concurrent jobs
-Schedule::command('metrics:refresh-cache --concurrent')
-    ->everyFifteenMinutes()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/metrics-cache.log'));
-
 // Check and update processed orders status every 30 minutes (oldest first)
 Schedule::command('sync:check-processed')
     ->everyThirtyMinutes()

@@ -3,52 +3,58 @@
 
     <x-settings.layout :heading="__('Import Orders')" :subheading="__('Import historical orders from Linnworks with real-time progress tracking')">
         <div class="my-6 w-full space-y-10">
-            {{-- Import Configuration --}}
-            @if (!$this->showProgress)
-                <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
-                    <div class="flex items-start gap-3">
-                        <div class="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                            <flux:icon.arrow-down-tray class="size-6 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div class="flex-1">
-                            <flux:heading size="lg">Configure Import</flux:heading>
-                            <flux:subheading>Set the date range and batch size for your import</flux:subheading>
-                        </div>
+            {{-- Import Configuration - Always visible but fields disabled during import --}}
+            <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                        <flux:icon.arrow-down-tray class="size-6 text-blue-600 dark:text-blue-400" />
                     </div>
+                    <div class="flex-1">
+                        <flux:heading size="lg">Configure Import</flux:heading>
+                        <flux:subheading>Set the date range and batch size for your import</flux:subheading>
+                    </div>
+                </div>
 
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <flux:field>
-                                <flux:label>From Date</flux:label>
-                                <flux:input type="date" wire:model="fromDate" />
-                                <flux:error name="fromDate" />
-                            </flux:field>
-
-                            <flux:field>
-                                <flux:label>To Date</flux:label>
-                                <flux:input type="date" wire:model="toDate" />
-                                <flux:error name="toDate" />
-                            </flux:field>
-                        </div>
-
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <flux:field>
-                            <flux:label>Batch Size (50-200)</flux:label>
-                            <flux:input type="number" wire:model="batchSize" min="50" max="200" />
-                            <flux:error name="batchSize" />
-                            <flux:description>Number of orders to fetch per API request. Higher values are faster but may hit rate limits</flux:description>
+                            <flux:label>From Date</flux:label>
+                            <flux:input type="date" wire:model="fromDate" :disabled="$this->showProgress" />
+                            <flux:error name="fromDate" />
                         </flux:field>
 
-                        <flux:separator />
+                        <flux:field>
+                            <flux:label>To Date</flux:label>
+                            <flux:input type="date" wire:model="toDate" :disabled="$this->showProgress" />
+                            <flux:error name="toDate" />
+                        </flux:field>
+                    </div>
 
-                        <div class="flex justify-end">
+                    <flux:field>
+                        <flux:label>Batch Size (50-200)</flux:label>
+                        <flux:input type="number" wire:model="batchSize" min="50" max="200" :disabled="$this->showProgress" />
+                        <flux:error name="batchSize" />
+                        <flux:description>Number of orders to fetch per API request. Higher values are faster but may hit rate limits</flux:description>
+                    </flux:field>
+
+                    <flux:separator />
+
+                    <div class="flex justify-end">
+                        @if ($this->showProgress)
+                            <flux:button variant="primary" disabled icon="arrow-path" class="animate-pulse">
+                                Import Running...
+                            </flux:button>
+                        @else
                             <flux:button variant="primary" wire:click="startImport" icon="arrow-down-tray">
                                 Start Import
                             </flux:button>
-                        </div>
+                        @endif
                     </div>
-                </x-animations.fade-in-up>
+                </div>
+            </x-animations.fade-in-up>
 
-                {{-- Help Text --}}
+            {{-- Help Text - Only show when not importing --}}
+            @if (!$this->showProgress)
                 <x-animations.fade-in-up :delay="200" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                     <div class="flex gap-3">
                         <flux:icon.exclamation-triangle class="size-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -66,21 +72,23 @@
             @endif
 
             {{-- Progress Display --}}
-            @if ($this->showProgress && $this->syncLog)
+            @if ($this->showProgress)
                 @php
                     $sync = $this->syncLog;
-                    $data = $sync->progress_data ?? [];
-                    $isImporting = $sync->isInProgress();
-                    $isCompleted = !$isImporting;
-                    $success = $sync->isCompleted();
-                    $percentage = $sync->progress_percentage;
+                    $isStartingState = $isStarting && !$sync;
+                    $isStage1 = $sync && ($sync->progress_data['stage'] ?? 2) < 2;
+                    $data = $sync?->progress_data ?? [];
+                    $isImporting = $sync?->isInProgress() ?? false;
+                    $isCompleted = $sync && !$isImporting;
+                    $success = $sync?->isCompleted() ?? false;
+                    $percentage = $sync?->progress_percentage ?? 0;
                     $message = $data['message'] ?? ($isCompleted ? ($success ? 'Import completed!' : 'Import failed') : 'Importing...');
-                    $totalProcessed = $data['total_processed'] ?? $sync->total_fetched ?? 0;
+                    $totalProcessed = $data['total_processed'] ?? $sync?->total_fetched ?? 0;
                     $totalOrders = $data['total_expected'] ?? $totalProcessed;
                     $batchNumber = $data['current_batch'] ?? 0;
-                    $created = $isCompleted ? ($sync->total_created ?? 0) : ($data['created'] ?? 0);
-                    $updated = $isCompleted ? ($sync->total_updated ?? 0) : ($data['updated'] ?? 0);
-                    $totalErrors = $isCompleted ? ($sync->total_failed ?? 0) : ($data['failed'] ?? 0);
+                    $created = $isCompleted ? ($sync?->total_created ?? 0) : ($data['created'] ?? 0);
+                    $updated = $isCompleted ? ($sync?->total_updated ?? 0) : ($data['updated'] ?? 0);
+                    $totalErrors = $isCompleted ? ($sync?->total_failed ?? 0) : ($data['failed'] ?? 0);
                     $ordersPerSecond = $data['orders_per_second'] ?? 0;
                     $memoryMb = $data['memory_mb'] ?? 0;
                     $timeElapsed = $data['time_elapsed'] ?? 0;
@@ -91,7 +99,12 @@
                     {{-- Status Header --}}
                     <div class="flex items-center justify-between">
                         <flux:heading size="lg">
-                            @if ($isImporting)
+                            @if ($isStartingState || $isStage1)
+                                <span class="flex items-center gap-2">
+                                    <flux:icon.arrow-path class="size-5 text-blue-500 animate-spin" />
+                                    Preparing Import...
+                                </span>
+                            @elseif ($isImporting)
                                 <span class="flex items-center gap-2">
                                     <flux:icon.arrow-path class="size-5 text-blue-500 animate-spin" />
                                     Importing Orders...
@@ -116,8 +129,27 @@
                         @endif
                     </div>
 
-                    {{-- Current Status --}}
-                    @if ($isImporting && $message)
+                    {{-- Starting/Stage 1 Message --}}
+                    @if ($isStartingState || $isStage1)
+                        <div class="flex items-center gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <flux:icon.arrow-path class="size-4 text-blue-500 animate-spin flex-shrink-0" />
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                    @if ($isStartingState)
+                                        Starting import job...
+                                    @else
+                                        Preparing import - fetching order IDs from Linnworks...
+                                    @endif
+                                </div>
+                                <div class="text-xs text-blue-600 dark:text-blue-400">
+                                    This may take a moment depending on the date range
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Current Status - Only show during actual importing (not starting/stage 1) --}}
+                    @if ($isImporting && $message && !$isStartingState && !$isStage1)
                         <div class="flex items-center gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                             <flux:icon.arrow-path class="size-4 text-blue-500 animate-spin flex-shrink-0" />
                             <div class="flex-1">
@@ -134,44 +166,48 @@
                         </div>
                     @endif
 
-                    {{-- Progress Bar --}}
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-zinc-600 dark:text-zinc-400">Progress</span>
-                            <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ number_format($percentage, 1) }}%</span>
-                        </div>
-                        <div class="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
-                            <div
-                                class="h-full transition-all duration-300 ease-out {{ $success ? 'bg-green-500' : ($isImporting ? 'bg-blue-500' : 'bg-red-500') }}"
-                                style="width: {{ $percentage }}%"
-                            ></div>
-                        </div>
-                    </div>
-
-                    {{-- Stats Grid --}}
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
-                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Processed</div>
-                            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ number_format($totalProcessed) }}</div>
-                        </div>
-
-                        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
-                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Created</div>
-                            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ number_format($created) }}</div>
-                        </div>
-
-                        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
-                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Updated</div>
-                            <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">{{ number_format($updated) }}</div>
-                        </div>
-
-                        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
-                            <div class="text-sm text-zinc-600 dark:text-zinc-400">Errors</div>
-                            <div class="text-2xl font-bold {{ $totalErrors > 0 ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100' }}">
-                                {{ number_format($totalErrors) }}
+                    {{-- Progress Bar - Only show when we have sync data --}}
+                    @if ($sync && !$isStartingState && !$isStage1)
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-zinc-600 dark:text-zinc-400">Progress</span>
+                                <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ number_format($percentage, 1) }}%</span>
+                            </div>
+                            <div class="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
+                                <div
+                                    class="h-full transition-all duration-300 ease-out {{ $success ? 'bg-green-500' : ($isImporting ? 'bg-blue-500' : 'bg-red-500') }}"
+                                    style="width: {{ $percentage }}%"
+                                ></div>
                             </div>
                         </div>
-                    </div>
+                    @endif
+
+                    {{-- Stats Grid - Only show when we have sync data --}}
+                    @if ($sync && !$isStartingState && !$isStage1)
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">Processed</div>
+                                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ number_format($totalProcessed) }}</div>
+                            </div>
+
+                            <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">Created</div>
+                                <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ number_format($created) }}</div>
+                            </div>
+
+                            <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">Updated</div>
+                                <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">{{ number_format($updated) }}</div>
+                            </div>
+
+                            <div class="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">Errors</div>
+                                <div class="text-2xl font-bold {{ $totalErrors > 0 ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100' }}">
+                                    {{ number_format($totalErrors) }}
+                                </div>
+                            </div>
+                        </div>
+                    @endif
 
                     {{-- Performance Metrics --}}
                     @if ($isImporting && $ordersPerSecond > 0)
@@ -205,7 +241,7 @@
                     @endif
 
                     {{-- Started At --}}
-                    @if ($sync->started_at)
+                    @if ($sync?->started_at)
                         <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4 space-y-2 text-sm">
                             <div class="flex justify-between">
                                 <span class="text-zinc-600 dark:text-zinc-400">Started at</span>

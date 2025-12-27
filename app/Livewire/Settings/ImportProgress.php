@@ -37,6 +37,9 @@ class ImportProgress extends Component
     // Active sync tracking
     public ?int $activeSyncId = null;
 
+    // Immediate feedback when starting import
+    public bool $isStarting = false;
+
     // Sync history for display
     public array $syncHistory = [];
 
@@ -79,18 +82,20 @@ class ImportProgress extends Component
     #[Computed]
     public function showProgress(): bool
     {
+        // Show progress immediately when user clicks Start Import
+        if ($this->isStarting) {
+            return true;
+        }
+
         $sync = $this->syncLog;
 
         if (! $sync) {
             return false;
         }
 
-        // Show progress for active syncs
+        // Show progress for all active syncs (including Stage 1)
         if ($sync->isInProgress()) {
-            // But hide Stage 1 (ID streaming) from user
-            $stage = $sync->progress_data['stage'] ?? 2;
-
-            return $stage >= 2;
+            return true;
         }
 
         // Show completed/failed syncs from the last hour
@@ -139,6 +144,9 @@ class ImportProgress extends Component
      */
     public function startImport(): void
     {
+        // Provide immediate feedback before validation
+        $this->isStarting = true;
+
         $this->validate([
             'fromDate' => 'required|date',
             'toDate' => 'required|date|after_or_equal:fromDate',
@@ -165,6 +173,9 @@ class ImportProgress extends Component
     {
         $stage = $data['stage'] ?? null;
 
+        // Real progress is now available, clear the starting state
+        $this->isStarting = false;
+
         // Ignore Stage 1 and intermediate events
         if (in_array($stage, ['historical-import', 'fetching-batch', 'importing-batch'])) {
             return;
@@ -184,6 +195,9 @@ class ImportProgress extends Component
     #[On('echo:sync-progress,SyncCompleted')]
     public function handleSyncCompleted(array $data): void
     {
+        // Real progress is now available, clear the starting state
+        $this->isStarting = false;
+
         unset($this->syncLog);
         unset($this->showProgress);
         $this->loadSyncHistory();
@@ -198,6 +212,7 @@ class ImportProgress extends Component
     public function resetImport(): void
     {
         $this->activeSyncId = null;
+        $this->isStarting = false;
         unset($this->syncLog);
     }
 
