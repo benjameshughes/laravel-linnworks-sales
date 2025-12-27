@@ -31,6 +31,7 @@
 
             {{-- Import History Table --}}
             @if (count($this->imports) > 0)
+                <div class="overflow-x-auto -mx-6 px-6">
                 <flux:table>
                     <flux:table.columns>
                         <flux:table.column>Status</flux:table.column>
@@ -143,6 +144,7 @@
                         @endforeach
                     </flux:table.rows>
                 </flux:table>
+                </div>
             @else
                 <div class="text-center py-12 text-zinc-500">
                     <flux:icon name="inbox" class="size-12 mx-auto mb-4 text-zinc-300" />
