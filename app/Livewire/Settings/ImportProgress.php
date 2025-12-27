@@ -7,153 +7,92 @@ namespace App\Livewire\Settings;
 use App\Jobs\SyncHistoricalOrdersJob;
 use App\Models\SyncLog;
 use Carbon\Carbon;
+use Flux\DateRange;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * Import Progress Component
+ * Import Progress Component - Simplified UI
  *
- * Simple flow:
- * 1. User configures import -> dispatches job
- * 2. Job updates SyncLog in database
- * 3. Job broadcasts SyncProgressUpdated/SyncCompleted via Reverb
- * 4. This component listens and refreshes from database
- *
- * Single source of truth: SyncLog model
- *
- * @property-read \App\Models\SyncLog|null $syncLog
- * @property-read array $recentSyncs
+ * Shows a date picker and import history table.
+ * Active imports show real-time progress inline in the table.
  */
 class ImportProgress extends Component
 {
-    // Form inputs
-    public string $fromDate = '';
-
-    public string $toDate = '';
-
-    public int $batchSize = 200;
-
-    // Active sync tracking
-    public ?int $activeSyncId = null;
-
-    // Immediate feedback when starting import
-    public bool $isStarting = false;
-
-    // Sync history for display
-    public array $syncHistory = [];
+    public ?DateRange $dateRange = null;
 
     // Version counter to force re-renders on WebSocket events
     public int $refreshKey = 0;
 
     public function mount(): void
     {
-        $this->toDate = now()->format('Y-m-d');
-        $this->fromDate = now()->subDays(730)->format('Y-m-d');
-
-        $this->loadActiveSyncId();
-        $this->loadSyncHistory();
+        $this->dateRange = new DateRange(
+            now()->subDays(730),
+            now()
+        );
     }
 
     /**
-     * The current sync log - single source of truth
+     * Get the currently active sync (if any)
      */
     #[Computed]
-    public function syncLog(): ?SyncLog
+    public function activeSync(): ?SyncLog
     {
-        if ($this->activeSyncId) {
-            return SyncLog::find($this->activeSyncId);
-        }
-
-        // Check for active or recent sync
-        $sync = SyncLog::getActiveSync(SyncLog::TYPE_HISTORICAL_ORDERS)
-            ?? SyncLog::getRecentSync(SyncLog::TYPE_HISTORICAL_ORDERS, 60);
-
-        if ($sync) {
-            $this->activeSyncId = $sync->id;
-        }
-
-        return $sync;
+        return SyncLog::getActiveSync(SyncLog::TYPE_HISTORICAL_ORDERS);
     }
 
     /**
-     * Whether an import is actually running (not completed)
-     * Used to disable form fields and show "Import Running..." button
+     * Get import history including active sync
      */
     #[Computed]
-    public function isImportActive(): bool
+    public function imports(): array
     {
-        if ($this->isStarting) {
-            return true;
-        }
-
-        $sync = $this->syncLog;
-
-        return $sync && $sync->isInProgress();
+        return SyncLog::where('sync_type', SyncLog::TYPE_HISTORICAL_ORDERS)
+            ->orderByDesc('started_at')
+            ->limit(20)
+            ->get()
+            ->map(fn (SyncLog $log) => $this->formatImportRow($log))
+            ->toArray();
     }
 
     /**
-     * Whether to show the progress display panel
-     * Shows for active imports AND recently completed/failed imports
+     * Format a sync log for table display
      */
-    #[Computed]
-    public function showProgress(): bool
+    protected function formatImportRow(SyncLog $log): array
     {
-        // Show progress immediately when user clicks Start Import
-        if ($this->isStarting) {
-            return true;
-        }
+        $data = $log->progress_data ?? [];
+        $isActive = $log->isInProgress();
 
-        $sync = $this->syncLog;
-
-        if (! $sync) {
-            return false;
-        }
-
-        // Show progress for all active syncs (including Stage 1)
-        if ($sync->isInProgress()) {
-            return true;
-        }
-
-        // Show completed/failed syncs from the last hour
-        return $sync->started_at->isAfter(now()->subHour());
-    }
-
-    /**
-     * Load the active sync ID if one exists
-     */
-    protected function loadActiveSyncId(): void
-    {
-        $sync = SyncLog::getActiveSync(SyncLog::TYPE_HISTORICAL_ORDERS)
-            ?? SyncLog::getRecentSync(SyncLog::TYPE_HISTORICAL_ORDERS, 60);
-
-        $this->activeSyncId = $sync?->id;
-    }
-
-    /**
-     * Load sync history for display
-     */
-    public function loadSyncHistory(): void
-    {
-        $history = SyncLog::getSyncHistory(SyncLog::TYPE_HISTORICAL_ORDERS, 10);
-
-        $this->syncHistory = $history->map(fn (SyncLog $log) => [
+        return [
             'id' => $log->id,
             'status' => $log->status,
             'status_label' => $log->status_label,
             'status_color' => $log->status_color,
+            'is_active' => $isActive,
             'started_at' => $log->started_at->format('M j, Y g:i A'),
-            'completed_at' => $log->completed_at?->format('M j, Y g:i A'),
+            'completed_at' => $log->completed_at?->format('g:i A'),
             'duration' => $log->duration_for_humans,
-            'total_processed' => $log->progress_data['total_processed'] ?? $log->total_fetched ?? 0,
-            'created' => $log->total_created ?? 0,
-            'updated' => $log->total_updated ?? 0,
-            'failed' => $log->total_failed ?? 0,
-            'error_message' => $log->error_message,
             'date_range' => isset($log->metadata['date_range'])
-                ? $log->metadata['date_range']['from'].' to '.$log->metadata['date_range']['to']
+                ? $log->metadata['date_range']['from'].' → '.$log->metadata['date_range']['to']
                 : null,
-        ])->toArray();
+            // Progress data for active imports
+            'progress' => $isActive ? [
+                'percentage' => $log->progress_percentage,
+                'message' => $data['message'] ?? 'Processing...',
+                'processed' => $data['total_processed'] ?? 0,
+                'expected' => $data['total_expected'] ?? 0,
+                'speed' => $data['orders_per_second'] ?? 0,
+            ] : null,
+            // Final stats for completed imports
+            'stats' => [
+                'processed' => $data['total_processed'] ?? $log->total_fetched ?? 0,
+                'created' => $log->total_created ?? 0,
+                'updated' => $log->total_updated ?? 0,
+                'failed' => $log->total_failed ?? 0,
+            ],
+            'error_message' => $log->error_message,
+        ];
     }
 
     /**
@@ -161,49 +100,37 @@ class ImportProgress extends Component
      */
     public function startImport(): void
     {
-        // Provide immediate feedback before validation
-        $this->isStarting = true;
-
-        $this->validate([
-            'fromDate' => 'required|date',
-            'toDate' => 'required|date|after_or_equal:fromDate',
-            'batchSize' => 'required|integer|min:50|max:200',
-        ]);
+        if ($this->activeSync) {
+            return; // Already running
+        }
 
         SyncHistoricalOrdersJob::dispatch(
-            fromDate: Carbon::parse($this->fromDate)->startOfDay(),
-            toDate: Carbon::parse($this->toDate)->endOfDay(),
+            fromDate: Carbon::parse($this->dateRange->start())->startOfDay(),
+            toDate: Carbon::parse($this->dateRange->end())->endOfDay(),
             startedBy: auth()->user()?->name ?? 'UI Import',
         );
 
-        // Clear cached computed property to pick up the new sync
-        unset($this->syncLog);
-        $this->activeSyncId = null;
+        // Clear cache to pick up the new sync
+        unset($this->activeSync);
+        unset($this->imports);
+        $this->refreshKey++;
     }
 
     /**
      * Handle sync progress updates from Reverb
-     * Clear computed cache and re-render with fresh data from database
      */
     #[On('echo:sync-progress,SyncProgressUpdated')]
     public function handleSyncProgress(array $data): void
     {
         $stage = $data['stage'] ?? null;
 
-        // Real progress is now available, clear the starting state
-        $this->isStarting = false;
-
-        // Ignore Stage 1 and intermediate events
+        // Only refresh on meaningful progress updates
         if (in_array($stage, ['historical-import', 'fetching-batch', 'importing-batch'])) {
             return;
         }
 
-        // Clear computed cache - next render will fetch fresh data
-        unset($this->syncLog);
-        unset($this->showProgress);
-        unset($this->isImportActive);
-
-        // Increment to trigger Livewire re-render
+        unset($this->activeSync);
+        unset($this->imports);
         $this->refreshKey++;
     }
 
@@ -213,28 +140,9 @@ class ImportProgress extends Component
     #[On('echo:sync-progress,SyncCompleted')]
     public function handleSyncCompleted(array $data): void
     {
-        // Real progress is now available, clear the starting state
-        $this->isStarting = false;
-
-        unset($this->syncLog);
-        unset($this->showProgress);
-        unset($this->isImportActive);
-        $this->loadSyncHistory();
-
-        // Increment to trigger Livewire re-render
+        unset($this->activeSync);
+        unset($this->imports);
         $this->refreshKey++;
-    }
-
-    /**
-     * Reset to show the import form again
-     */
-    public function resetImport(): void
-    {
-        $this->activeSyncId = null;
-        $this->isStarting = false;
-        unset($this->syncLog);
-        unset($this->showProgress);
-        unset($this->isImportActive);
     }
 
     public function render()
