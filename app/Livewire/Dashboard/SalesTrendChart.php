@@ -13,10 +13,12 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * Dead simple chart component.
- * - Fetches data from cache
- * - Passes to blade for Chart.js rendering
- * - Dispatches event when data changes
+ * Sales Trend Chart - Livewire fetches data, Alpine renders chart.
+ *
+ * Pattern:
+ * - Livewire: data fetching only
+ * - Alpine: chart rendering via @entangle
+ * - wire:ignore: prevents DOM thrashing
  */
 final class SalesTrendChart extends Component
 {
@@ -32,11 +34,16 @@ final class SalesTrendChart extends Component
 
     public string $viewMode = 'revenue';
 
+    // Public property for @entangle - Alpine watches this
+    public array $chartData = [];
+
     public function mount(): void
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
+
+        $this->refreshChartData();
     }
 
     #[On('filters-updated')]
@@ -53,47 +60,32 @@ final class SalesTrendChart extends Component
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
 
-        $this->dispatchChartUpdate();
+        $this->refreshChartData();
     }
 
     #[On('echo:cache-management,CacheWarmingCompleted')]
     public function handleCacheWarmed(): void
     {
-        $this->dispatchChartUpdate();
-    }
-
-    private function dispatchChartUpdate(): void
-    {
-        $this->dispatch('sales-trend-updated', data: $this->chartData());
-    }
-
-    #[Computed]
-    public function periodLabel(): string
-    {
-        if ($this->period === 'custom') {
-            return 'Custom: '.Carbon::parse($this->customFrom)->format('M j').' - '.Carbon::parse($this->customTo)->format('M j, Y');
-        }
-
-        $periodEnum = Period::tryFrom($this->period);
-
-        return $periodEnum?->label() ?? "Last {$this->period} days";
+        $this->refreshChartData();
     }
 
     /**
-     * Get chart data from cache or calculate fresh
+     * Refresh chart data from cache or calculate fresh
      */
-    public function chartData(): array
+    private function refreshChartData(): void
     {
         $breakdown = $this->getDailyBreakdown();
 
         if (empty($breakdown)) {
-            return ['labels' => [], 'datasets' => []];
+            $this->chartData = ['labels' => [], 'datasets' => []];
+
+            return;
         }
 
         $labels = array_column($breakdown, 'date');
 
         if ($this->viewMode === 'revenue') {
-            return [
+            $this->chartData = [
                 'labels' => $labels,
                 'datasets' => [
                     [
@@ -105,20 +97,20 @@ final class SalesTrendChart extends Component
                     ],
                 ],
             ];
-        }
-
-        return [
-            'labels' => $labels,
-            'datasets' => [
-                [
-                    'label' => 'Orders',
-                    'data' => array_column($breakdown, 'orders'),
-                    'borderColor' => 'rgba(59, 130, 246, 1)',
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
-                    'fill' => true,
+        } else {
+            $this->chartData = [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => 'Orders',
+                        'data' => array_column($breakdown, 'orders'),
+                        'borderColor' => 'rgba(59, 130, 246, 1)',
+                        'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
+                        'fill' => true,
+                    ],
                 ],
-            ],
-        ];
+            ];
+        }
     }
 
     private function getDailyBreakdown(): array
@@ -143,6 +135,18 @@ final class SalesTrendChart extends Component
         $cached = Cache::get($cacheKey);
 
         return $cached['daily_breakdown'] ?? [];
+    }
+
+    #[Computed]
+    public function periodLabel(): string
+    {
+        if ($this->period === 'custom') {
+            return 'Custom: '.Carbon::parse($this->customFrom)->format('M j').' - '.Carbon::parse($this->customTo)->format('M j, Y');
+        }
+
+        $periodEnum = Period::tryFrom($this->period);
+
+        return $periodEnum?->label() ?? "Last {$this->period} days";
     }
 
     public function render()

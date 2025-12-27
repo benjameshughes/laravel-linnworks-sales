@@ -14,49 +14,76 @@
         </flux:radio.group>
     </div>
 
-    @php($chartData = $this->chartData())
+    {{-- Alpine owns the chart. Livewire just provides data via @entangle --}}
+    <div
+        wire:ignore
+        x-data="{
+            chart: null,
+            data: @entangle('chartData'),
 
-    @if(empty($chartData['labels']))
-        <div class="flex items-center justify-center h-64 text-zinc-500 dark:text-zinc-400">
-            <p class="text-sm">No data available</p>
-        </div>
-    @else
-        {{-- wire:ignore so Livewire never touches the chart after initial render --}}
-        <div
-            wire:ignore
-            x-data="{
-                chart: null,
-                init() {
-                    this.chart = new Chart(this.$refs.canvas, {
-                        type: 'line',
-                        data: @js($chartData),
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: { enabled: true, mode: 'index', intersect: false }
-                            },
-                            scales: {
-                                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                                x: { grid: { display: false } }
-                            },
-                            elements: {
-                                line: { tension: 0.3 },
-                                point: { radius: 3, hoverRadius: 5 }
-                            }
+            init() {
+                // Watch for data changes from Livewire
+                this.$watch('data', (newData) => {
+                    this.updateChart(newData);
+                });
+
+                // Initial render
+                if (this.data.labels && this.data.labels.length > 0) {
+                    this.createChart();
+                }
+            },
+
+            createChart() {
+                if (this.chart) {
+                    this.chart.destroy();
+                }
+
+                this.chart = new Chart(this.$refs.canvas, {
+                    type: 'line',
+                    data: this.data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: true, mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                            x: { grid: { display: false } }
+                        },
+                        elements: {
+                            line: { tension: 0.3 },
+                            point: { radius: 3, hoverRadius: 5 }
                         }
-                    });
-                },
-                update(data) {
-                    this.chart.data = data;
+                    }
+                });
+            },
+
+            updateChart(newData) {
+                if (!newData.labels || newData.labels.length === 0) {
+                    if (this.chart) {
+                        this.chart.destroy();
+                        this.chart = null;
+                    }
+                    return;
+                }
+
+                if (!this.chart) {
+                    this.createChart();
+                } else {
+                    this.chart.data = newData;
                     this.chart.update('none');
                 }
-            }"
-            @sales-trend-updated.window="update($event.detail.data)"
-            class="h-64"
-        >
-            <canvas x-ref="canvas"></canvas>
-        </div>
-    @endif
+            }
+        }"
+        class="h-64"
+    >
+        <template x-if="!data.labels || data.labels.length === 0">
+            <div class="flex items-center justify-center h-full text-zinc-500 dark:text-zinc-400">
+                <p class="text-sm">No data available</p>
+            </div>
+        </template>
+        <canvas x-ref="canvas" x-show="data.labels && data.labels.length > 0"></canvas>
+    </div>
 </div>
