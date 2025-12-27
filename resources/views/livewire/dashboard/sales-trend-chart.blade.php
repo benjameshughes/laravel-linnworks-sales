@@ -15,41 +15,38 @@
     </div>
 
     <div
-        wire:ignore
         x-data="{
             chart: null,
-            createChart(data) {
-                const canvas = this.$refs.canvas;
-                if (this.chart) {
-                    this.chart.destroy();
-                }
-                if (data.labels && data.labels.length > 0) {
-                    this.chart = new Chart(canvas, {
-                        type: 'line',
-                        data: data,
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: { enabled: true, mode: 'index', intersect: false }
-                            },
-                            scales: {
-                                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                                x: { grid: { display: false } }
-                            },
-                            elements: {
-                                line: { tension: 0.3 },
-                                point: { radius: 3, hoverRadius: 5 }
-                            }
+
+            init() {
+                this.chart = new Chart(this.$refs.canvas, {
+                    type: 'line',
+                    data: $wire.chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: true, mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                            x: { grid: { display: false } }
+                        },
+                        elements: {
+                            line: { tension: 0.3 },
+                            point: { radius: 3, hoverRadius: 5 }
                         }
-                    });
-                }
+                    }
+                });
+
+                $watch('$wire.chartData', (newData) => {
+                    this.chart.data = newData;
+                    this.chart.update();
+                });
             }
         }"
-        x-init="createChart(@js($chartData))"
-        class="h-64 relative"
-        @sales-chart-updated.window="createChart($event.detail)"
+        class="h-64"
     >
         <canvas x-ref="canvas"></canvas>
     </div>

@@ -97,8 +97,6 @@ final class SalesTrendChart extends Component
                 ]],
             ];
 
-        // Dispatch browser event for Alpine to update chart
-        $this->dispatch('sales-chart-updated', $this->chartData);
     }
 
     private function getDailyBreakdown(): array
