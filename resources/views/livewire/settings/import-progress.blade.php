@@ -45,7 +45,7 @@
                         @foreach ($this->imports as $import)
                             {{-- Active import row --}}
                             @if ($import['is_active'])
-                                <flux:table.row class="bg-blue-50 dark:bg-blue-900/20">
+                                <flux:table.row>
                                     <flux:table.cell>
                                         <flux:badge size="sm" color="blue">
                                             {{ number_format($import['progress']['percentage'] ?? 0, 0) }}%
@@ -55,11 +55,8 @@
                                         {{ $import['date_range'] ?? '-' }}
                                     </flux:table.cell>
                                     <flux:table.cell>{{ $import['started_at'] }}</flux:table.cell>
-                                    <flux:table.cell align="end" variant="strong">
+                                    <flux:table.cell align="end" class="font-semibold text-blue-600 dark:text-blue-400">
                                         {{ number_format($import['progress']['processed'] ?? 0) }}
-                                        @if (($import['progress']['expected'] ?? 0) > 0)
-                                            <span class="text-zinc-400 font-normal">/{{ number_format($import['progress']['expected']) }}</span>
-                                        @endif
                                     </flux:table.cell>
                                     <flux:table.cell align="end" class="text-emerald-600 dark:text-emerald-400">
                                         {{ number_format($import['stats']['created']) }}
