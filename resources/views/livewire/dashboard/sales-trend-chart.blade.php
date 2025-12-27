@@ -19,7 +19,8 @@
             chart: null,
 
             init() {
-                this.chart = new Chart(this.$refs.canvas, {
+                this.$nextTick(() => {
+                    this.chart = new Chart(this.$refs.canvas, {
                     type: 'line',
                     data: $wire.chartData,
                     options: {
@@ -38,11 +39,12 @@
                             point: { radius: 3, hoverRadius: 5 }
                         }
                     }
-                });
+                    });
 
-                $watch('$wire.chartData', (newData) => {
-                    this.chart.data = newData;
-                    this.chart.update();
+                    $watch('$wire.chartData', (newData) => {
+                        this.chart.data = newData;
+                        this.chart.update();
+                    });
                 });
             }
         }"
