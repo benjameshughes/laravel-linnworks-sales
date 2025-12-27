@@ -42,11 +42,9 @@
                 };
 
                 if (canvas._chart) {
-                    canvas._chart.data = data;
-                    canvas._chart.update('none');
-                } else {
-                    canvas._chart = new Chart(canvas, { type: 'line', data: data, options: options });
+                    canvas._chart.destroy();
                 }
+                canvas._chart = new Chart(canvas, { type: 'line', data: data, options: options });
             "
             class="h-64"
         >
