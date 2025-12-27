@@ -20,7 +20,6 @@
         </div>
     @else
         <div
-            wire:key="chart-{{ md5(json_encode($channelData) . $viewMode) }}"
             x-data="{
                 chart: null,
                 init() {
