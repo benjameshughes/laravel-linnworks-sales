@@ -58,12 +58,6 @@ final class SalesTrendChart extends Component
         $this->loadChartData();
     }
 
-    #[On('echo:cache-management,CacheWarmingCompleted')]
-    public function handleCacheWarmed(): void
-    {
-        $this->loadChartData();
-    }
-
     public function updatedViewMode(): void
     {
         $this->loadChartData();
