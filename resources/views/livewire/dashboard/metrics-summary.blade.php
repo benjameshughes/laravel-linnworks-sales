@@ -7,8 +7,9 @@
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Revenue</p>
-                <p class="text-xl font-semibold text-emerald-600 dark:text-emerald-400 truncate">
-                    £{{ number_format($this->metrics->get('total_revenue'), 0) }}
+                <p class="text-xl font-semibold text-emerald-600 dark:text-emerald-400 truncate"
+                   x-data="currencyCounter({{ $this->metrics->get('total_revenue') }}, '£', 'totalRevenue')"
+                   x-text="formattedValue">
                 </p>
             </div>
             <div class="flex-shrink-0 text-right">
@@ -36,8 +37,9 @@
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Orders</p>
-                <p class="text-xl font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                    {{ number_format($this->metrics->get('total_orders')) }}
+                <p class="text-xl font-semibold text-zinc-900 dark:text-zinc-100 truncate"
+                   x-data="integerCounter({{ $this->metrics->get('total_orders') }}, 'totalOrders')"
+                   x-text="formattedValue">
                 </p>
             </div>
             <div class="flex-shrink-0 text-right">
@@ -55,8 +57,9 @@
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Avg Value</p>
-                <p class="text-xl font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                    £{{ number_format($this->metrics->get('average_order_value'), 0) }}
+                <p class="text-xl font-semibold text-zinc-900 dark:text-zinc-100 truncate"
+                   x-data="currencyCounter({{ $this->metrics->get('average_order_value') }}, '£', 'avgOrderValue')"
+                   x-text="formattedValue">
                 </p>
             </div>
             <div class="flex-shrink-0 text-right">
@@ -74,8 +77,9 @@
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Items</p>
-                <p class="text-xl font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                    {{ number_format($this->metrics->get('total_items')) }}
+                <p class="text-xl font-semibold text-zinc-900 dark:text-zinc-100 truncate"
+                   x-data="integerCounter({{ $this->metrics->get('total_items') }}, 'totalItems')"
+                   x-text="formattedValue">
                 </p>
             </div>
             <div class="flex-shrink-0 text-right">
