@@ -14,43 +14,45 @@
         </flux:radio.group>
     </div>
 
-    @if(empty($chartData['labels']))
-        <div class="flex items-center justify-center h-64 text-zinc-500 dark:text-zinc-400">
-            <p class="text-sm">No data available</p>
-        </div>
-    @else
-        <div
-            x-data
-            x-init="
-                const canvas = $refs.canvas;
-                const data = @js($chartData);
-                const options = {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { enabled: true, mode: 'index', intersect: false }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                        x: { grid: { display: false } }
-                    },
-                    elements: {
-                        line: { tension: 0.3 },
-                        point: { radius: 3, hoverRadius: 5 }
-                    }
-                };
+    {{-- Always render canvas - never swap DOM elements --}}
+    <div
+        x-data
+        x-init="
+            const canvas = $refs.canvas;
+            const data = @js($chartData);
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: true, mode: 'index', intersect: false }
+                },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    x: { grid: { display: false } }
+                },
+                elements: {
+                    line: { tension: 0.3 },
+                    point: { radius: 3, hoverRadius: 5 }
+                }
+            };
 
-                console.log('SalesTrendChart x-init running', { hasExistingChart: !!canvas._chart, dataLabels: data.labels?.length });
+            console.log('SalesTrendChart x-init running', { hasExistingChart: !!canvas._chart, dataLabels: data.labels?.length });
 
+            if (data.labels && data.labels.length > 0) {
                 if (canvas._chart) {
                     canvas._chart.destroy();
                 }
                 canvas._chart = new Chart(canvas, { type: 'line', data: data, options: options });
-            "
-            class="h-64"
-        >
-            <canvas x-ref="canvas"></canvas>
-        </div>
-    @endif
+            }
+        "
+        class="h-64 relative"
+    >
+        <canvas x-ref="canvas"></canvas>
+        @if(empty($chartData['labels']))
+            <div class="absolute inset-0 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+                <p class="text-sm">No data available</p>
+            </div>
+        @endif
+    </div>
 </div>
