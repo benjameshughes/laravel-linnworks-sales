@@ -12,6 +12,7 @@ class CreateUserCommand extends Command
     protected $signature = 'user:create
                             {--name= : The full name of the user}
                             {--email= : The email address}
+                            {--password= : The password (will be hashed)}
                             {--role=user : The role (admin or user)}';
 
     protected $description = 'Create a new user account';
@@ -20,8 +21,8 @@ class CreateUserCommand extends Command
     {
         $name = $this->option('name') ?: $this->ask('Full name');
         $email = $this->option('email') ?: $this->ask('Email address');
+        $password = $this->option('password') ?: $this->secret('Password');
         $role = $this->option('role');
-        $password = $this->secret('Password');
 
         $validator = Validator::make([
             'name' => $name,
