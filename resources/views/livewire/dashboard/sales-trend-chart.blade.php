@@ -20,7 +20,7 @@
         x-data="{
             chart: null,
             data: @js($chartData),
-            liveData: @entangle('chartData'),
+            liveData: $wire.entangle('chartData'),
 
             init() {
                 // Initial render
@@ -29,10 +29,10 @@
                 }
 
                 // Watch @entangle for updates from Livewire
-                this.$watch('liveData', (newData) => {
+                this.$watch('liveData', function(newData) {
                     this.data = newData;
                     this.updateChart(newData);
-                });
+                }.bind(this));
             },
 
             createChart() {
