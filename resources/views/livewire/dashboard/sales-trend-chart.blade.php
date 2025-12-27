@@ -27,10 +27,12 @@
                     this.updateChart(newData);
                 });
 
-                // Initial render
-                if (this.data.labels && this.data.labels.length > 0) {
-                    this.createChart();
-                }
+                // Initial render - $nextTick ensures DOM and @entangle are ready
+                this.$nextTick(() => {
+                    if (this.data.labels && this.data.labels.length > 0) {
+                        this.createChart();
+                    }
+                });
             },
 
             createChart() {
