@@ -14,24 +14,24 @@
         </flux:radio.group>
     </div>
 
-    {{-- Alpine owns the chart. Livewire just provides data via @entangle --}}
+    {{-- Alpine owns the chart. Livewire provides data --}}
     <div
         wire:ignore
         x-data="{
             chart: null,
-            data: @entangle('chartData'),
+            data: @js($chartData),
+            liveData: @entangle('chartData'),
 
             init() {
-                // Watch for data changes from Livewire
-                this.$watch('data', (newData) => {
-                    this.updateChart(newData);
-                });
+                // Initial render
+                if (this.data.labels?.length > 0) {
+                    this.createChart();
+                }
 
-                // Initial render - $nextTick ensures DOM and @entangle are ready
-                this.$nextTick(() => {
-                    if (this.data.labels && this.data.labels.length > 0) {
-                        this.createChart();
-                    }
+                // Watch @entangle for updates from Livewire
+                this.$watch('liveData', (newData) => {
+                    this.data = newData;
+                    this.updateChart(newData);
                 });
             },
 
