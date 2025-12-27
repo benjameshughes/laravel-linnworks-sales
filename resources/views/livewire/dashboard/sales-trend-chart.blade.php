@@ -28,7 +28,7 @@
                     this.createChart();
                 }
 
-                // Watch @entangle for updates from Livewire
+                // Watch for Livewire updates
                 this.$watch('liveData', function(newData) {
                     this.data = newData;
                     this.updateChart(newData);
