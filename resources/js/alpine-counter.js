@@ -1,5 +1,7 @@
 // Animated Counter Component with number ticking
 // Usage: x-data="animatedCounter(initialValue, options)"
+document.addEventListener('alpine:init', () => {
+
 Alpine.data('animatedCounter', (initialValue = 0, options = {}) => ({
     current: initialValue,
     target: initialValue,
@@ -113,3 +115,5 @@ Alpine.data('integerCounter', (initialValue = 0, storeKey = null) => ({
         storeKey: storeKey
     }))
 }));
+
+}); // End alpine:init
