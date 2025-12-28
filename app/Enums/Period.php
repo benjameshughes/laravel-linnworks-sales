@@ -69,6 +69,16 @@ enum Period: string
     }
 
     /**
+     * Get all periods including custom for dropdown when custom is active
+     *
+     * @return array<Period>
+     */
+    public static function allWithCustom(): array
+    {
+        return self::cases();
+    }
+
+    /**
      * Get the cache key for this period
      */
     public function cacheKey(string $channel = 'all', string $status = 'all'): string

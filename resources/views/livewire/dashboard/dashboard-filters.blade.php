@@ -14,6 +14,7 @@
                     with-presets
                     with-inputs
                     selectable-header
+                    value="{{ $this->pickerValue }}"
                     max="{{ now()->format('Y-m-d') }}"
                 >
                     <x-slot name="trigger">
@@ -122,8 +123,8 @@
                 <flux:select.option value="processed">Processed</flux:select.option>
             </flux:select>
 
-            <flux:select wire:model.live.debounce.300ms="period" size="sm" class="!w-auto">
-                @foreach(\App\Enums\Period::all() as $periodOption)
+            <flux:select wire:model.live.debounce.300ms="period" wire:key="period-{{ $period }}" size="sm" class="!w-auto">
+                @foreach($period === 'custom' ? \App\Enums\Period::allWithCustom() : \App\Enums\Period::all() as $periodOption)
                     <flux:select.option value="{{ $periodOption->value }}">
                         {{ $periodOption->label() }}
                     </flux:select.option>

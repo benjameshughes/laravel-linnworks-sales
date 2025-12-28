@@ -257,10 +257,41 @@ final class DashboardFilters extends Component
     #[Computed]
     public function formattedDateRange(): string
     {
-        $start = $this->dateRange->get('start');
-        $end = $this->dateRange->get('end');
+        $range = $this->calculateDateRange();
 
-        return $start->format('M j').' - '.$end->format('M j, Y');
+        return $range['start']->format('M j').' - '.$range['end']->format('M j, Y');
+    }
+
+    #[Computed]
+    public function pickerValue(): string
+    {
+        $range = $this->calculateDateRange();
+
+        return $range['start']->format('Y-m-d').'/'.$range['end']->format('Y-m-d');
+    }
+
+    private function calculateDateRange(): array
+    {
+        if ($this->period === 'custom') {
+            return [
+                'start' => Carbon::parse($this->customFrom)->startOfDay(),
+                'end' => Carbon::parse($this->customTo)->endOfDay(),
+            ];
+        }
+
+        if ($this->period === 'yesterday') {
+            return [
+                'start' => Carbon::yesterday()->startOfDay(),
+                'end' => Carbon::yesterday()->endOfDay(),
+            ];
+        }
+
+        $days = (int) $this->period;
+
+        return [
+            'start' => Carbon::now()->subDays($days)->startOfDay(),
+            'end' => Carbon::now()->endOfDay(),
+        ];
     }
 
     #[Computed]
