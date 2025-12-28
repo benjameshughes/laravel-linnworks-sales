@@ -14,43 +14,63 @@
         </flux:radio.group>
     </div>
 
-    @if(empty($dailyBreakdown))
-        <div class="text-center text-zinc-500 dark:text-zinc-400 py-8">
-            <p class="text-sm">No data available</p>
-        </div>
-    @else
-        <div
-            x-data="{
-                chart: null,
-                init() {
-                    this.chart = new Chart(this.$refs.canvas, {
-                        type: 'bar',
-                        data: @js($this->chartData()),
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: true, position: 'top' },
-                                tooltip: { enabled: true, mode: 'index', intersect: false }
-                            },
-                            scales: {
-                                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                                x: { grid: { display: false } }
-                            },
-                            elements: { bar: { borderRadius: 4 } }
-                        }
-                    });
-                },
-                destroy() {
-                    if (this.chart) {
-                        this.chart.destroy();
-                        this.chart = null;
-                    }
+    <div
+        wire:ignore
+        x-data="{
+            chart: null,
+            initialData: @js($chartData),
+
+            init() {
+                this.$nextTick(() => {
+                    this.createChart(this.initialData);
+                });
+            },
+
+            createChart(data) {
+                if (!data || !data.labels || data.labels.length === 0) {
+                    return;
                 }
-            }"
-            class="h-64"
-        >
-            <canvas x-ref="canvas"></canvas>
-        </div>
-    @endif
+
+                if (this.chart) {
+                    this.chart.destroy();
+                }
+
+                this.chart = new Chart(this.$refs.canvas, {
+                    type: 'bar',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top' },
+                            tooltip: { enabled: true, mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                            x: { grid: { display: false } }
+                        },
+                        elements: { bar: { borderRadius: 4 } }
+                    }
+                });
+            },
+
+            updateChart(data) {
+                if (!data || !data.labels || data.labels.length === 0) {
+                    return;
+                }
+
+                if (!this.chart) {
+                    this.createChart(data);
+                    return;
+                }
+
+                this.chart.data = data;
+                this.chart.update();
+            }
+        }"
+        x-on:daily-revenue-chart-updated.window="updateChart($event.detail.data)"
+        class="h-64"
+    >
+        <canvas x-ref="canvas"></canvas>
+    </div>
 </div>

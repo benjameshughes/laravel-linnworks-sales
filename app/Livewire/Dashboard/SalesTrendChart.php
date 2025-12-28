@@ -69,6 +69,7 @@ final class SalesTrendChart extends Component
 
         if (empty($breakdown)) {
             $this->chartData = ['labels' => [], 'datasets' => []];
+            $this->dispatch('sales-trend-chart-updated', data: $this->chartData);
 
             return;
         }
@@ -97,6 +98,7 @@ final class SalesTrendChart extends Component
                 ]],
             ];
 
+        $this->dispatch('sales-trend-chart-updated', data: $this->chartData);
     }
 
     private function getDailyBreakdown(): array

@@ -28,13 +28,21 @@ final class DailyRevenueChart extends Component
     // Public property for @entangle - raw daily breakdown data
     public array $dailyBreakdown = [];
 
+    // Formatted chart data for Chart.js - Alpine watches this
+    public array $chartData = [];
+
     public function mount(): void
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
 
-        $this->calculateChartData();
+        $this->loadData();
+    }
+
+    public function updatedViewMode(): void
+    {
+        $this->formatChartData();
     }
 
     #[On('filters-updated')]
@@ -51,10 +59,10 @@ final class DailyRevenueChart extends Component
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
 
-        $this->calculateChartData();
+        $this->loadData();
     }
 
-    private function calculateChartData(): void
+    private function loadData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
@@ -69,9 +77,8 @@ final class DailyRevenueChart extends Component
             );
 
             $data = $calculator->calculate();
-
-            // Store raw data - Alpine will format for Chart.js
             $this->dailyBreakdown = $data['daily_breakdown'];
+            $this->formatChartData();
 
             return;
         }
@@ -82,32 +89,25 @@ final class DailyRevenueChart extends Component
 
         if ($cached && isset($cached['daily_breakdown'])) {
             $this->dailyBreakdown = $cached['daily_breakdown'];
+            $this->formatChartData();
         }
 
         // Cache miss? Keep existing data - don't clear what we have
     }
 
-    #[Computed]
-    public function periodLabel(): string
+    private function formatChartData(): void
     {
-        if ($this->period === 'custom') {
-            return 'Custom: '.Carbon::parse($this->customFrom)->format('M j').' - '.Carbon::parse($this->customTo)->format('M j, Y');
+        if (empty($this->dailyBreakdown)) {
+            $this->chartData = ['labels' => [], 'datasets' => []];
+            $this->dispatch('daily-revenue-chart-updated', data: $this->chartData);
+
+            return;
         }
 
-        $periodEnum = \App\Enums\Period::tryFrom($this->period);
-
-        return $periodEnum?->label() ?? "Last {$this->period} days";
-    }
-
-    /**
-     * Format data for Chart.js
-     */
-    public function chartData(): array
-    {
         $labels = array_column($this->dailyBreakdown, 'date');
 
-        if ($this->viewMode === 'orders_revenue') {
-            return [
+        $this->chartData = $this->viewMode === 'orders_revenue'
+            ? [
                 'labels' => $labels,
                 'datasets' => [
                     [
@@ -123,20 +123,32 @@ final class DailyRevenueChart extends Component
                         'borderRadius' => 4,
                     ],
                 ],
+            ]
+            : [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => 'Items Sold',
+                        'data' => array_column($this->dailyBreakdown, 'items'),
+                        'backgroundColor' => 'rgba(168, 85, 247, 0.8)',
+                        'borderRadius' => 4,
+                    ],
+                ],
             ];
+
+        $this->dispatch('daily-revenue-chart-updated', data: $this->chartData);
+    }
+
+    #[Computed]
+    public function periodLabel(): string
+    {
+        if ($this->period === 'custom') {
+            return 'Custom: '.Carbon::parse($this->customFrom)->format('M j').' - '.Carbon::parse($this->customTo)->format('M j, Y');
         }
 
-        return [
-            'labels' => $labels,
-            'datasets' => [
-                [
-                    'label' => 'Items Sold',
-                    'data' => array_column($this->dailyBreakdown, 'items'),
-                    'backgroundColor' => 'rgba(168, 85, 247, 0.8)',
-                    'borderRadius' => 4,
-                ],
-            ],
-        ];
+        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+
+        return $periodEnum?->label() ?? "Last {$this->period} days";
     }
 
     public function render()

@@ -26,13 +26,21 @@ final class ChannelDistributionChart extends Component
     // Public property for @entangle - channel distribution data
     public array $channelData = [];
 
+    // Formatted chart data for Chart.js - Alpine watches this
+    public array $chartData = [];
+
     public function mount(): void
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
 
-        $this->calculateChartData();
+        $this->loadData();
+    }
+
+    public function updatedViewMode(): void
+    {
+        $this->formatChartData();
     }
 
     #[On('filters-updated')]
@@ -49,10 +57,10 @@ final class ChannelDistributionChart extends Component
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
 
-        $this->calculateChartData();
+        $this->loadData();
     }
 
-    private function calculateChartData(): void
+    private function loadData(): void
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
@@ -67,8 +75,8 @@ final class ChannelDistributionChart extends Component
             );
 
             $data = $calculator->calculate();
-
             $this->channelData = $data['top_channels']->toArray();
+            $this->formatChartData();
 
             return;
         }
@@ -81,15 +89,13 @@ final class ChannelDistributionChart extends Component
             $this->channelData = is_array($cached['top_channels'])
                 ? $cached['top_channels']
                 : $cached['top_channels']->toArray();
+            $this->formatChartData();
         }
 
         // Cache miss? Keep existing data - don't clear what we have
     }
 
-    /**
-     * Format data for Chart.js doughnut chart
-     */
-    public function chartData(): array
+    private function formatChartData(): void
     {
         $colors = [
             'rgba(59, 130, 246, 0.8)',   // blue
@@ -99,6 +105,13 @@ final class ChannelDistributionChart extends Component
             'rgba(236, 72, 153, 0.8)',   // pink
             'rgba(20, 184, 166, 0.8)',   // teal
         ];
+
+        if (empty($this->channelData)) {
+            $this->chartData = ['labels' => [], 'datasets' => []];
+            $this->dispatch('channel-distribution-chart-updated', data: $this->chartData);
+
+            return;
+        }
 
         if ($this->viewMode === 'grouped') {
             // Group by channel (parent)
@@ -111,7 +124,7 @@ final class ChannelDistributionChart extends Component
                 $grouped[$channel] += (float) ($item['revenue'] ?? 0);
             }
 
-            return [
+            $this->chartData = [
                 'labels' => array_keys($grouped),
                 'datasets' => [
                     [
@@ -121,6 +134,10 @@ final class ChannelDistributionChart extends Component
                     ],
                 ],
             ];
+
+            $this->dispatch('channel-distribution-chart-updated', data: $this->chartData);
+
+            return;
         }
 
         // Detailed view - show subsource
@@ -133,7 +150,7 @@ final class ChannelDistributionChart extends Component
             $this->channelData
         );
 
-        return [
+        $this->chartData = [
             'labels' => $labels,
             'datasets' => [
                 [
@@ -143,6 +160,8 @@ final class ChannelDistributionChart extends Component
                 ],
             ],
         ];
+
+        $this->dispatch('channel-distribution-chart-updated', data: $this->chartData);
     }
 
     public function render()

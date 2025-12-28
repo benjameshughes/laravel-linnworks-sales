@@ -17,3 +17,9 @@ Broadcast::channel('import-progress', function () {
 Broadcast::channel('sync-progress', function () {
     return true;
 });
+
+// Public channel for cache warming updates
+// Used by dashboard to refresh charts after sync completes
+Broadcast::channel('cache-management', function () {
+    return true;
+});

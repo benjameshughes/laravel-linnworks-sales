@@ -53,10 +53,11 @@ describe('SalesTrendChart Livewire Component', function () {
             ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
             ->set('customTo', now()->format('Y-m-d'));
 
-        $dailyBreakdown = $component->get('dailyBreakdown');
+        $chartData = $component->get('chartData');
 
-        expect($dailyBreakdown)
-            ->toBeArray();
+        expect($chartData)
+            ->toBeArray()
+            ->toHaveKeys(['labels', 'datasets']);
     });
 
     it('generates period label correctly', function () {
@@ -84,9 +85,11 @@ describe('SalesTrendChart Livewire Component', function () {
     it('handles empty data gracefully', function () {
         $component = Livewire::test(SalesTrendChart::class);
 
-        $dailyBreakdown = $component->get('dailyBreakdown');
+        $chartData = $component->get('chartData');
 
-        expect($dailyBreakdown)->toBeArray();
+        expect($chartData)
+            ->toBeArray()
+            ->toHaveKeys(['labels', 'datasets']);
     });
 
     it('filters data by channel', function () {
@@ -110,8 +113,10 @@ describe('SalesTrendChart Livewire Component', function () {
             ->set('customTo', now()->format('Y-m-d'))
             ->set('channel', 'Amazon');
 
-        $dailyBreakdown = $component->get('dailyBreakdown');
+        $chartData = $component->get('chartData');
 
-        expect($dailyBreakdown)->toBeArray();
+        expect($chartData)
+            ->toBeArray()
+            ->toHaveKeys(['labels', 'datasets']);
     });
 });
