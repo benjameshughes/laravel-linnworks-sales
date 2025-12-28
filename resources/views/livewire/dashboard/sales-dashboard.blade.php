@@ -8,12 +8,12 @@
 
         {{-- Charts Grid --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <livewire:dashboard.sales-trend-chart lazy />
-            <livewire:dashboard.channel-distribution-chart lazy />
+            <livewire:dashboard.sales-trend-chart />
+            <livewire:dashboard.channel-distribution-chart />
         </div>
 
         {{-- Daily Revenue Chart --}}
-        <livewire:dashboard.daily-revenue-chart lazy />
+        <livewire:dashboard.daily-revenue-chart />
 
         {{-- Analytics Grid --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">

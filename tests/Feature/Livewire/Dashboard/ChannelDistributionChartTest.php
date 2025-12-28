@@ -51,18 +51,21 @@ describe('ChannelDistributionChart Livewire Component', function () {
             ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
             ->set('customTo', now()->format('Y-m-d'));
 
-        $channelData = $component->get('channelData');
+        $chartData = $component->get('chartData');
 
-        expect($channelData)
-            ->toBeArray();
+        expect($chartData)
+            ->toBeArray()
+            ->toHaveKeys(['labels', 'datasets']);
     });
 
     it('handles empty data gracefully', function () {
         $component = Livewire::test(ChannelDistributionChart::class);
 
-        $channelData = $component->get('channelData');
+        $chartData = $component->get('chartData');
 
-        expect($channelData)->toBeArray();
+        expect($chartData)
+            ->toBeArray()
+            ->toHaveKeys(['labels', 'datasets']);
     });
 
     it('filters data by period', function () {
@@ -83,9 +86,11 @@ describe('ChannelDistributionChart Livewire Component', function () {
             ->set('customFrom', now()->subDays(7)->format('Y-m-d'))
             ->set('customTo', now()->format('Y-m-d'));
 
-        $channelData = $component->get('channelData');
+        $chartData = $component->get('chartData');
 
-        expect($channelData)->toBeArray();
+        expect($chartData)
+            ->toBeArray()
+            ->toHaveKeys(['labels', 'datasets']);
     });
 
     it('handles custom date range', function () {
@@ -106,8 +111,10 @@ describe('ChannelDistributionChart Livewire Component', function () {
             ->set('customFrom', '2025-01-01')
             ->set('customTo', '2025-01-10');
 
-        $channelData = $component->get('channelData');
+        $chartData = $component->get('chartData');
 
-        expect($channelData)->toBeArray();
+        expect($chartData)
+            ->toBeArray()
+            ->toHaveKeys(['labels', 'datasets']);
     });
 });

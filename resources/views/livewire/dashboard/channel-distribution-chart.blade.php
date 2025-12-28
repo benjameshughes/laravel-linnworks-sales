@@ -14,66 +14,19 @@
         </flux:radio.group>
     </div>
 
-    <div
-        wire:ignore
-        x-data="{
-            chart: null,
-            initialData: @js($chartData),
-
-            init() {
-                this.$nextTick(() => {
-                    this.createChart(this.initialData);
-                });
-            },
-
-            createChart(data) {
-                if (!data || !data.labels || data.labels.length === 0) {
-                    return;
-                }
-
-                if (this.chart) {
-                    this.chart.destroy();
-                }
-
-                this.chart = new Chart(this.$refs.canvas, {
-                    type: 'doughnut',
-                    data: data,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'right',
-                                labels: {
-                                    boxWidth: 12,
-                                    padding: 16
-                                }
-                            },
-                            tooltip: { enabled: true }
-                        },
-                        cutout: '60%'
-                    }
-                });
-            },
-
-            updateChart(data) {
-                if (!data || !data.labels || data.labels.length === 0) {
-                    return;
-                }
-
-                if (!this.chart) {
-                    this.createChart(data);
-                    return;
-                }
-
-                this.chart.data = data;
-                this.chart.update();
-            }
-        }"
-        x-on:channel-distribution-chart-updated.window="updateChart($event.detail.data)"
-        class="h-64"
-    >
-        <canvas x-ref="canvas"></canvas>
-    </div>
+    <x-chart
+        type="doughnut"
+        :data="$this->chartData"
+        :options="[
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                    'position' => 'right',
+                    'labels' => ['boxWidth' => 12, 'padding' => 16]
+                ],
+                'tooltip' => ['enabled' => true]
+            ],
+            'cutout' => '60%'
+        ]"
+    />
 </div>

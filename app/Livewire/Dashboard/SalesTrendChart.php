@@ -14,7 +14,7 @@ use Livewire\Component;
 
 /**
  * Dead simple chart component.
- * Livewire fetches data. Blade gives it to Chart.js. Done.
+ * Livewire re-renders → Blade renders <x-chart> → Chart.js initializes. Done.
  */
 final class SalesTrendChart extends Component
 {
@@ -30,15 +30,11 @@ final class SalesTrendChart extends Component
 
     public string $viewMode = 'revenue';
 
-    public array $chartData = [];
-
     public function mount(): void
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
-
-        $this->loadChartData();
     }
 
     #[On('filters-updated')]
@@ -54,29 +50,20 @@ final class SalesTrendChart extends Component
         $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
-
-        $this->loadChartData();
     }
 
-    public function updatedViewMode(): void
-    {
-        $this->loadChartData();
-    }
-
-    private function loadChartData(): void
+    #[Computed]
+    public function chartData(): array
     {
         $breakdown = $this->getDailyBreakdown();
 
         if (empty($breakdown)) {
-            $this->chartData = ['labels' => [], 'datasets' => []];
-            $this->dispatch('sales-trend-chart-updated', data: $this->chartData);
-
-            return;
+            return ['labels' => [], 'datasets' => []];
         }
 
         $labels = array_column($breakdown, 'date');
 
-        $this->chartData = $this->viewMode === 'revenue'
+        return $this->viewMode === 'revenue'
             ? [
                 'labels' => $labels,
                 'datasets' => [[
@@ -97,8 +84,18 @@ final class SalesTrendChart extends Component
                     'fill' => true,
                 ]],
             ];
+    }
 
-        $this->dispatch('sales-trend-chart-updated', data: $this->chartData);
+    #[Computed]
+    public function periodLabel(): string
+    {
+        if ($this->period === 'custom') {
+            return 'Custom: '.Carbon::parse($this->customFrom)->format('M j').' - '.Carbon::parse($this->customTo)->format('M j, Y');
+        }
+
+        $periodEnum = Period::tryFrom($this->period);
+
+        return $periodEnum?->label() ?? "Last {$this->period} days";
     }
 
     private function getDailyBreakdown(): array
@@ -123,25 +120,8 @@ final class SalesTrendChart extends Component
         return $cached['daily_breakdown'] ?? [];
     }
 
-    #[Computed]
-    public function periodLabel(): string
-    {
-        if ($this->period === 'custom') {
-            return 'Custom: '.Carbon::parse($this->customFrom)->format('M j').' - '.Carbon::parse($this->customTo)->format('M j, Y');
-        }
-
-        $periodEnum = Period::tryFrom($this->period);
-
-        return $periodEnum?->label() ?? "Last {$this->period} days";
-    }
-
     public function render()
     {
         return view('livewire.dashboard.sales-trend-chart');
-    }
-
-    public function placeholder(array $params = [])
-    {
-        return view('livewire.placeholders.chart', $params);
     }
 }

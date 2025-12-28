@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
+use App\Enums\Period;
 use App\Services\Metrics\ChunkedMetricsCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -11,6 +12,10 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
+/**
+ * Dead simple chart component.
+ * Livewire re-renders → Blade renders <x-chart> → Chart.js initializes. Done.
+ */
 final class DailyRevenueChart extends Component
 {
     public string $period = '7';
@@ -23,26 +28,13 @@ final class DailyRevenueChart extends Component
 
     public ?string $customTo = null;
 
-    public string $viewMode = 'orders_revenue'; // 'orders_revenue' or 'items'
-
-    // Public property for @entangle - raw daily breakdown data
-    public array $dailyBreakdown = [];
-
-    // Formatted chart data for Chart.js - Alpine watches this
-    public array $chartData = [];
+    public string $viewMode = 'orders_revenue';
 
     public function mount(): void
     {
         $this->period = request('period', '7');
         $this->channel = request('channel', 'all');
         $this->status = request('status', 'all');
-
-        $this->loadData();
-    }
-
-    public function updatedViewMode(): void
-    {
-        $this->formatChartData();
     }
 
     #[On('filters-updated')]
@@ -58,67 +50,32 @@ final class DailyRevenueChart extends Component
         $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
-
-        $this->loadData();
     }
 
-    private function loadData(): void
+    #[Computed]
+    public function chartData(): array
     {
-        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+        $breakdown = $this->getDailyBreakdown();
 
-        // Custom periods: Use ChunkedMetricsCalculator (memory-safe DB aggregation)
-        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            $calculator = new ChunkedMetricsCalculator(
-                period: $this->period,
-                channel: $this->channel,
-                status: $this->status,
-                customFrom: $this->customFrom,
-                customTo: $this->customTo
-            );
-
-            $data = $calculator->calculate();
-            $this->dailyBreakdown = $data['daily_breakdown'];
-            $this->formatChartData();
-
-            return;
+        if (empty($breakdown)) {
+            return ['labels' => [], 'datasets' => []];
         }
 
-        // Check cache
-        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
-        $cached = Cache::get($cacheKey);
+        $labels = array_column($breakdown, 'date');
 
-        if ($cached && isset($cached['daily_breakdown'])) {
-            $this->dailyBreakdown = $cached['daily_breakdown'];
-            $this->formatChartData();
-        }
-
-        // Cache miss? Keep existing data - don't clear what we have
-    }
-
-    private function formatChartData(): void
-    {
-        if (empty($this->dailyBreakdown)) {
-            $this->chartData = ['labels' => [], 'datasets' => []];
-            $this->dispatch('daily-revenue-chart-updated', data: $this->chartData);
-
-            return;
-        }
-
-        $labels = array_column($this->dailyBreakdown, 'date');
-
-        $this->chartData = $this->viewMode === 'orders_revenue'
+        return $this->viewMode === 'orders_revenue'
             ? [
                 'labels' => $labels,
                 'datasets' => [
                     [
                         'label' => 'Orders',
-                        'data' => array_column($this->dailyBreakdown, 'orders'),
+                        'data' => array_column($breakdown, 'orders'),
                         'backgroundColor' => 'rgba(59, 130, 246, 0.8)',
                         'borderRadius' => 4,
                     ],
                     [
                         'label' => 'Revenue',
-                        'data' => array_column($this->dailyBreakdown, 'revenue'),
+                        'data' => array_column($breakdown, 'revenue'),
                         'backgroundColor' => 'rgba(34, 197, 94, 0.8)',
                         'borderRadius' => 4,
                     ],
@@ -129,14 +86,12 @@ final class DailyRevenueChart extends Component
                 'datasets' => [
                     [
                         'label' => 'Items Sold',
-                        'data' => array_column($this->dailyBreakdown, 'items'),
+                        'data' => array_column($breakdown, 'items'),
                         'backgroundColor' => 'rgba(168, 85, 247, 0.8)',
                         'borderRadius' => 4,
                     ],
                 ],
             ];
-
-        $this->dispatch('daily-revenue-chart-updated', data: $this->chartData);
     }
 
     #[Computed]
@@ -146,21 +101,35 @@ final class DailyRevenueChart extends Component
             return 'Custom: '.Carbon::parse($this->customFrom)->format('M j').' - '.Carbon::parse($this->customTo)->format('M j, Y');
         }
 
-        $periodEnum = \App\Enums\Period::tryFrom($this->period);
+        $periodEnum = Period::tryFrom($this->period);
 
         return $periodEnum?->label() ?? "Last {$this->period} days";
+    }
+
+    private function getDailyBreakdown(): array
+    {
+        $periodEnum = Period::tryFrom($this->period);
+
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+            $calculator = new ChunkedMetricsCalculator(
+                period: $this->period,
+                channel: $this->channel,
+                status: $this->status,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo
+            );
+
+            return $calculator->calculate()['daily_breakdown'];
+        }
+
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cached = Cache::get($cacheKey);
+
+        return $cached['daily_breakdown'] ?? [];
     }
 
     public function render()
     {
         return view('livewire.dashboard.daily-revenue-chart');
-    }
-
-    /**
-     * Skeleton loader shown while lazy loading
-     */
-    public function placeholder(array $params = [])
-    {
-        return view('livewire.placeholders.chart', $params);
     }
 }

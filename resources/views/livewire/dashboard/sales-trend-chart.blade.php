@@ -14,66 +14,22 @@
         </flux:radio.group>
     </div>
 
-    <div
-        wire:ignore
-        x-data="{
-            chart: null,
-            initialData: @js($chartData),
-
-            init() {
-                this.$nextTick(() => {
-                    this.createChart(this.initialData);
-                });
-            },
-
-            createChart(data) {
-                if (!data || !data.labels || data.labels.length === 0) {
-                    return;
-                }
-
-                if (this.chart) {
-                    this.chart.destroy();
-                }
-
-                this.chart = new Chart(this.$refs.canvas, {
-                    type: 'line',
-                    data: data,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: { enabled: true, mode: 'index', intersect: false }
-                        },
-                        scales: {
-                            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                            x: { grid: { display: false } }
-                        },
-                        elements: {
-                            line: { tension: 0.3 },
-                            point: { radius: 3, hoverRadius: 5 }
-                        }
-                    }
-                });
-            },
-
-            updateChart(data) {
-                if (!data || !data.labels || data.labels.length === 0) {
-                    return;
-                }
-
-                if (!this.chart) {
-                    this.createChart(data);
-                    return;
-                }
-
-                this.chart.data = data;
-                this.chart.update();
-            }
-        }"
-        x-on:sales-trend-chart-updated.window="updateChart($event.detail.data)"
-        class="h-64"
-    >
-        <canvas x-ref="canvas"></canvas>
-    </div>
+    <x-chart
+        type="line"
+        :data="$this->chartData"
+        :options="[
+            'plugins' => [
+                'legend' => ['display' => false],
+                'tooltip' => ['enabled' => true, 'mode' => 'index', 'intersect' => false]
+            ],
+            'scales' => [
+                'y' => ['beginAtZero' => true, 'grid' => ['color' => 'rgba(0,0,0,0.05)']],
+                'x' => ['grid' => ['display' => false]]
+            ],
+            'elements' => [
+                'line' => ['tension' => 0.3],
+                'point' => ['radius' => 3, 'hoverRadius' => 5]
+            ]
+        ]"
+    />
 </div>
