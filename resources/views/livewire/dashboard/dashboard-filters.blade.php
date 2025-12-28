@@ -7,6 +7,7 @@
                 <flux:heading size="xl" class="text-zinc-900 dark:text-zinc-100">Dashboard</flux:heading>
 
                 {{-- Date picker inline with title --}}
+                <div wire:loading.class="opacity-50 pointer-events-none">
                 <flux:date-picker
                     wire:model.live="dateRange"
                     wire:change="applyCustomRange"
@@ -27,6 +28,7 @@
                         </flux:button>
                     </x-slot>
                 </flux:date-picker>
+                </div>
             </div>
 
             {{-- Sync Status + Last Update (compact, right-aligned) --}}
@@ -115,7 +117,7 @@
         </div>
 
         {{-- Bottom Row: Filters + Sync Button --}}
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2" wire:loading.class="opacity-50 pointer-events-none">
             <flux:select wire:model.live.debounce.300ms="status" size="sm" class="!w-auto">
                 <flux:select.option value="all">All Orders</flux:select.option>
                 <flux:select.option value="open_paid">Open & Paid</flux:select.option>
