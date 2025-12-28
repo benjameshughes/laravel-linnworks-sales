@@ -32,9 +32,4 @@ final class CacheWarmingCompleted implements ShouldBroadcastNow
             'completed_at' => now()->toISOString(),
         ];
     }
-
-    public function broadcastAs(): string
-    {
-        return 'CacheWarmingCompleted';
-    }
 }
