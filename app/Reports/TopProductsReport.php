@@ -61,15 +61,15 @@ class TopProductsReport extends AbstractReport
             ->whereBetween('o.received_at', [$dateStart, $dateEnd])
             ->where('o.status', '!=', 'cancelled')
             ->select([
-                DB::raw('ROW_NUMBER() OVER (ORDER BY SUM(oi.quantity * oi.unit_price) DESC) as product_rank'),
+                DB::raw('ROW_NUMBER() OVER (ORDER BY SUM(oi.quantity * oi.price_per_unit) DESC) as product_rank'),
                 'oi.sku',
-                DB::raw('MAX(oi.title) as title'),
-                DB::raw('MAX(oi.category) as category'),
+                DB::raw('MAX(oi.item_title) as title'),
+                DB::raw('MAX(oi.category_name) as category'),
                 DB::raw('SUM(oi.quantity) as units_sold'),
-                DB::raw('SUM(oi.quantity * oi.unit_price) as total_revenue'),
+                DB::raw('SUM(oi.quantity * oi.price_per_unit) as total_revenue'),
                 DB::raw('COUNT(DISTINCT o.id) as orders'),
-                DB::raw('ROUND((SUM(oi.quantity * oi.unit_price) / (
-                    SELECT SUM(oi2.quantity * oi2.unit_price)
+                DB::raw('ROUND((SUM(oi.quantity * oi.price_per_unit) / (
+                    SELECT SUM(oi2.quantity * oi2.price_per_unit)
                     FROM order_items as oi2
                     JOIN orders as o2 ON o2.id = oi2.order_id
                     WHERE o2.received_at BETWEEN ? AND ?

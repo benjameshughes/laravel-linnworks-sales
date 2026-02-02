@@ -83,7 +83,7 @@ class VariationGroupSalesReport extends AbstractReport
             'oi.parent_sku',
             DB::raw('COUNT(DISTINCT oi.order_id) as order_count'),
             DB::raw('SUM(oi.quantity) as total_units'),
-            DB::raw('SUM(oi.quantity * oi.unit_price) as total_revenue'),
+            DB::raw('SUM(oi.quantity * oi.price_per_unit) as total_revenue'),
         ])
             ->groupBy('oi.parent_sku')
             ->orderByRaw('total_revenue DESC');
@@ -272,7 +272,7 @@ class VariationGroupSalesReport extends AbstractReport
             DB::raw("COALESCE(NULLIF(o.subsource, ''), 'Unknown') as subsource"),
             DB::raw('COUNT(DISTINCT oi.order_id) as order_count'),
             DB::raw('SUM(oi.quantity) as total_units'),
-            DB::raw('SUM(oi.quantity * oi.unit_price) as total_revenue'),
+            DB::raw('SUM(oi.quantity * oi.price_per_unit) as total_revenue'),
         ])
             ->groupBy('o.source', 'o.subsource')
             ->orderByDesc('total_revenue')
@@ -311,7 +311,7 @@ class VariationGroupSalesReport extends AbstractReport
         $results = $query->select([
             'o.source',
             DB::raw("COALESCE(NULLIF(o.subsource, ''), 'Unknown') as subsource"),
-            DB::raw('SUM(oi.quantity * oi.unit_price) as total_revenue'),
+            DB::raw('SUM(oi.quantity * oi.price_per_unit) as total_revenue'),
         ])
             ->groupBy('o.source', 'o.subsource')
             ->orderByDesc('total_revenue')

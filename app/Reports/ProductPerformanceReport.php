@@ -19,7 +19,7 @@ class ProductPerformanceReport extends AbstractReport
 
     public function description(): string
     {
-        return 'Detailed product performance analysis showing units sold, revenue, and average order value by SKU.';
+        return 'Detailed product performance analysis showing units sold, revenue, current price, and average order value by SKU.';
     }
 
     public function icon(): string
@@ -50,7 +50,7 @@ class ProductPerformanceReport extends AbstractReport
             'orders' => ['label' => 'Orders', 'type' => 'integer'],
             'units_sold' => ['label' => 'Units Sold', 'type' => 'integer'],
             'total_revenue' => ['label' => 'Revenue', 'type' => 'currency'],
-            'avg_unit_price' => ['label' => 'Avg Unit Price', 'type' => 'currency'],
+            'current_price' => ['label' => 'Current Price', 'type' => 'currency'],
             'avg_order_value' => ['label' => 'Avg Order Value', 'type' => 'currency'],
         ];
     }
@@ -78,14 +78,24 @@ class ProductPerformanceReport extends AbstractReport
 
         $query->select([
             'oi.sku',
-            DB::raw('MAX(oi.title) as title'),
-            DB::raw('MAX(oi.category) as category'),
+            DB::raw('MAX(oi.item_title) as title'),
+            DB::raw('MAX(oi.category_name) as category'),
             DB::raw('COUNT(DISTINCT o.id) as orders'),
             DB::raw('SUM(oi.quantity) as units_sold'),
-            DB::raw('SUM(oi.quantity * oi.unit_price) as total_revenue'),
-            DB::raw('AVG(oi.unit_price) as avg_unit_price'),
-            DB::raw('SUM(oi.quantity * oi.unit_price) / COUNT(DISTINCT o.id) as avg_order_value'),
+            DB::raw('SUM(oi.quantity * oi.price_per_unit) as total_revenue'),
+            DB::raw('(
+                SELECT oi2.price_per_unit
+                FROM order_items oi2
+                JOIN orders o2 ON o2.id = oi2.order_id
+                WHERE oi2.sku = oi.sku
+                  AND o2.received_at BETWEEN ? AND ?
+                  AND o2.status != ?
+                ORDER BY o2.received_at DESC
+                LIMIT 1
+            ) as current_price'),
+            DB::raw('SUM(oi.quantity * oi.price_per_unit) / COUNT(DISTINCT o.id) as avg_order_value'),
         ])
+            ->addBinding([$dateStart, $dateEnd, 'cancelled'], 'select')
             ->groupBy('oi.sku')
             ->orderByRaw('total_revenue DESC');
 
