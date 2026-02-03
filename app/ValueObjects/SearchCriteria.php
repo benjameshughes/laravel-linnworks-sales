@@ -59,12 +59,20 @@ readonly class SearchCriteria implements JsonSerializable
             return '"'.$query.'"';
         }
 
-        // Handle wildcards for specific search types
+        // The database driver doesn't support wildcards (*) or fuzzy (~) syntax
+        // Those are for Algolia/Meilisearch/Elasticsearch
+        // For database driver, just return the plain query - it uses LIKE %query%
+        $scoutDriver = config('scout.driver');
+        if ($scoutDriver === 'database' || $scoutDriver === 'collection') {
+            return $query;
+        }
+
+        // Handle wildcards for specific search types (external search engines only)
         if ($this->type->supportsWildcards() && ! str_contains($query, '*')) {
             return "*{$query}*";
         }
 
-        // Handle fuzzy search
+        // Handle fuzzy search (external search engines only)
         if ($this->fuzzySearch && $this->type->supportsFuzzySearch()) {
             return $this->processFuzzyQuery($query);
         }
@@ -75,6 +83,7 @@ readonly class SearchCriteria implements JsonSerializable
     private function processFuzzyQuery(string $query): string
     {
         // Split query into words and add fuzzy matching
+        // Note: This syntax is for Algolia/Meilisearch, NOT database driver
         $words = collect(explode(' ', $query))
             ->filter(fn ($word) => strlen(trim($word)) > 2)
             ->map(fn ($word) => trim($word).'~')
@@ -106,7 +115,39 @@ readonly class SearchCriteria implements JsonSerializable
 
     public function getEloquentConstraints(): callable
     {
-        return function ($query) {
+        // Only these fields can be used as database filters
+        $validDatabaseColumns = [
+            'id',
+            'sku',
+            'title',
+            'description',
+            'category_id',
+            'category_name',
+            'brand',
+            'barcode',
+            'is_active',
+            'stock_level',
+            'stock_minimum',
+            'retail_price',
+            'purchase_price',
+            'shipping_cost',
+            'default_tax_rate',
+        ];
+
+        $validSortColumns = [
+            'id',
+            'sku',
+            'title',
+            'category_name',
+            'brand',
+            'stock_level',
+            'retail_price',
+            'purchase_price',
+            'created_at',
+            'updated_at',
+        ];
+
+        return function ($query) use ($validDatabaseColumns, $validSortColumns) {
             // Apply activity filter
             if (! $this->includeInactive) {
                 $query->where('is_active', true);
@@ -117,8 +158,16 @@ readonly class SearchCriteria implements JsonSerializable
                 $query->where('stock_level', '>', 0);
             }
 
-            // Apply additional filters
+            // Apply additional filters - only valid database columns
             foreach ($this->filters as $field => $value) {
+                if (! in_array($field, $validDatabaseColumns, true)) {
+                    continue; // Skip UI-only filters
+                }
+
+                if ($value === null || $value === '') {
+                    continue; // Skip empty values
+                }
+
                 if (is_array($value)) {
                     $query->whereIn($field, $value);
                 } else {
@@ -126,8 +175,8 @@ readonly class SearchCriteria implements JsonSerializable
                 }
             }
 
-            // Apply sorting
-            if ($this->sortBy) {
+            // Apply sorting - only valid columns
+            if ($this->sortBy && in_array($this->sortBy, $validSortColumns, true)) {
                 $query->orderBy($this->sortBy, $this->sortDirection);
             }
         };

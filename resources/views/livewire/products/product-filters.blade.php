@@ -40,7 +40,7 @@
                         @foreach($searchSuggestions as $suggestion)
                             <div
                                 class="px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer border-b border-zinc-100 dark:border-zinc-600 last:border-b-0"
-                                wire:click="selectSearchSuggestion('{{ $suggestion['value'] }}')"
+                                wire:click="selectSearchSuggestion('{{ $suggestion['value'] }}', '{{ $suggestion['type'] }}')"
                             >
                                 <div class="flex items-center gap-2">
                                     <div class="flex-1">
@@ -51,7 +51,10 @@
                                             <div class="text-xs text-zinc-500">{{ $suggestion['context'] }}</div>
                                         @endif
                                     </div>
-                                    <flux:badge color="zinc" size="xs">{{ $suggestion['type'] }}</flux:badge>
+                                    @if($suggestion['type'] === 'sku')
+                                        <flux:icon.arrow-top-right-on-square class="size-4 text-blue-500" title="Go to product" />
+                                    @endif
+                                    <flux:badge color="{{ $suggestion['type'] === 'sku' ? 'blue' : 'zinc' }}" size="xs">{{ $suggestion['type'] }}</flux:badge>
                                 </div>
                             </div>
                         @endforeach
@@ -87,6 +90,15 @@
                 icon="arrow-path"
                 wire:loading.attr="disabled"
                 wire:target="refresh"
+            />
+
+            {{-- Import/Export Button --}}
+            <flux:button
+                href="{{ route('products.import-export') }}"
+                variant="ghost"
+                size="sm"
+                icon="arrow-up-tray"
+                title="Import/Export Products"
             />
         </div>
     </div>

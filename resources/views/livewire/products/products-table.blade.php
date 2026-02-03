@@ -1,9 +1,15 @@
 <div>
     <div class="flex items-center justify-between mb-3">
         <div>
-            <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">Top Products</flux:heading>
+            <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
+                {{ !empty($search) ? 'Search Results' : 'Top Products' }}
+            </flux:heading>
             <p class="text-sm text-zinc-500 mt-1">
-                Showing {{ $this->products->count() }} top performing products
+                @if(!empty($search))
+                    Found {{ $this->products->count() }} products matching "{{ $search }}"
+                @else
+                    Showing {{ $this->products->count() }} top performing products
+                @endif
             </p>
         </div>
         <div class="flex gap-2">

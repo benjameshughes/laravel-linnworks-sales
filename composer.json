@@ -17,6 +17,7 @@
         "livewire/flux": "^2.1.1",
         "livewire/flux-pro": "^2.5",
         "livewire/volt": "^1.7.0",
+        "meilisearch/meilisearch-php": "^1.16",
         "phpoffice/phpspreadsheet": "^5.2",
         "predis/predis": "^3.2",
         "pusher/pusher-php-server": "^7.2"

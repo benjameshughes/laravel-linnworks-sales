@@ -140,9 +140,34 @@ return [
         'host' => env('MEILISEARCH_HOST', 'http://localhost:7700'),
         'key' => env('MEILISEARCH_KEY'),
         'index-settings' => [
-            // 'users' => [
-            //     'filterableAttributes'=> ['id', 'name', 'email'],
-            // ],
+            App\Models\Product::class => [
+                'searchableAttributes' => [
+                    'sku',        // Exact SKU matches ranked highest
+                    'title',      // Title matches next
+                    'brand',      // Brand matches
+                    'category_name',
+                    'description',
+                    'barcode',
+                ],
+                'filterableAttributes' => [
+                    'is_active',
+                    'category_name',
+                    'brand',
+                ],
+                'sortableAttributes' => [
+                    'title',
+                    'sku',
+                    'created_at',
+                ],
+                'rankingRules' => [
+                    'words',       // More matching words = better
+                    'typo',        // Fewer typos = better
+                    'proximity',   // Words closer together = better
+                    'attribute',   // Matches in earlier searchableAttributes = better
+                    'sort',
+                    'exactness',   // Exact matches = better
+                ],
+            ],
         ],
     ],
 

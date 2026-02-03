@@ -62,6 +62,10 @@
                     <flux:button variant="ghost" size="sm" wire:click="$refresh" icon="arrow-path">
                         Refresh
                     </flux:button>
+
+                    <flux:button variant="primary" size="sm" href="{{ route('products.edit', $product->sku) }}" icon="pencil-square">
+                        Edit Product
+                    </flux:button>
                 </div>
             </div>
         </div>

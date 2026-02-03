@@ -21,7 +21,7 @@ class OrderSalesReport extends AbstractReport
 
     public function description(): string
     {
-        return 'Flat file of all order items showing prices per product, per order, per channel. Perfect for pricing analysis and verification.';
+        return 'Flat file of all order items showing prices, costs, and profit per product, per order, per channel. Perfect for pricing and profitability analysis.';
     }
 
     public function icon(): string
@@ -57,9 +57,14 @@ class OrderSalesReport extends AbstractReport
             'title' => ['label' => 'Product', 'type' => 'string'],
             'quantity' => ['label' => 'Qty', 'type' => 'integer'],
             'unit_price' => ['label' => 'Unit Price', 'type' => 'currency'],
+            'unit_cost' => ['label' => 'Unit Cost', 'type' => 'currency'],
+            'total_cost' => ['label' => 'Total Cost', 'type' => 'currency'],
             'discount' => ['label' => 'Discount', 'type' => 'currency'],
             'tax' => ['label' => 'Tax', 'type' => 'currency'],
+            'tax_rate' => ['label' => 'Tax Rate', 'type' => 'percentage'],
             'line_total' => ['label' => 'Line Total', 'type' => 'currency'],
+            'profit' => ['label' => 'Profit', 'type' => 'currency'],
+            'margin_percent' => ['label' => 'Margin %', 'type' => 'percentage'],
         ];
     }
 
@@ -109,9 +114,14 @@ class OrderSalesReport extends AbstractReport
             'oi.item_title as title',
             'oi.quantity',
             'oi.price_per_unit as unit_price',
+            DB::raw('COALESCE(oi.unit_cost, 0) as unit_cost'),
+            DB::raw('COALESCE(oi.unit_cost, 0) * oi.quantity as total_cost'),
             DB::raw('COALESCE(oi.discount, 0) as discount'),
             DB::raw('COALESCE(oi.tax, 0) as tax'),
+            DB::raw('COALESCE(oi.tax_rate, 0) as tax_rate'),
             'oi.line_total',
+            DB::raw('oi.line_total - (COALESCE(oi.unit_cost, 0) * oi.quantity) as profit'),
+            DB::raw('ROUND(CASE WHEN oi.line_total > 0 THEN ((oi.line_total - (COALESCE(oi.unit_cost, 0) * oi.quantity)) / oi.line_total) * 100 ELSE 0 END, 2) as margin_percent'),
         ])
             ->orderByDesc('o.received_at')
             ->orderBy('o.number')

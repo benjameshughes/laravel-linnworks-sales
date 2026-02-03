@@ -24,6 +24,8 @@ use Laravel\Scout\Searchable;
  * @property string|null $brand
  * @property float|null $purchase_price
  * @property float|null $retail_price
+ * @property float|null $shipping_cost
+ * @property float|null $default_tax_rate
  * @property float|null $weight
  * @property array|null $dimensions
  * @property string|null $barcode
@@ -59,6 +61,8 @@ final class Product extends Model
         'brand',
         'purchase_price',
         'retail_price',
+        'shipping_cost',
+        'default_tax_rate',
         'weight',
         'dimensions',
         'barcode',
@@ -78,6 +82,8 @@ final class Product extends Model
         return [
             'purchase_price' => 'decimal:4',
             'retail_price' => 'decimal:4',
+            'shipping_cost' => 'decimal:4',
+            'default_tax_rate' => 'decimal:4',
             'weight' => 'decimal:3',
             'dimensions' => 'array',
             'stock_level' => 'integer',
@@ -97,6 +103,10 @@ final class Product extends Model
      */
     public function toSearchableArray(): array
     {
+        // Note: Only include actual database columns here.
+        // The database driver searches these columns directly via LIKE queries.
+        // Virtual/computed fields like 'searchable_content' are only supported
+        // by external engines (Algolia, Meilisearch, Typesense).
         return [
             'id' => $this->id,
             'sku' => $this->sku,
@@ -105,19 +115,6 @@ final class Product extends Model
             'category_name' => $this->category_name,
             'brand' => $this->brand,
             'barcode' => $this->barcode,
-            'is_active' => $this->is_active,
-            'stock_level' => $this->stock_level,
-            'retail_price' => $this->retail_price,
-            'purchase_price' => $this->purchase_price,
-            // Searchable text content combined
-            'searchable_content' => collect([
-                $this->sku,
-                $this->title,
-                $this->description,
-                $this->category_name,
-                $this->brand,
-                $this->barcode,
-            ])->filter()->implode(' '),
         ];
     }
 

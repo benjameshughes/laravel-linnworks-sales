@@ -158,24 +158,29 @@ final class ProductsTable extends Component
         $searchService = app(ProductSearchService::class);
         $searchType = SearchType::tryFrom($this->searchType) ?? SearchType::COMBINED;
 
+        // Only pass actual database column filters to SearchCriteria
+        // UI filters (profit-margin, sales-velocity, etc.) are applied post-search via applyFilters()
+        $dbFilters = [];
+        if ($this->selectedCategory) {
+            $dbFilters['category_name'] = $this->selectedCategory;
+        }
+
         $criteria = new SearchCriteria(
             query: $this->search,
             type: $searchType,
             fuzzySearch: $this->fuzzySearch,
             exactMatch: $this->exactMatch,
             limit: 100,
-            filters: array_merge($this->filters, [
-                'category_name' => $this->selectedCategory,
-            ]),
-            sortBy: $this->sortBy === 'name' ? 'title' : $this->sortBy,
+            filters: $dbFilters,
+            sortBy: null, // Sort after filtering
             sortDirection: $this->sortDirection,
             includeInactive: false,
-            includeOutOfStock: ! $this->showOnlyWithSales,
+            includeOutOfStock: true, // Get all, filter later
         );
 
         $searchResults = $searchService->search($criteria);
 
-        return $searchResults->map(function ($product) {
+        $products = $searchResults->map(function ($product) {
             $analytics = $product->getProfitAnalysis();
             $badges = app(ProductBadgeService::class)->getProductBadges($product, (int) $this->period);
 
@@ -184,6 +189,27 @@ final class ProductsTable extends Component
                 'badges' => $badges->map(fn ($badge) => $badge->toArray()),
             ]);
         });
+
+        // When explicitly searching, show ALL matching products regardless of sales
+        // The user is looking for something specific - don't hide it!
+        // UI filters are still applied but sales filter is skipped for search results
+
+        // Apply UI filters (profit-margin, sales-velocity, etc.) but NOT sales filter
+        $products = $this->applyFilters($products);
+
+        // Apply sorting
+        return $products->sortBy(function ($item) {
+            return match ($this->sortBy) {
+                'quantity' => $item['total_sold'],
+                'revenue' => $item['total_revenue'],
+                'profit' => $item['total_profit'],
+                'margin' => $item['profit_margin_percent'],
+                'price' => $item['avg_selling_price'],
+                'name' => $item['product']->title,
+                default => $item['total_revenue'],
+            };
+        }, SORT_REGULAR, $this->sortDirection === 'desc')
+            ->values();
     }
 
     private function applyFilters(Collection $products): Collection

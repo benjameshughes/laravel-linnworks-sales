@@ -203,10 +203,19 @@ final class ProductFilters extends Component
         $this->searchSuggestions = $suggestions->take(5)->toArray();
     }
 
-    public function selectSearchSuggestion(string $value): void
+    public function selectSearchSuggestion(string $value, string $type = 'sku'): void
     {
-        $this->search = $value;
         $this->searchSuggestions = [];
+
+        // If it's a SKU, navigate to the product detail page
+        if ($type === 'sku') {
+            $this->redirect(route('products.detail', $value), navigate: true);
+
+            return;
+        }
+
+        // For other types (title, category, brand), filter the list
+        $this->search = $value;
         $this->dispatchFiltersUpdated();
     }
 

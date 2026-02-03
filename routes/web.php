@@ -6,6 +6,8 @@ use App\Livewire\Dashboard\SalesDashboard;
 use App\Livewire\OrderDetail;
 use App\Livewire\Orders\OrdersIndex;
 use App\Livewire\ProductDetail;
+use App\Livewire\Products\ProductEdit;
+use App\Livewire\Products\ProductImportExport;
 use App\Livewire\Products\ProductsIndex;
 use App\Livewire\Reports\ReportComparison;
 use App\Livewire\Reports\ReportsIndex;
@@ -24,6 +26,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', SalesDashboard::class)->name('dashboard');
     Route::get('products', ProductsIndex::class)->name('products.analytics');
     Route::get('products/{sku}', ProductDetail::class)->name('products.detail');
+    Route::get('products/{sku}/edit', ProductEdit::class)->name('products.edit');
+    Route::get('products-import', ProductImportExport::class)->name('products.import-export');
     Route::get('orders', OrdersIndex::class)->name('orders.analytics');
     Route::get('orders/{number}', OrderDetail::class)->name('orders.detail');
     Route::get('channels', ChannelComparison::class)->name('channels.comparison');
