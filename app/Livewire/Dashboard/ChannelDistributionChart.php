@@ -92,7 +92,7 @@ final class ChannelDistributionChart extends Component
         }
 
         $labels = array_map(
-            fn ($item) => $item['subsource'] ?? $item['channel'] ?? 'Unknown',
+            fn ($item) => $item['name'] ?? $item['channel'] ?? 'Unknown',
             $channelData
         );
         $data = array_map(
