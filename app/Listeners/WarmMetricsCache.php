@@ -9,6 +9,7 @@ use App\Events\CacheWarmingStarted;
 use App\Events\OrdersSynced;
 use App\Jobs\WarmPeriodCacheJob;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -27,13 +28,19 @@ final class WarmMetricsCache
     {
         $periods = \App\Enums\Period::cacheable();
 
-        $channels = DB::table('orders')
+        $channelSources = DB::table('orders')
             ->select('source')
             ->where('source', '!=', 'DIRECT')
             ->distinct()
             ->pluck('source')
-            ->prepend('all')
-            ->toArray();
+            ->filter()
+            ->sort()
+            ->values();
+
+        // Populate the available channels cache for the dashboard filter dropdown
+        Cache::forever('analytics:available_channels', $channelSources);
+
+        $channels = $channelSources->prepend('all')->toArray();
 
         $statuses = ['all', 'open', 'processed', 'open_paid'];
 
