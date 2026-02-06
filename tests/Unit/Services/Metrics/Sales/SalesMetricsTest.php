@@ -119,7 +119,7 @@ describe('SalesMetrics', function () {
         ]);
 
         $service = app(SalesMetrics::class);
-        $topChannels = $service->getTopChannels('7', 'all', 3);
+        $topChannels = $service->getTopChannels('7', 'all');
 
         expect($topChannels)->toHaveCount(3);
 
@@ -133,7 +133,7 @@ describe('SalesMetrics', function () {
             ->and($channels['website'])->toBe(50.00);
     });
 
-    it('limits top channels correctly', function () {
+    it('returns all channels without limit', function () {
         Order::factory()->create([
             'received_at' => now()->subDays(3),
             'source' => 'amazon',
@@ -153,9 +153,9 @@ describe('SalesMetrics', function () {
         ]);
 
         $service = app(SalesMetrics::class);
-        $topChannels = $service->getTopChannels('7', 'all', 2);
+        $topChannels = $service->getTopChannels('7', 'all');
 
-        expect($topChannels)->toHaveCount(2);
+        expect($topChannels)->toHaveCount(3);
     });
 
     it('returns top products sorted by quantity', function () {
@@ -333,7 +333,7 @@ describe('SalesMetrics', function () {
         ]);
 
         $service = app(SalesMetrics::class);
-        $topChannels = $service->getTopChannels('custom', 'all', 6, '2025-01-01', '2025-01-10');
+        $topChannels = $service->getTopChannels('custom', 'all', '2025-01-01', '2025-01-10');
 
         expect($topChannels)
             ->toHaveCount(1)

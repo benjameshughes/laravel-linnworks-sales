@@ -133,7 +133,7 @@ describe('SalesFactory', function () {
             ->toBe(1);
     });
 
-    it('limits top channels correctly', function () {
+    it('returns all channels sorted by revenue', function () {
         $orders = collect([
             (object) ['source' => 'Amazon', 'subsource' => null, 'total_charge' => 500.00],
             (object) ['source' => 'eBay', 'subsource' => null, 'total_charge' => 400.00],
@@ -142,11 +142,13 @@ describe('SalesFactory', function () {
         ]);
 
         $factory = new SalesFactory($orders);
-        $topChannels = $factory->topChannels(2);
+        $topChannels = $factory->topChannels();
 
-        expect($topChannels)->toHaveCount(2)
+        expect($topChannels)->toHaveCount(4)
             ->and($topChannels[0]['channel'])->toBe('Amazon')
-            ->and($topChannels[1]['channel'])->toBe('eBay');
+            ->and($topChannels[1]['channel'])->toBe('eBay')
+            ->and($topChannels[2]['channel'])->toBe('Website')
+            ->and($topChannels[3]['channel'])->toBe('Etsy');
     });
 
     it('groups and sorts top products correctly', function () {

@@ -55,7 +55,7 @@ final class SalesFactory
         return $this->orders->where('status', 0)->count();
     }
 
-    public function topChannels(int $limit = 3): Collection
+    public function topChannels(): Collection
     {
         $totalRevenue = $this->orders->sum('total_charge');
 
@@ -82,7 +82,6 @@ final class SalesFactory
                 ]);
             })
             ->sortByDesc('revenue')
-            ->take($limit)
             ->values();
     }
 
@@ -214,7 +213,7 @@ final class SalesFactory
      */
     public function getDoughnutChartData(): array
     {
-        $channels = $this->topChannels(5);
+        $channels = $this->topChannels();
 
         return [
             'labels' => $channels->pluck('name')->toArray(),

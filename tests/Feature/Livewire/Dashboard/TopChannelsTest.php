@@ -88,7 +88,7 @@ describe('TopChannels Livewire Component', function () {
 
         $topChannels = $component->get('topChannels');
 
-        expect($topChannels)->toHaveCount(6);
+        expect($topChannels)->toHaveCount(7);
     });
 
     it('returns empty collection when no orders exist', function () {

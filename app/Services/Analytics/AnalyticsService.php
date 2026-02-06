@@ -57,7 +57,7 @@ final class AnalyticsService
         $orders = $this->getOrders($filter);
         $factory = new SalesFactory($orders);
 
-        return $factory->topChannels(limit: 20)->map(function (Collection $channel) use ($filter) {
+        return $factory->topChannels()->map(function (Collection $channel) use ($filter) {
             return [
                 'name' => $channel['name'],
                 'subsource' => $channel['subsource'] ?? null,

@@ -243,7 +243,7 @@ final readonly class ChunkedMetricsCalculator
     /**
      * Calculate top channels using database aggregation
      */
-    private function calculateTopChannels(Carbon $start, Carbon $end, int $limit = 6): Collection
+    private function calculateTopChannels(Carbon $start, Carbon $end): Collection
     {
         $totalRevenueQuery = DB::table('orders')
             ->whereBetween('received_at', [$start, $end])
@@ -270,7 +270,6 @@ final readonly class ChunkedMetricsCalculator
             ')
             ->groupBy('source', 'subsource')
             ->orderByDesc('revenue')
-            ->limit($limit)
             ->get()
             ->map(function ($channel) use ($totalRevenue) {
                 $revenue = (float) $channel->revenue;

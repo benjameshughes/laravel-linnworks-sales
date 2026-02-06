@@ -50,7 +50,6 @@ final readonly class SalesMetrics
     public function getTopChannels(
         string $period,
         string $channel = 'all',
-        int $limit = 6,
         ?string $customFrom = null,
         ?string $customTo = null
     ): Collection {
@@ -64,7 +63,7 @@ final readonly class SalesMetrics
 
         $factory = new SalesFactory($orders);
 
-        return $factory->topChannels($limit);
+        return $factory->topChannels();
     }
 
     /**
@@ -162,7 +161,7 @@ final readonly class SalesMetrics
         ?string $customFrom = null,
         ?string $customTo = null
     ): array {
-        $topChannels = $this->getTopChannels($period, $channel, 10, $customFrom, $customTo);
+        $topChannels = $this->getTopChannels($period, $channel, $customFrom, $customTo);
 
         if ($topChannels->isEmpty()) {
             return [
