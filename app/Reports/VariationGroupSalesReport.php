@@ -98,6 +98,17 @@ class VariationGroupSalesReport extends AbstractReport
         return $this->generateDetailedXLSX($filters);
     }
 
+    public function exportToFile(array $filters, \App\Reports\Enums\ExportFormat $format = \App\Reports\Enums\ExportFormat::XLSX): string
+    {
+        $this->validateFilters($filters);
+
+        $content = $this->generateDetailedXLSX($filters);
+        $path = tempnam(sys_get_temp_dir(), 'report_');
+        file_put_contents($path, $content);
+
+        return $path;
+    }
+
     protected function generateDetailedXLSX(array $filters): string
     {
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;

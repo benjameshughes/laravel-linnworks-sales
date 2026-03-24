@@ -341,22 +341,21 @@ final class BulkImportOrders
         // Collect ALL order_ids to get DB IDs
         $orderIds = $dtos->pluck('orderId')->unique()->toArray();
 
-        // Get actual database order IDs
-        $dbOrderIds = DB::table('orders')
-            ->whereIn('order_id', $orderIds)
-            ->pluck('id')
-            ->toArray();
-
-        // Single DELETE for all orders
-        $deleted = DB::table('order_items')
-            ->whereIn('order_id', $dbOrderIds)
-            ->delete();
-
         // Get actual database order IDs for setting foreign keys
         $dbOrderMap = DB::table('orders')
             ->whereIn('order_id', $orderIds)
             ->pluck('id', 'order_id')
             ->toArray();
+
+        // Skip orders that already have items — items don't change, no need to re-sync
+        $ordersWithItems = DB::table('order_items')
+            ->whereIn('order_id', array_values($dbOrderMap))
+            ->distinct()
+            ->pluck('order_id')
+            ->flip()
+            ->all();
+
+        $dbOrderMap = array_filter($dbOrderMap, fn (int $dbId) => ! isset($ordersWithItems[$dbId]));
 
         // Collect all SKUs for product existence check
         $allSkus = $dtos->flatMap(fn (LinnworksOrder $dto) => $dto->items->pluck('sku')->filter())
@@ -436,8 +435,8 @@ final class BulkImportOrders
         DB::table('order_items')->insert($allItems);
 
         Log::debug('Sync/Orders/BulkImportOrders: Bulk synced order items', [
-            'orders_count' => count($orderIds),
-            'deleted' => $deleted,
+            'orders_total' => count($orderIds),
+            'orders_skipped' => count($ordersWithItems),
             'inserted' => count($allItems),
             'skipped_no_sku' => $skippedCount,
             'products_created' => count($missingSkus),
