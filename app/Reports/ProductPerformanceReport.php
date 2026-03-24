@@ -63,8 +63,22 @@ class ProductPerformanceReport extends AbstractReport
         $dateStart = Carbon::parse($filters['date_range']['start'])->startOfDay();
         $dateEnd = Carbon::parse($filters['date_range']['end'])->endOfDay();
 
+        // Derive latest price per SKU using ROW_NUMBER() — single pass, not per-row
+        $rankedPrices = DB::table('order_items as oi2')
+            ->join('orders as o2', 'o2.id', '=', 'oi2.order_id')
+            ->whereBetween('o2.received_at', [$dateStart, $dateEnd])
+            ->where('o2.status', '!=', 'cancelled')
+            ->select('oi2.sku', 'oi2.price_per_unit')
+            ->selectRaw('ROW_NUMBER() OVER (PARTITION BY oi2.sku ORDER BY o2.received_at DESC) as rn');
+
+        $latestPrices = DB::query()
+            ->fromSub($rankedPrices, 'ranked')
+            ->where('ranked.rn', 1)
+            ->select('ranked.sku', 'ranked.price_per_unit as current_price');
+
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
+            ->leftJoinSub($latestPrices, 'latest_price', 'latest_price.sku', '=', 'oi.sku')
             ->whereBetween('o.received_at', [$dateStart, $dateEnd]);
 
         // Apply status filter if provided
@@ -90,18 +104,8 @@ class ProductPerformanceReport extends AbstractReport
             DB::raw('SUM(COALESCE(oi.tax, 0)) as total_tax'),
             DB::raw('SUM(oi.line_total) - SUM(COALESCE(oi.unit_cost, 0) * oi.quantity) as total_profit'),
             DB::raw('ROUND(CASE WHEN SUM(oi.line_total) > 0 THEN ((SUM(oi.line_total) - SUM(COALESCE(oi.unit_cost, 0) * oi.quantity)) / SUM(oi.line_total)) * 100 ELSE 0 END, 2) as margin_percent'),
-            DB::raw('(
-                SELECT oi2.price_per_unit
-                FROM order_items oi2
-                JOIN orders o2 ON o2.id = oi2.order_id
-                WHERE oi2.sku = oi.sku
-                  AND o2.received_at BETWEEN ? AND ?
-                  AND o2.status != ?
-                ORDER BY o2.received_at DESC
-                LIMIT 1
-            ) as current_price'),
+            DB::raw('MAX(latest_price.current_price) as current_price'),
         ])
-            ->addBinding([$dateStart, $dateEnd, 'cancelled'], 'select')
             ->groupBy('oi.sku')
             ->orderByRaw('total_profit DESC');
 

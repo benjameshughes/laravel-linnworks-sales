@@ -60,6 +60,13 @@ class Order extends Model
 {
     use HasFactory;
 
+    /** Linnworks status values (unsignedTinyInteger in DB) */
+    const STATUS_OPEN = 0;
+
+    const STATUS_PROCESSED = 1;
+
+    const STATUS_CANCELLED = 2;
+
     protected $fillable = [
         // Linnworks identifiers
         'order_id',

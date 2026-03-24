@@ -244,7 +244,7 @@ class ReportsIndex extends Component
         }
 
         $exportFormat = ExportFormat::from($format);
-        $content = $this->selectedReport->export($this->filters, $exportFormat);
+        $tempPath = $this->selectedReport->exportToFile($this->filters, $exportFormat);
 
         $filename = $this->generateFilename($exportFormat);
 
@@ -258,13 +258,9 @@ class ReportsIndex extends Component
             'completed_at' => now(),
         ]);
 
-        return response()->streamDownload(
-            function () use ($content) {
-                echo $content;
-            },
-            $filename,
-            ['Content-Type' => $exportFormat->mimeType()]
-        );
+        return response()->download($tempPath, $filename, [
+            'Content-Type' => $exportFormat->mimeType(),
+        ])->deleteFileAfterSend();
     }
 
     protected function generateFilename(ExportFormat $format): string

@@ -7,6 +7,7 @@ use App\Reports\Enums\ReportCategory;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -119,11 +120,11 @@ abstract class AbstractReport
     {
         $this->validateFilters($filters);
 
-        // Clone the query and remove ORDER BY for counting (ORDER BY breaks with calculated columns)
+        // Wrap in subquery so COUNT(*) counts total rows, not per-group
         $query = clone $this->buildQuery($filters);
         $query->orders = null;
 
-        return $query->count();
+        return (int) DB::query()->fromSub($query, 'sub')->count();
     }
 
     public function all(array $filters): Collection
@@ -139,6 +140,17 @@ abstract class AbstractReport
         $exporter = new Exports\ReportExport($this, $this->buildQuery($filters), $filters, $format);
 
         return $exporter->generate();
+    }
+
+    /**
+     * Export to a temp file and return the path. Memory-efficient for large reports.
+     */
+    public function exportToFile(array $filters, ExportFormat $format = ExportFormat::XLSX): string
+    {
+        $this->validateFilters($filters);
+        $exporter = new Exports\ReportExport($this, $this->buildQuery($filters), $filters, $format);
+
+        return $exporter->generateToFile();
     }
 
     protected function validateFilters(array $filters): void

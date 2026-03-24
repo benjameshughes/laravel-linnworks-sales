@@ -151,7 +151,7 @@ class ReportViewer extends Component
     public function download(string $format = 'xlsx'): mixed
     {
         $exportFormat = ExportFormat::from($format);
-        $content = $this->report->export($this->filters, $exportFormat);
+        $tempPath = $this->report->exportToFile($this->filters, $exportFormat);
 
         $filename = $this->generateFilename($exportFormat);
 
@@ -165,13 +165,9 @@ class ReportViewer extends Component
             'completed_at' => now(),
         ]);
 
-        return response()->streamDownload(
-            function () use ($content) {
-                echo $content;
-            },
-            $filename,
-            ['Content-Type' => $exportFormat->mimeType()]
-        );
+        return response()->download($tempPath, $filename, [
+            'Content-Type' => $exportFormat->mimeType(),
+        ])->deleteFileAfterSend();
     }
 
     protected function generateFilename(ExportFormat $format): string

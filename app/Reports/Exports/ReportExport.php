@@ -20,7 +20,24 @@ class ReportExport
         private readonly ExportFormat $format = ExportFormat::XLSX
     ) {}
 
+    /**
+     * Generate report and return file contents as string.
+     * Prefer generateToFile() for large reports to avoid OOM.
+     */
     public function generate(): string
+    {
+        $path = $this->generateToFile();
+        $content = file_get_contents($path);
+        @unlink($path);
+
+        return $content;
+    }
+
+    /**
+     * Generate report to a temp file and return the file path.
+     * Uses cursor() to stream rows — only one row in PHP memory at a time.
+     */
+    public function generateToFile(): string
     {
         return match ($this->format) {
             ExportFormat::XLSX => $this->generateXLSX(),
@@ -66,9 +83,7 @@ class ReportExport
 
         $rowNum++;
 
-        $data = $this->query->get();
-
-        foreach ($data as $row) {
+        foreach ($this->query->cursor() as $row) {
             $colNum = 1;
 
             foreach ($columns as $columnKey => $columnConfig) {
@@ -89,24 +104,24 @@ class ReportExport
             $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($columnIndex))->setAutoSize(true);
         }
 
+        $path = tempnam(sys_get_temp_dir(), 'report_');
         $writer = new Xlsx($spreadsheet);
-        ob_start();
-        $writer->save('php://output');
+        $writer->save($path);
+        $spreadsheet->disconnectWorksheets();
 
-        return ob_get_clean();
+        return $path;
     }
 
     private function generateCSV(): string
     {
-        $output = fopen('php://temp', 'r+');
+        $path = tempnam(sys_get_temp_dir(), 'report_');
+        $output = fopen($path, 'w');
 
         $columns = $this->report->columns();
         $headers = array_map(fn ($config, $key) => $config['label'] ?? $key, $columns, array_keys($columns));
         fputcsv($output, $headers);
 
-        $data = $this->query->get();
-
-        foreach ($data as $row) {
+        foreach ($this->query->cursor() as $row) {
             $values = [];
 
             foreach ($columns as $columnKey => $columnConfig) {
@@ -122,11 +137,9 @@ class ReportExport
             fputcsv($output, $values);
         }
 
-        rewind($output);
-        $csv = stream_get_contents($output);
         fclose($output);
 
-        return $csv;
+        return $path;
     }
 
     private function formatValue(mixed $value, string $type): mixed
