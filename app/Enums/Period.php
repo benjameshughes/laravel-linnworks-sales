@@ -9,6 +9,7 @@ enum Period: string
     case TODAY = '0';
     case YESTERDAY = '1';
     case SEVEN_DAYS = '7';
+    case FORTNIGHT = '14';
     case THIRTY_DAYS = '30';
     case NINETY_DAYS = '90';
     case ONE_EIGHTY_DAYS = '180';
@@ -25,6 +26,7 @@ enum Period: string
             self::TODAY => 'Today',
             self::YESTERDAY => 'Yesterday',
             self::SEVEN_DAYS => 'Last 7 days',
+            self::FORTNIGHT => 'Last 14 days',
             self::THIRTY_DAYS => 'Last 30 days',
             self::NINETY_DAYS => 'Last 90 days',
             self::ONE_EIGHTY_DAYS => 'Last 180 days',
