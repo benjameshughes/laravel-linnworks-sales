@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Actions\Linnworks\Products\ImportProducts;
-use App\DataTransferObjects\LinnworksProduct;
-use App\Models\OrderItem;
 use App\Models\Product;
-use App\Services\Linnworks\Products\ProductsApiService;
+use App\Models\OrderItem;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use App\DataTransferObjects\LinnworksProduct;
+use App\Actions\Linnworks\Products\ImportProducts;
+use App\Services\Linnworks\Products\ProductsApiService;
 
 /**
  * Sync product details from Linnworks for SKUs found in orders.
@@ -219,13 +219,9 @@ final class SyncProductsFromOrdersJob implements ShouldQueue
         return $needsUpdate->merge($missingProducts)->unique()->values();
     }
 
-    /**
-     * Get the default user ID for API calls.
-     */
     private function getDefaultUserId(): ?int
     {
-        // Use the first user with Linnworks credentials
-        return \App\Models\User::whereNotNull('linnworks_token_id')->first()?->id;
+        return \App\Models\LinnworksConnection::query()->active()->value('user_id');
     }
 
     public function failed(\Throwable $exception): void

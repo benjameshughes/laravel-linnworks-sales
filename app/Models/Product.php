@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Carbon\Carbon;
+use Laravel\Scout\Searchable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Laravel\Scout\Searchable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * @property int $id
@@ -490,8 +490,11 @@ final class Product extends Model
      */
     public function getProfitAnalysis(): array
     {
-        $totalSold = $this->orderItems()->sum('quantity');
-        $totalRevenue = $this->orderItems()->sum('line_total');
+        $aggregates = $this->orderItems()
+            ->selectRaw('COALESCE(SUM(quantity), 0) as total_qty, COALESCE(SUM(line_total), 0) as total_rev')
+            ->first();
+        $totalSold = (int) $aggregates->total_qty;
+        $totalRevenue = (float) $aggregates->total_rev;
         $purchasePrice = $this->purchase_price ?? 0;
         $totalCost = $totalSold * $purchasePrice;
         $totalProfit = $totalRevenue - $totalCost;

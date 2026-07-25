@@ -34,6 +34,13 @@ Schedule::command('analytics:refresh-cache --force')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/analytics-cache.log'));
 
+// Sync product inventory from Linnworks every 6 hours
+Schedule::command('sync:products')
+    ->everySixHours()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/product-sync.log'));
+
 // Check and update processed orders status every 30 minutes (oldest first)
 Schedule::command('sync:check-processed')
     ->everyThirtyMinutes()

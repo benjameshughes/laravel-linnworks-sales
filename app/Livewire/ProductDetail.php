@@ -6,13 +6,13 @@ namespace App\Livewire;
 
 use App\Models\Order;
 use App\Models\Product;
-use App\Services\Metrics\Products\ProductService;
-use App\Services\ProductBadgeService;
-use Illuminate\Support\Collection;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Attributes\Title;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use App\Services\ProductBadgeService;
+use App\Services\Metrics\Products\ProductService;
 
 /**
  * @property-read \Illuminate\Support\Collection|null $performance
@@ -147,14 +147,18 @@ final class ProductDetail extends Component
             ->orderByDesc('received_at')
             ->limit(10)
             ->get()
-            ->map(fn ($order) => [
-                'number' => $order->number,
-                'date' => $order->received_at->format('M j, Y'),
-                'channel' => $order->source,
-                'quantity' => $order->orderItems->first()->quantity,
-                'revenue' => $order->orderItems->first()->line_total,
-                'price_per_unit' => $order->orderItems->first()->price_per_unit,
-            ]);
+            ->map(function ($order) {
+                $item = $order->orderItems->first();
+
+                return [
+                    'number' => $order->number,
+                    'date' => $order->received_at->format('M j, Y'),
+                    'channel' => $order->source,
+                    'quantity' => $item?->quantity ?? 0,
+                    'revenue' => $item?->line_total ?? 0,
+                    'price_per_unit' => $item?->price_per_unit ?? 0,
+                ];
+            });
     }
 
     #[Computed]

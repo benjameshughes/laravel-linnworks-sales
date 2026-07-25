@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Jobs\SyncRecentOrdersJob;
-use App\Models\SyncLog;
 use Carbon\Carbon;
 use Flux\DateRange;
+use App\Models\SyncLog;
+use Livewire\Component;
+use Livewire\Attributes\On;
+use App\Jobs\SyncRecentOrdersJob;
+use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
-use Livewire\Component;
 
 /**
  * Dashboard Filters Component
@@ -190,7 +190,7 @@ final class DashboardFilters extends Component
     }
 
     #[Computed]
-    public function dateRange(): Collection
+    public function calculatedDateRange(): Collection
     {
         if ($this->period === 'custom') {
             return collect([

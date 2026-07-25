@@ -4,19 +4,16 @@ declare(strict_types=1);
 
 namespace App\Livewire\Settings;
 
-use App\Jobs\SyncHistoricalOrdersJob;
-use App\Models\SyncLog;
 use Carbon\Carbon;
 use Flux\DateRange;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
+use App\Models\SyncLog;
 use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use App\Jobs\SyncHistoricalOrdersJob;
 
 /**
- * Import Progress Component - Simplified UI
- *
- * Shows a date picker and import history table.
- * Active imports show real-time progress inline in the table.
+ * @property-read \App\Models\SyncLog|null $activeSync
  */
 class ImportProgress extends Component
 {

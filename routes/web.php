@@ -1,22 +1,22 @@
 <?php
 
-use App\Http\Controllers\LinnworksCallbackController;
-use App\Livewire\Dashboard\ChannelComparison;
-use App\Livewire\Dashboard\SalesDashboard;
 use App\Livewire\OrderDetail;
-use App\Livewire\Orders\OrdersIndex;
 use App\Livewire\ProductDetail;
-use App\Livewire\Products\ProductEdit;
-use App\Livewire\Products\ProductImportExport;
-use App\Livewire\Products\ProductsIndex;
-use App\Livewire\Reports\ReportComparison;
-use App\Livewire\Reports\ReportsIndex;
-use App\Livewire\Settings\Appearance;
-use App\Livewire\Settings\ImportProgress;
-use App\Livewire\Settings\LinnworksSettings;
-use App\Livewire\Settings\Password;
 use App\Livewire\Settings\Profile;
+use App\Livewire\Settings\Password;
+use App\Livewire\Orders\OrdersIndex;
+use App\Livewire\Settings\Appearance;
 use Illuminate\Support\Facades\Route;
+use App\Livewire\Products\ProductEdit;
+use App\Livewire\Reports\ReportsIndex;
+use App\Livewire\Products\ProductsIndex;
+use App\Livewire\Settings\ImportProgress;
+use App\Livewire\Dashboard\SalesDashboard;
+use App\Livewire\Reports\ReportComparison;
+use App\Livewire\Settings\LinnworksSettings;
+use App\Livewire\Dashboard\ChannelComparison;
+use App\Livewire\Products\ProductImportExport;
+use App\Http\Controllers\LinnworksCallbackController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -30,7 +30,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('products-import', ProductImportExport::class)->name('products.import-export');
     Route::get('orders', OrdersIndex::class)->name('orders.analytics');
     Route::get('orders/{number}', OrderDetail::class)->name('orders.detail');
-    Route::get('channels', ChannelComparison::class)->name('channels.comparison');
+    Route::get('dashboard/channel', ChannelComparison::class)->name('dashboard.channel');
+    Route::redirect('channels', 'dashboard/channel')->name('channels.comparison');
     Route::get('reports', ReportsIndex::class)->name('reports');
     Route::get('reports/compare', ReportComparison::class)->name('reports.compare');
     Route::get('linnworks/install-url', [LinnworksCallbackController::class, 'getInstallationUrl'])->name('linnworks.install.url');

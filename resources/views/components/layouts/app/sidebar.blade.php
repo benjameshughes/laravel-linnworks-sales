@@ -23,6 +23,7 @@
 
             <flux:sidebar.nav>
                 <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:sidebar.item>
+                <flux:sidebar.item icon="arrows-right-left" :href="route('dashboard.channel')" :current="request()->routeIs('dashboard.channel')" wire:navigate>{{ __('Channels') }}</flux:sidebar.item>
                 <flux:sidebar.item icon="cube" :href="route('products.analytics')" :current="request()->routeIs('products.*')" wire:navigate>{{ __('Products') }}</flux:sidebar.item>
                 <flux:sidebar.item icon="shopping-bag" :href="route('orders.analytics')" :current="request()->routeIs('orders.*')" wire:navigate>{{ __('Orders') }}</flux:sidebar.item>
                 <flux:sidebar.item icon="document-text" :href="route('reports')" :current="request()->routeIs('reports')" wire:navigate>{{ __('Reports') }}</flux:sidebar.item>

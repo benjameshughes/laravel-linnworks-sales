@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class SyncLog extends Model
 {
@@ -133,12 +133,12 @@ class SyncLog extends Model
      */
     public function getSuccessRateAttribute(): float
     {
-        $total = $this->total_fetched;
+        $total = $this->total_fetched ?? 0;
         if ($total === 0) {
             return 0;
         }
 
-        $successful = $this->total_created + $this->total_updated;
+        $successful = ($this->total_created ?? 0) + ($this->total_updated ?? 0);
 
         return round(($successful / $total) * 100, 2);
     }

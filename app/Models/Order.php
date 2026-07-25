@@ -3,13 +3,13 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 /**
  * @property int $id
@@ -324,10 +324,10 @@ class Order extends Model
     {
         return Attribute::make(
             get: fn () => match ($this->status) {
-                'processed' => 'green',
-                'pending' => 'yellow',
-                'cancelled' => 'red',
-                default => 'gray'
+                self::STATUS_PROCESSED => 'green',
+                self::STATUS_OPEN => 'yellow',
+                self::STATUS_CANCELLED => 'red',
+                default => 'gray',
             }
         );
     }

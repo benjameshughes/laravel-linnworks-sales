@@ -2,24 +2,26 @@
 
 namespace App\Providers;
 
-use App\Services\Linnworks\Auth\AuthenticationService;
-use App\Services\Linnworks\Auth\SessionManager;
-use App\Services\Linnworks\Contracts\AuthenticationServiceInterface;
-use App\Services\Linnworks\Contracts\LinnworksServiceInterface;
-use App\Services\Linnworks\Contracts\RateLimitedServiceInterface;
-use App\Services\Linnworks\Contracts\SessionManagerInterface;
-use App\Services\Linnworks\Core\LinnworksClient;
-use App\Services\Linnworks\Core\RateLimiter;
-use App\Services\Linnworks\Orders\LocationsService;
-use App\Services\Linnworks\Orders\OpenOrdersService;
-use App\Services\Linnworks\Orders\OrdersApiService;
-use App\Services\Linnworks\Orders\ProcessedOrdersService;
-use App\Services\Linnworks\Orders\ViewsService;
-use App\Services\Linnworks\Parsers\ProcessedOrdersResponseParser;
-use App\Services\Linnworks\Products\InventoryService;
-use App\Services\Linnworks\Products\ProductsApiService;
-use App\ValueObjects\Linnworks\RateLimitConfig;
 use Illuminate\Support\ServiceProvider;
+use App\Services\Linnworks\Core\RateLimiter;
+use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Orders\ViewsService;
+use App\ValueObjects\Linnworks\RateLimitConfig;
+use App\Services\Linnworks\Core\LinnworksClient;
+use App\Services\Linnworks\Orders\LocationsService;
+use App\Services\Linnworks\Orders\OrdersApiService;
+use App\Services\Linnworks\Orders\OpenOrdersService;
+use App\Services\Linnworks\Products\InventoryService;
+use App\Services\Linnworks\Auth\AuthenticationService;
+use App\Services\Linnworks\Products\ProductsApiService;
+use App\Services\Linnworks\Products\ProductSyncService;
+use App\Services\Linnworks\Orders\ProcessedOrdersService;
+use App\Services\Linnworks\Contracts\SessionManagerInterface;
+use App\Services\Linnworks\Contracts\LinnworksServiceInterface;
+use App\Services\Linnworks\Contracts\ProductSyncServiceInterface;
+use App\Services\Linnworks\Contracts\RateLimitedServiceInterface;
+use App\Services\Linnworks\Parsers\ProcessedOrdersResponseParser;
+use App\Services\Linnworks\Contracts\AuthenticationServiceInterface;
 
 class LinnworksServiceProvider extends ServiceProvider
 {
@@ -121,6 +123,7 @@ class LinnworksServiceProvider extends ServiceProvider
         $this->app->bind(SessionManagerInterface::class, SessionManager::class);
         $this->app->bind(LinnworksServiceInterface::class, LinnworksClient::class);
         $this->app->bind(RateLimitedServiceInterface::class, LinnworksClient::class);
+        $this->app->bind(ProductSyncServiceInterface::class, ProductSyncService::class);
     }
 
     /**
@@ -158,6 +161,7 @@ class LinnworksServiceProvider extends ServiceProvider
             SessionManagerInterface::class,
             LinnworksServiceInterface::class,
             RateLimitedServiceInterface::class,
+            ProductSyncServiceInterface::class,
         ];
     }
 }

@@ -6,9 +6,10 @@ namespace App\Console\Commands;
 
 use App\Models\Order;
 use App\Models\SyncLog;
-use App\Services\Linnworks\Orders\ProcessedOrdersService;
 use Illuminate\Console\Command;
+use App\Models\LinnworksConnection;
 use Illuminate\Support\Facades\Log;
+use App\Services\Linnworks\Orders\ProcessedOrdersService;
 
 class CheckProcessedStatus extends Command
 {
@@ -22,6 +23,16 @@ class CheckProcessedStatus extends Command
     {
         $limit = (int) $this->option('limit');
         $isDryRun = $this->option('dry-run');
+
+        $connection = LinnworksConnection::query()->active()->first();
+
+        if (! $connection) {
+            $this->error('No active Linnworks connection found');
+
+            return self::FAILURE;
+        }
+
+        $userId = $connection->user_id;
 
         $this->info('🔍 Checking processed order status...');
 
@@ -75,7 +86,7 @@ class CheckProcessedStatus extends Command
             try {
                 // Query ProcessedOrders API for this specific order
                 $response = $processedOrdersService->getProcessedOrderById(
-                    userId: 1,
+                    userId: $userId,
                     orderId: $order->order_id
                 );
 

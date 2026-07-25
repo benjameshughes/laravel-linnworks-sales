@@ -6,14 +6,16 @@ namespace App\Services\Linnworks\Products;
 
 use App\Models\Product;
 use App\Models\SyncCheckpoint;
+use Laravel\Scout\ModelObserver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\Linnworks\Contracts\ProductSyncServiceInterface;
 
 /**
  * Product sync service with batch operations and checkpoint support.
  */
-class ProductSyncService
+final class ProductSyncService implements ProductSyncServiceInterface
 {
     public function __construct(
         private readonly StockService $stockService,
@@ -58,7 +60,8 @@ class ProductSyncService
 
             Log::info("Fetched {$products->count()} products from Linnworks");
 
-            // Process in batches
+            ModelObserver::disableSyncingFor(Product::class);
+
             $created = 0;
             $updated = 0;
             $failed = 0;
@@ -76,6 +79,8 @@ class ProductSyncService
                     'failed' => $result['failed'],
                 ]);
             }
+
+            ModelObserver::enableSyncingFor(Product::class);
 
             $checkpoint->completeSync(
                 synced: $products->count(),
@@ -98,6 +103,7 @@ class ProductSyncService
                 'failed' => $failed,
             ];
         } catch (\Throwable $e) {
+            ModelObserver::enableSyncingFor(Product::class);
             $checkpoint->failSync($e->getMessage());
             Log::error('Product sync failed', [
                 'user_id' => $userId,
@@ -197,24 +203,35 @@ class ProductSyncService
         return compact('created', 'updated', 'failed');
     }
 
-    /**
-     * Map Linnworks stock item to Product model data.
-     */
     private function mapStockItemToProduct(array $item): array
     {
+        $purchasePrice = $item['PurchasePrice'] ?? null;
+        if ($purchasePrice !== null && $purchasePrice <= 0) {
+            $purchasePrice = null;
+        }
+
         return [
+            'linnworks_id' => $item['StockItemId'] ?? null,
             'sku' => $item['SKU'] ?? $item['ItemNumber'] ?? null,
             'title' => $item['ItemTitle'] ?? null,
+            'description' => $item['MetaData'] ?? null,
             'barcode' => $item['BarcodeNumber'] ?? null,
-            'purchase_price' => $item['PurchasePrice'] ?? null,
-            'retail_price' => $item['RetailPrice'] ?? null,
-            'stock_level' => $item['StockLevel'] ?? 0,
-            'meta_data' => $item['MetaData'] ?? null,
+            'category_id' => $item['CategoryId'] ?? null,
             'category_name' => $item['CategoryName'] ?? null,
+            'purchase_price' => $purchasePrice,
+            'retail_price' => $item['RetailPrice'] ?? null,
             'weight' => $item['Weight'] ?? null,
-            'height' => $item['Height'] ?? null,
-            'width' => $item['Width'] ?? null,
-            'depth' => $item['Depth'] ?? null,
+            'dimensions' => [
+                'height' => $item['Height'] ?? null,
+                'width' => $item['Width'] ?? null,
+                'depth' => $item['Depth'] ?? null,
+            ],
+            'stock_level' => $item['StockLevel'] ?? $item['Quantity'] ?? 0,
+            'stock_minimum' => $item['MinimumLevel'] ?? 0,
+            'stock_in_orders' => $item['InOrder'] ?? 0,
+            'stock_due' => $item['Due'] ?? 0,
+            'stock_available' => $item['Available'] ?? 0,
+            'is_active' => ! ($item['IsArchived'] ?? false),
             'last_synced_at' => now(),
         ];
     }

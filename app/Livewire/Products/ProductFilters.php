@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Livewire\Products;
 
-use App\Enums\SearchType;
-use App\Services\ProductAnalyticsService;
-use App\Services\ProductFilterService;
-use App\ValueObjects\FilterCriteria;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
 use Livewire\Component;
+use App\Enums\SearchType;
+use Livewire\Attributes\On;
+use App\Jobs\SyncProductsJob;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use App\ValueObjects\FilterCriteria;
+use Illuminate\Support\Facades\Cache;
+use App\Services\ProductFilterService;
+use App\Services\ProductAnalyticsService;
 
 /**
  * Product Filters Component
@@ -109,7 +110,9 @@ final class ProductFilters extends Component
     {
         app(ProductAnalyticsService::class)->invalidateCache();
 
-        session()->flash('message', 'Product analytics cache cleared.');
+        SyncProductsJob::dispatch(startedBy: 'products-page');
+
+        session()->flash('message', 'Product sync dispatched. Data will refresh shortly.');
         $this->dispatch('product-sync-started');
         $this->dispatchFiltersUpdated();
     }

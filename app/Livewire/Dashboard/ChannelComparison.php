@@ -1,123 +1,242 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Dashboard;
 
-use Illuminate\Support\Facades\Cache;
-use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Carbon\CarbonImmutable;
+use Livewire\Attributes\Url;
+use App\Enums\ComparisonMode;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use App\ValueObjects\GrowthIndicator;
+use App\DataTransferObjects\ChannelPerformance;
+use App\Services\Metrics\ChannelComparisonQuery;
 
 /**
- * @property-read \Illuminate\Support\Collection $channelComparison
- * @property-read array|null $channelDetails
- * @property-read array $chartData
+ * Period-over-period channel comparison.
+ *
+ * Anchors on a single month and compares it against either the previous month
+ * (MoM) or the same month a year earlier (YoY). All filters are URL-bound so a
+ * given comparison can be shared as a link.
  */
-class ChannelComparison extends Component
+final class ChannelComparison extends Component
 {
-    public string $period = '30';
+    #[Url(as: 'mode')]
+    public string $mode = 'mom';
 
-    public string $metric = 'revenue';
+    #[Url(as: 'month')]
+    public string $month = '';
 
-    public ?string $selectedChannel = null;
+    #[Url(as: 'status')]
+    public string $status = 'all';
 
-    public bool $showSubsources = false;
+    #[Url(as: 'source')]
+    public string $source = 'all';
 
-    public function mount()
+    #[Url(as: 'subsources')]
+    public bool $includeSubsources = false;
+
+    #[Url(as: 'sort')]
+    public string $sortBy = 'revenue';
+
+    public function mount(): void
     {
-        //
+        if (! $this->isValidMonth($this->month)) {
+            $this->month = ChannelComparisonQuery::latestMonth()->format('Y-m');
+        }
+
+        if (ComparisonMode::tryFrom($this->mode) === null) {
+            $this->mode = ComparisonMode::MonthOverMonth->value;
+        }
+    }
+
+    public function toggleSubsources(): void
+    {
+        $this->includeSubsources = ! $this->includeSubsources;
     }
 
     #[Computed]
-    public function channelComparison()
+    public function comparisonMode(): ComparisonMode
     {
-        // Get cached channel data
-        $periodEnum = \App\Enums\Period::tryFrom($this->period);
-
-        if (! $periodEnum || ! $periodEnum->isCacheable()) {
-            return collect();
-        }
-
-        $cacheKey = $periodEnum->cacheKey('all', 'all');
-        $cached = Cache::get($cacheKey);
-
-        if (! $cached || ! isset($cached['top_channels'])) {
-            return collect();
-        }
-
-        // Transform cached top_channels data to match expected format
-        return collect($cached['top_channels'])->map(function ($channel) {
-            return [
-                'channel' => $channel['name'],
-                'total_revenue' => $channel['revenue'],
-                'total_orders' => $channel['orders'],
-                'total_items' => 0, // Not available in cache yet
-                'avg_order_value' => $channel['avg_order_value'],
-                'total_profit' => 0, // Not available in cache yet
-                'profit_margin' => 0, // Not available in cache yet
-                'conversion_rate' => 100, // Not tracked yet
-                'revenue_share' => $channel['percentage'],
-                'growth_rate' => 0, // Not available in cache yet
-            ];
-        })->sortByDesc($this->metric === 'revenue' ? 'total_revenue' : $this->metric);
+        return ComparisonMode::tryFrom($this->mode) ?? ComparisonMode::MonthOverMonth;
     }
 
     #[Computed]
-    public function channelDetails()
+    public function currentLabel(): string
     {
-        if (! $this->selectedChannel) {
-            return null;
-        }
-
-        $channelData = $this->channelComparison->firstWhere('channel', $this->selectedChannel);
-
-        if (! $channelData) {
-            return null;
-        }
-
-        // TODO: Add detailed channel breakdown to cache warming
-        // For now, return basic data without daily breakdown or top products
-        $channelData['daily_data'] = [];
-        $channelData['top_products'] = [];
-
-        return $channelData;
+        return $this->comparison['current_label'];
     }
 
     #[Computed]
-    public function chartData()
+    public function baselineLabel(): string
     {
-        $comparison = $this->channelComparison;
+        return $this->comparison['baseline_label'];
+    }
+
+    /**
+     * @return array{
+     *     channels: Collection<int, ChannelPerformance>,
+     *     trend: array{labels: array<int, string>, current: array<int, float>, baseline: array<int, float>},
+     *     current_label: string,
+     *     baseline_label: string
+     * }
+     */
+    #[Computed]
+    public function comparison(): array
+    {
+        return (new ChannelComparisonQuery(
+            mode: $this->comparisonMode,
+            anchor: CarbonImmutable::createFromFormat('Y-m-d', $this->month.'-01')->startOfMonth(),
+            includeSubsources: $this->includeSubsources,
+            status: $this->status,
+            source: $this->source,
+        ))->compare();
+    }
+
+    /**
+     * @return Collection<int, ChannelPerformance>
+     */
+    #[Computed]
+    public function channels(): Collection
+    {
+        return $this->comparison['channels']->sortByDesc(
+            fn (ChannelPerformance $channel): float => match ($this->sortBy) {
+                'orders' => (float) $channel->currentOrders,
+                'items' => (float) $channel->currentItems,
+                'growth' => $channel->revenueGrowth() ?? -INF,
+                'delta' => $channel->revenueDelta(),
+                default => $channel->currentRevenue,
+            }
+        )->values();
+    }
+
+    #[Computed]
+    public function totals(): array
+    {
+        $channels = $this->channels;
+
+        $currentRevenue = $channels->sum(fn (ChannelPerformance $c): float => $c->currentRevenue);
+        $baselineRevenue = $channels->sum(fn (ChannelPerformance $c): float => $c->baselineRevenue);
+        $currentOrders = $channels->sum(fn (ChannelPerformance $c): int => $c->currentOrders);
+        $baselineOrders = $channels->sum(fn (ChannelPerformance $c): int => $c->baselineOrders);
+
+        $currentAov = $currentOrders > 0 ? $currentRevenue / $currentOrders : 0.0;
+        $baselineAov = $baselineOrders > 0 ? $baselineRevenue / $baselineOrders : 0.0;
 
         return [
-            'labels' => $comparison->pluck('channel')->take(10)->toArray(),
-            'revenue' => $comparison->pluck('total_revenue')->take(10)->toArray(),
-            'orders' => $comparison->pluck('total_orders')->take(10)->toArray(),
-            'profit' => $comparison->pluck('total_profit')->take(10)->toArray(),
-            'margins' => $comparison->pluck('profit_margin')->take(10)->toArray(),
+            'current_label' => $this->comparison['current_label'],
+            'baseline_label' => $this->comparison['baseline_label'],
+            'current_revenue' => $currentRevenue,
+            'baseline_revenue' => $baselineRevenue,
+            'revenue_indicator' => $this->indicator($currentRevenue, $baselineRevenue),
+            'current_orders' => $currentOrders,
+            'baseline_orders' => $baselineOrders,
+            'orders_indicator' => $this->indicator((float) $currentOrders, (float) $baselineOrders),
+            'current_aov' => $currentAov,
+            'baseline_aov' => $baselineAov,
+            'aov_indicator' => $this->indicator($currentAov, $baselineAov),
+            'winners' => $channels->filter(fn (ChannelPerformance $c): bool => $c->revenueDelta() > 0)->count(),
+            'losers' => $channels->filter(fn (ChannelPerformance $c): bool => $c->revenueDelta() < 0)->count(),
         ];
     }
 
-    public function selectChannel(string $channel)
+    /**
+     * Percentage movement between two totals, presented ready for the badge.
+     * A zero baseline is unmeasurable rather than infinite.
+     */
+    private function indicator(float $current, float $baseline): GrowthIndicator
     {
-        $this->selectedChannel = $channel;
+        $percentage = $baseline > 0 ? (($current - $baseline) / $baseline) * 100 : null;
+
+        return GrowthIndicator::fromPercentage($percentage, 'No baseline');
     }
 
-    public function clearSelection()
+    /**
+     * Grouped bar chart - current vs baseline revenue for the top channels.
+     */
+    #[Computed]
+    public function revenueChart(): array
     {
-        $this->selectedChannel = null;
+        $channels = $this->channels->take(10);
+
+        return [
+            'labels' => $channels->map(fn (ChannelPerformance $c): string => $c->name)->all(),
+            'datasets' => [
+                [
+                    'label' => $this->comparison['current_label'],
+                    'data' => $channels->map(fn (ChannelPerformance $c): float => round($c->currentRevenue, 2))->all(),
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.85)',
+                    'borderRadius' => 4,
+                ],
+                [
+                    'label' => $this->comparison['baseline_label'],
+                    'data' => $channels->map(fn (ChannelPerformance $c): float => round($c->baselineRevenue, 2))->all(),
+                    'backgroundColor' => 'rgba(148, 163, 184, 0.6)',
+                    'borderRadius' => 4,
+                ],
+            ],
+        ];
     }
 
-    public function toggleSubsources()
+    /**
+     * Daily revenue overlay - both periods sharing a day-of-month axis.
+     */
+    #[Computed]
+    public function trendChart(): array
     {
-        $this->showSubsources = ! $this->showSubsources;
+        $trend = $this->comparison['trend'];
+
+        return [
+            'labels' => $trend['labels'],
+            'datasets' => [
+                [
+                    'label' => $this->comparison['current_label'],
+                    'data' => array_map(fn (float $value): float => round($value, 2), $trend['current']),
+                    'borderColor' => '#3B82F6',
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
+                    'tension' => 0.35,
+                    'fill' => true,
+                    'borderWidth' => 2,
+                    'pointRadius' => 0,
+                ],
+                [
+                    'label' => $this->comparison['baseline_label'],
+                    'data' => array_map(fn (float $value): float => round($value, 2), $trend['baseline']),
+                    'borderColor' => '#94A3B8',
+                    'backgroundColor' => 'transparent',
+                    'tension' => 0.35,
+                    'fill' => false,
+                    'borderWidth' => 2,
+                    'borderDash' => [5, 5],
+                    'pointRadius' => 0,
+                ],
+            ],
+        ];
     }
 
-    public function updatedMetric()
+    /**
+     * @return Collection<string, string>
+     */
+    #[Computed]
+    public function availableMonths(): Collection
     {
-        // Re-sort when metric changes
+        return ChannelComparisonQuery::availableMonths();
     }
 
-    public function updatedPeriod()
+    /**
+     * @return Collection<int, string>
+     */
+    #[Computed]
+    public function availableSources(): Collection
     {
-        $this->clearSelection();
+        return ChannelComparisonQuery::availableSources();
+    }
+
+    private function isValidMonth(string $month): bool
+    {
+        return preg_match('/^\d{4}-\d{2}$/', $month) === 1;
     }
 
     public function render()

@@ -2,16 +2,17 @@
 
 namespace App\Livewire\Dashboard;
 
+use Livewire\Component;
 use App\Enums\SearchType;
-use App\Services\ProductAnalyticsService;
-use App\Services\ProductFilterService;
-use App\Services\ProductSearchService;
+use Livewire\WithPagination;
+use App\Jobs\SyncProductsJob;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
 use App\ValueObjects\FilterCriteria;
 use App\ValueObjects\SearchCriteria;
-use Illuminate\Support\Collection;
-use Livewire\Attributes\Computed;
-use Livewire\Component;
-use Livewire\WithPagination;
+use App\Services\ProductFilterService;
+use App\Services\ProductSearchService;
+use App\Services\ProductAnalyticsService;
 
 /**
  * @property-read Collection $topSellingProducts
@@ -238,12 +239,11 @@ class ProductAnalytics extends Component
 
     public function syncProducts()
     {
-        // Invalidate all product analytics caches
         app(ProductAnalyticsService::class)->invalidateCache();
 
-        // TODO: Product sync jobs removed during refactoring
-        // \App\Jobs\GetAllProductsJob::dispatch('ui');
-        session()->flash('message', 'Product analytics cache cleared. (Product sync not yet implemented)');
+        SyncProductsJob::dispatch(startedBy: 'dashboard');
+
+        session()->flash('message', 'Product sync dispatched. Data will refresh shortly.');
         $this->dispatch('product-sync-started');
     }
 
