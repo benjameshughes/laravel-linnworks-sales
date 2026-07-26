@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Metrics\Orders;
 
-use App\Actions\Calculations\Sales\CalculatePeriodDates;
 use App\Models\Order;
-use App\Repositories\Metrics\Orders\OrderRepository;
-use App\Services\OrderBadgeService;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use App\Services\OrderBadgeService;
+use App\Repositories\Metrics\Orders\OrderRepository;
+use App\Actions\Calculations\Sales\CalculatePeriodDates;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * Orchestration layer for order analytics.

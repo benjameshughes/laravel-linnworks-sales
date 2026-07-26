@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
  *
  * Extends Laravel Collection with domain-specific methods.
  */
-class AuditTrailCollection extends Collection
+final class AuditTrailCollection extends Collection
 {
     /**
      * Create from array of audit data.

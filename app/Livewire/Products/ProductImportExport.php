@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Livewire\Products;
 
 use App\Models\Product;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\Attributes\Title;
+use Livewire\Attributes\Layout;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('components.layouts.app')]
@@ -262,7 +263,7 @@ final class ProductImportExport extends Component
         $this->importErrors = [];
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.products.product-import-export', [
             'productCount' => Product::count(),

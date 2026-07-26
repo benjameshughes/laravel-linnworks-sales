@@ -2,9 +2,9 @@
 
 namespace App\Services\Linnworks\Contracts;
 
-use App\ValueObjects\Linnworks\ApiResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use App\ValueObjects\Linnworks\ApiResponse;
 
 interface OrdersServiceInterface
 {

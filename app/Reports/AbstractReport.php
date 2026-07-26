@@ -2,13 +2,13 @@
 
 namespace App\Reports;
 
-use App\Reports\Enums\ExportFormat;
-use App\Reports\Enums\ReportCategory;
-use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
-use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use App\Reports\Enums\ExportFormat;
+use App\Reports\Enums\ReportCategory;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 
 /**
  * Base class for all reports in the system.

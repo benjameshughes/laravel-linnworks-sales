@@ -4,20 +4,21 @@ declare(strict_types=1);
 
 namespace App\Livewire\Settings;
 
+use Livewire\Component;
+use Livewire\Attributes\On;
 use App\Events\CacheCleared;
 use App\Events\OrdersSynced;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\On;
-use Livewire\Component;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * @property-read array $cacheStatus
  */
 #[Layout('components.layouts.app')]
-class CacheManagement extends Component
+final class CacheManagement extends Component
 {
     public bool $isWarming = false;
 
@@ -215,7 +216,7 @@ class CacheManagement extends Component
         $this->dispatch('$refresh');
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.settings.cache-management');
     }

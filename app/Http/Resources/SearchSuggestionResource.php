@@ -3,10 +3,10 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class SearchSuggestionResource extends JsonResource
+final class SearchSuggestionResource extends JsonResource
 {
     public function __construct(
         private readonly Collection $suggestion,

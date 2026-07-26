@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Actions\Sync\Orders\BulkImportOrders;
-use App\DataTransferObjects\ProcessedOrderFilters;
+use Carbon\Carbon;
+use App\Models\SyncLog;
 use App\Events\OrdersSynced;
 use App\Events\SyncCompleted;
-use App\Events\SyncProgressUpdated;
-use App\Models\SyncLog;
-use App\Services\Linnworks\Sync\Orders\OrderSyncOrchestrator;
-use App\Services\LinnworksApiService;
-use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
+use App\Events\SyncProgressUpdated;
+use Illuminate\Support\Facades\Log;
+use App\Services\LinnworksApiService;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use App\Actions\Sync\Orders\BulkImportOrders;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
+use App\DataTransferObjects\ProcessedOrderFilters;
 
 /**
  * Sync historical orders - one-time backfill for specific date range
@@ -33,13 +33,28 @@ use Illuminate\Support\Facades\Log;
  *
  * Single source of truth: SyncLog model (database)
  */
-final class SyncHistoricalOrdersJob implements ShouldQueue
+final class SyncHistoricalOrdersJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    private const MAX_BATCH_RETRIES = 3;
+
+    private const BASE_BACKOFF_SECONDS = 5;
+
+    /**
+     * Historical imports write to the same tables and can run for hours, so
+     * only one is ever allowed in flight. The UI guard alone is racy - the
+     * SyncLog it checks is not created until a worker picks the job up.
+     */
+    private const UNIQUE_LOCK_SECONDS = 86400;
+
+    private const GC_EVERY_BATCHES = 10;
 
     public readonly int $tries;
 
     public readonly int $timeout;
+
+    public readonly int $uniqueFor;
 
     public function __construct(
         public readonly Carbon $fromDate,
@@ -48,22 +63,22 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
     ) {
         $this->tries = 1;
         $this->timeout = 0; // No timeout - historical imports can take hours
+        $this->uniqueFor = self::UNIQUE_LOCK_SECONDS;
         $this->onQueue('low'); // Don't block recent syncs
     }
 
+    /**
+     * Deliberately not keyed on the date range - overlapping imports would
+     * fight over the same orders regardless of which dates they cover.
+     */
     public function uniqueId(): string
     {
-        return sprintf(
-            'sync-historical-orders-%s-%s',
-            $this->fromDate->format('Ymd'),
-            $this->toDate->format('Ymd')
-        );
+        return 'sync-historical-orders';
     }
 
     public function handle(
         LinnworksApiService $api,
-        BulkImportOrders $importer,
-        OrderSyncOrchestrator $sync
+        BulkImportOrders $importer
     ): void {
         $syncLog = SyncLog::startSync(SyncLog::TYPE_HISTORICAL_ORDERS, [
             'started_by' => $this->startedBy ?? 'system',
@@ -121,26 +136,19 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
                 }
             );
 
-            // Stage 2: Import batches (shown in UI)
-            $syncLog->updateProgress('historical_import', 10, 100, [
-                'message' => $totalOrdersExpected
-                    ? "Starting import of {$totalOrdersExpected} orders..."
-                    : 'Starting historical import...',
-                'stage' => 2,
-                'total_processed' => 0,
-                'total_expected' => $totalOrdersExpected ?? 0,
-                'created' => 0,
-                'updated' => 0,
-                'failed' => 0,
-                'current_batch' => 0,
-            ]);
-
             $currentBatch = 0;
             $totalOrdersFetched = 0;
             $startTime = microtime(true);
 
             foreach ($processedOrderIdsStream as $pageOrderIds) {
                 $currentBatch++;
+
+                // Stage 2 is announced here rather than before the loop because
+                // the stream is a generator - nothing runs, and the progress
+                // callback never fires, until the first page is pulled.
+                if ($currentBatch === 1) {
+                    $this->announceImportStart($syncLog, $totalOrdersExpected);
+                }
 
                 $this->processBatch(
                     $api,
@@ -170,13 +178,15 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
                 // Broadcast to UI - this is the only event ImportProgress listens to
                 event(new SyncProgressUpdated(
                     'batch-completed',
-                    "Batch {$currentBatch} completed: {$totalProcessed}/{$totalOrdersExpected} orders",
+                    $totalOrdersExpected
+                        ? "Batch {$currentBatch} completed: {$totalProcessed}/{$totalOrdersExpected} orders"
+                        : "Batch {$currentBatch} completed: {$totalProcessed} orders",
                     $totalProcessed
                 ));
 
                 unset($pageOrderIds);
 
-                if ($currentBatch % 10 === 0 && function_exists('gc_collect_cycles')) {
+                if ($currentBatch % self::GC_EVERY_BATCHES === 0) {
                     gc_collect_cycles();
                 }
             }
@@ -198,7 +208,9 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
                 failed: $totalFailed
             );
 
-            $success = $totalFailed === 0 && $totalProcessed > 0;
+            // A range that genuinely holds no orders is a successful import of
+            // nothing, not a failure. Cache warming is gated separately below.
+            $success = $totalFailed === 0;
 
             // Broadcast completion - ImportProgress listens to this
             event(new SyncCompleted(
@@ -233,11 +245,30 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
     /**
      * Check if this historical import affects current dashboard periods (last 730 days)
      */
-    protected function affectsDashboardPeriods(): bool
+    private function affectsDashboardPeriods(): bool
     {
         $oldestDashboardDate = now()->subDays(730)->startOfDay();
 
         return $this->toDate->greaterThanOrEqualTo($oldestDashboardDate);
+    }
+
+    /**
+     * Tell the UI stage 2 has begun, now that the expected total is known.
+     */
+    private function announceImportStart(SyncLog $syncLog, ?int $totalOrdersExpected): void
+    {
+        $syncLog->updateProgress('historical_import', 10, 100, [
+            'message' => $totalOrdersExpected
+                ? "Starting import of {$totalOrdersExpected} orders..."
+                : 'Starting historical import...',
+            'stage' => 2,
+            'total_processed' => 0,
+            'total_expected' => $totalOrdersExpected ?? 0,
+            'created' => 0,
+            'updated' => 0,
+            'failed' => 0,
+            'current_batch' => 0,
+        ]);
     }
 
     /**
@@ -290,7 +321,7 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
     /**
      * Process a single batch with retry logic
      */
-    protected function processBatch(
+    private function processBatch(
         LinnworksApiService $api,
         BulkImportOrders $importer,
         \Illuminate\Support\Collection $orderIds,
@@ -300,8 +331,8 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
         int &$totalProcessed,
         int &$totalFailed
     ): void {
-        $maxRetries = 3;
-        $baseBackoffSeconds = 5;
+        $maxRetries = self::MAX_BATCH_RETRIES;
+        $baseBackoffSeconds = self::BASE_BACKOFF_SECONDS;
         $attempt = 0;
 
         while ($attempt < $maxRetries) {
@@ -355,14 +386,6 @@ final class SyncHistoricalOrdersJob implements ShouldQueue
                 ]);
 
                 sleep($backoffSeconds);
-
-            } catch (\Throwable $e) {
-                Log::error('Unexpected error processing batch', [
-                    'batch' => $currentBatch,
-                    'error' => $e->getMessage(),
-                ]);
-
-                throw $e;
             }
         }
     }

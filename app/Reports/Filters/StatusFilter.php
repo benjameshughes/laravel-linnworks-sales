@@ -2,7 +2,7 @@
 
 namespace App\Reports\Filters;
 
-class StatusFilter extends AbstractFilter
+final class StatusFilter extends AbstractFilter
 {
     public function __construct(
         private readonly array $allowedStatuses = ['processed', 'open', 'cancelled'],

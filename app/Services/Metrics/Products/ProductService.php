@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Metrics\Products;
 
-use App\Actions\Calculations\Sales\CalculatePeriodDates;
-use App\Factories\Metrics\Products\ProductFactory;
-use App\Repositories\Metrics\Products\ProductRepository;
 use Illuminate\Support\Collection;
+use App\Factories\Metrics\Products\ProductFactory;
+use App\Actions\Calculations\Sales\CalculatePeriodDates;
+use App\Repositories\Metrics\Products\ProductRepository;
 
 /**
  * Orchestration layer for product analytics.

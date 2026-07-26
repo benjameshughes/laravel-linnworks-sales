@@ -2,14 +2,16 @@
 
 namespace App\Reports;
 
-use App\Reports\Enums\ReportCategory;
-use App\Reports\Filters\DateRangeFilter;
 use Carbon\Carbon;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use App\Reports\Enums\ReportCategory;
+use Illuminate\Database\Query\Builder;
+use App\Reports\Filters\DateRangeFilter;
 
-class TopProductsReport extends AbstractReport
+final class TopProductsReport extends AbstractReport
 {
+    private const MAX_ROWS = 100;
+
     public function name(): string
     {
         return 'Top Products';
@@ -79,7 +81,7 @@ class TopProductsReport extends AbstractReport
             ->addBinding([$dateStart, $dateEnd, 'cancelled'], 'select')
             ->groupBy('oi.sku')
             ->orderByRaw('total_revenue DESC')
-            ->limit(100);
+            ->limit(self::MAX_ROWS);
 
         return $query;
     }

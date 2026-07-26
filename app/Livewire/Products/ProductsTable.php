@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace App\Livewire\Products;
 
+use Livewire\Component;
 use App\Enums\SearchType;
-use App\Services\ProductAnalyticsService;
+use Livewire\Attributes\On;
+use Livewire\WithPagination;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
+use App\ValueObjects\SearchCriteria;
 use App\Services\ProductBadgeService;
 use App\Services\ProductFilterService;
 use App\Services\ProductSearchService;
-use App\ValueObjects\SearchCriteria;
-use Illuminate\Support\Collection;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
-use Livewire\Component;
-use Livewire\WithPagination;
+use App\Services\ProductAnalyticsService;
 
 /**
  * Products Table Island
@@ -27,6 +28,64 @@ use Livewire\WithPagination;
 final class ProductsTable extends Component
 {
     use WithPagination;
+
+    private const TOP_PRODUCTS_LIMIT = 20;
+
+    private ?ProductAnalyticsService $productAnalyticsService = null;
+
+    private ?ProductBadgeService $productBadgeService = null;
+
+    private ?ProductFilterService $productFilterService = null;
+
+    private ?ProductSearchService $productSearchService = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(ProductAnalyticsService $productAnalyticsService, ProductBadgeService $productBadgeService, ProductFilterService $productFilterService, ProductSearchService $productSearchService): void
+    {
+        $this->productAnalyticsService = $productAnalyticsService;
+        $this->productBadgeService = $productBadgeService;
+        $this->productFilterService = $productFilterService;
+        $this->productSearchService = $productSearchService;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productAnalyticsService(): ProductAnalyticsService
+    {
+        return $this->productAnalyticsService ??= app(ProductAnalyticsService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productBadgeService(): ProductBadgeService
+    {
+        return $this->productBadgeService ??= app(ProductBadgeService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productFilterService(): ProductFilterService
+    {
+        return $this->productFilterService ??= app(ProductFilterService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productSearchService(): ProductSearchService
+    {
+        return $this->productSearchService ??= app(ProductSearchService::class);
+    }
 
     public string $period = '30';
 
@@ -115,7 +174,7 @@ final class ProductsTable extends Component
             return $this->performEnhancedSearch();
         }
 
-        $products = app(ProductAnalyticsService::class)->getTopSellingProducts(
+        $products = $this->productAnalyticsService()->getTopSellingProducts(
             period: (int) $this->period,
             search: null,
             category: $this->selectedCategory,
@@ -132,7 +191,7 @@ final class ProductsTable extends Component
 
         // Add badges to each product
         $products = $products->map(function ($item) {
-            $badges = app(ProductBadgeService::class)->getProductBadges($item['product'], (int) $this->period);
+            $badges = $this->productBadgeService()->getProductBadges($item['product'], (int) $this->period);
             $item['badges'] = $badges->map(fn ($badge) => $badge->toArray());
 
             return $item;
@@ -155,7 +214,7 @@ final class ProductsTable extends Component
 
     private function performEnhancedSearch(): Collection
     {
-        $searchService = app(ProductSearchService::class);
+        $searchService = $this->productSearchService();
         $searchType = SearchType::tryFrom($this->searchType) ?? SearchType::COMBINED;
 
         // Only pass actual database column filters to SearchCriteria
@@ -182,7 +241,7 @@ final class ProductsTable extends Component
 
         $products = $searchResults->map(function ($product) {
             $analytics = $product->getProfitAnalysis();
-            $badges = app(ProductBadgeService::class)->getProductBadges($product, (int) $this->period);
+            $badges = $this->productBadgeService()->getProductBadges($product, (int) $this->period);
 
             return array_merge($analytics, [
                 'product' => $product,
@@ -214,7 +273,7 @@ final class ProductsTable extends Component
 
     private function applyFilters(Collection $products): Collection
     {
-        $filterService = app(ProductFilterService::class);
+        $filterService = $this->productFilterService();
         $filterCriteria = $filterService->createFiltersFromArray($this->filters);
 
         return $filterService->applyFilters($products, $filterCriteria, (int) $this->period);
@@ -223,10 +282,10 @@ final class ProductsTable extends Component
     #[Computed]
     public function products(): Collection
     {
-        return $this->topSellingProducts->take(20);
+        return $this->topSellingProducts->take(self::TOP_PRODUCTS_LIMIT);
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.products.products-table');
     }

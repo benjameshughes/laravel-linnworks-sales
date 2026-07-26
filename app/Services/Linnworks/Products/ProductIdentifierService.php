@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Linnworks\Products;
 
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use App\ValueObjects\Linnworks\ApiRequest;
 use App\Services\Linnworks\Auth\SessionManager;
 use App\Services\Linnworks\Core\LinnworksClient;
 use App\ValueObjects\Inventory\ProductIdentifier;
-use App\ValueObjects\Inventory\ProductIdentifierCollection;
 use App\ValueObjects\Inventory\ProductIdentifierType;
-use App\ValueObjects\Linnworks\ApiRequest;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
+use App\ValueObjects\Inventory\ProductIdentifierCollection;
 
 /**
  * Modern product identifier service.
@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Log;
  * - Logging
  * - Collection pipeline
  */
-class ProductIdentifierService
+final class ProductIdentifierService
 {
     public function __construct(
         private readonly LinnworksClient $client,
@@ -51,9 +51,7 @@ class ProductIdentifierService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $request = ApiRequest::post('Inventory/GetProductIdentifiersByStockItemId', [
             'StockItemId' => $stockItemId,
@@ -114,9 +112,7 @@ class ProductIdentifierService
         }
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $request = ApiRequest::post('Inventory/AddProductIdentifiers', [
             'StockItemId' => $stockItemId,
@@ -178,9 +174,7 @@ class ProductIdentifierService
         }
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $request = ApiRequest::post('Inventory/UpdateProductIdentifiers', [
             'StockItemId' => $stockItemId,
@@ -230,9 +224,7 @@ class ProductIdentifierService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $request = ApiRequest::post('Inventory/DeleteProductIdentifiers', [
             'StockItemId' => $stockItemId,
@@ -273,9 +265,7 @@ class ProductIdentifierService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $request = ApiRequest::get('Inventory/GetProductIdentifierTypes');
 
@@ -303,9 +293,7 @@ class ProductIdentifierService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $request = ApiRequest::get('Inventory/GetProductIdentifierExtendedTypes');
 

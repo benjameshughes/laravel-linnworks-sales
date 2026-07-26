@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SyncRecentOrdersJob;
 use Illuminate\Console\Command;
+use App\Jobs\SyncRecentOrdersJob;
 
-class SyncOpenOrders extends Command
+final class SyncOpenOrders extends Command
 {
     /**
      * The name and signature of the console command.
@@ -26,7 +26,7 @@ class SyncOpenOrders extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Dispatching recent orders sync job...');
 

@@ -5,7 +5,7 @@ namespace App\ValueObjects\Linnworks;
 use Carbon\Carbon;
 use JsonSerializable;
 
-readonly class SessionToken implements JsonSerializable
+final readonly class SessionToken implements JsonSerializable
 {
     private const DEFAULT_EXPIRY_MINUTES = 55;
 
@@ -21,9 +21,7 @@ readonly class SessionToken implements JsonSerializable
         $token = $response['Token'] ?? $response['token'] ?? null;
         $server = $response['Server'] ?? $response['server'] ?? null;
 
-        if (! $token || ! $server) {
-            throw new \InvalidArgumentException('Missing token or server in Linnworks session response.');
-        }
+        throw_unless($token && $server, \InvalidArgumentException::class, 'Missing token or server in Linnworks session response.');
 
         $expiresAt = isset($response['ExpiresAt'])
             ? Carbon::parse($response['ExpiresAt'])

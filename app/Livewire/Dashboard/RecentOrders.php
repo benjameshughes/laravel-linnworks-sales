@@ -4,15 +4,38 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Repositories\Metrics\Sales\SalesRepository;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
+use App\Repositories\Metrics\Sales\SalesRepository;
 
 final class RecentOrders extends Component
 {
+    private const RECENT_ORDER_LIMIT = 15;
+
+    private ?SalesRepository $salesRepository = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies arrive
+     * here instead.
+     */
+    public function boot(SalesRepository $salesRepository): void
+    {
+        $this->salesRepository = $salesRepository;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function salesRepository(): SalesRepository
+    {
+        return $this->salesRepository ??= app(SalesRepository::class);
+    }
+
     public string $period = '7';
 
     public string $channel = 'all';
@@ -52,7 +75,7 @@ final class RecentOrders extends Component
 
         // Can't cache custom periods - use repository for limited query
         if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            return app(SalesRepository::class)->getRecentOrders(limit: 15);
+            return $this->salesRepository()->getRecentOrders(limit: self::RECENT_ORDER_LIMIT);
         }
 
         // Check cache
@@ -89,7 +112,7 @@ final class RecentOrders extends Component
         return 0;
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.dashboard.recent-orders');
     }
@@ -97,7 +120,7 @@ final class RecentOrders extends Component
     /**
      * Skeleton loader shown while lazy loading
      */
-    public function placeholder(array $params = [])
+    public function placeholder(array $params = []): View
     {
         return view('livewire.placeholders.table', $params);
     }

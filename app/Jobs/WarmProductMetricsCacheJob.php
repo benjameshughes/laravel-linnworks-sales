@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Product;
-use App\Services\ProductAnalyticsService;
-use App\Services\ProductBadgeService;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\ProductBadgeService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Queue\InteractsWithQueue;
+use App\Services\ProductAnalyticsService;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 
 /**
  * Job to warm product metrics cache for a specific period
@@ -31,6 +31,8 @@ use Illuminate\Support\Facades\Log;
 final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    private const BADGE_PREWARM_LIMIT = 50;
 
     public int $tries = 3;
 
@@ -84,7 +86,7 @@ final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
             'warmed_at' => now()->toISOString(),
         ]);
 
-        $this->prewarmBadges($topProducts->take(50), $badgeService, $periodInt);
+        $this->prewarmBadges($topProducts->take(self::BADGE_PREWARM_LIMIT), $badgeService, $periodInt);
 
         Log::debug('Product cache warmed successfully', [
             'cache_key' => $cacheKey,

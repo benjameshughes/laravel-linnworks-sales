@@ -1,8 +1,8 @@
 <?php
 
+use Livewire\Livewire;
 use App\Livewire\Dashboard\MetricsSummary;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 

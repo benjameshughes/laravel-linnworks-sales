@@ -2,19 +2,64 @@
 
 namespace App\Livewire\Settings;
 
-use App\Exceptions\Linnworks\AuthenticationException;
-use App\Exceptions\Linnworks\LinnworksApiException;
-use App\Models\LinnworksLocation;
-use App\Models\LinnworksView;
-use App\Services\Linnworks\Orders\LocationsService;
-use App\Services\Linnworks\Orders\ViewsService;
-use App\Services\LinnworksOAuthService;
-use Livewire\Attributes\Computed;
-use Livewire\Component;
 use Throwable;
+use Livewire\Component;
+use App\Models\LinnworksView;
+use App\Models\LinnworksLocation;
+use Livewire\Attributes\Computed;
+use Illuminate\Contracts\View\View;
+use App\Services\LinnworksOAuthService;
+use App\Services\Linnworks\Orders\ViewsService;
+use App\Exceptions\Linnworks\LinnworksApiException;
+use App\Services\Linnworks\Orders\LocationsService;
+use App\Exceptions\Linnworks\AuthenticationException;
 
-class LinnworksSettings extends Component
+final class LinnworksSettings extends Component
 {
+    private ?LinnworksOAuthService $linnworksOAuthService = null;
+
+    private ?LocationsService $locationsService = null;
+
+    private ?ViewsService $viewsService = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(LinnworksOAuthService $linnworksOAuthService, LocationsService $locationsService, ViewsService $viewsService): void
+    {
+        $this->linnworksOAuthService = $linnworksOAuthService;
+        $this->locationsService = $locationsService;
+        $this->viewsService = $viewsService;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function linnworksOAuthService(): LinnworksOAuthService
+    {
+        return $this->linnworksOAuthService ??= app(LinnworksOAuthService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function locationsService(): LocationsService
+    {
+        return $this->locationsService ??= app(LocationsService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function viewsService(): ViewsService
+    {
+        return $this->viewsService ??= app(ViewsService::class);
+    }
+
     public string $applicationId = '';
 
     public string $applicationSecret = '';
@@ -33,7 +78,7 @@ class LinnworksSettings extends Component
 
     public bool $isRefreshingSources = false;
 
-    public function mount(LinnworksOAuthService $oauthService)
+    public function mount(LinnworksOAuthService $oauthService): void
     {
         $this->checkConnectionStatus();
         $this->loadPreferences();
@@ -42,24 +87,24 @@ class LinnworksSettings extends Component
     #[Computed]
     public function connectionStatus()
     {
-        $oauthService = app(LinnworksOAuthService::class);
+        $oauthService = $this->linnworksOAuthService();
 
         return $oauthService->getConnectionStatus(auth()->id());
     }
 
-    public function showConnectionForm()
+    public function showConnectionForm(): void
     {
         $this->showForm = true;
         $this->reset(['applicationId', 'applicationSecret', 'accessToken']);
     }
 
-    public function hideConnectionForm()
+    public function hideConnectionForm(): void
     {
         $this->showForm = false;
         $this->reset(['applicationId', 'applicationSecret', 'accessToken']);
     }
 
-    public function connect()
+    public function connect(): void
     {
         $this->validate([
             'applicationId' => 'required|string',
@@ -68,7 +113,7 @@ class LinnworksSettings extends Component
         ]);
 
         try {
-            $oauthService = app(LinnworksOAuthService::class);
+            $oauthService = $this->linnworksOAuthService();
             $connection = $oauthService->createConnection(
                 auth()->id(),
                 $this->applicationId,
@@ -98,9 +143,9 @@ class LinnworksSettings extends Component
         }
     }
 
-    public function disconnect()
+    public function disconnect(): void
     {
-        $oauthService = app(LinnworksOAuthService::class);
+        $oauthService = $this->linnworksOAuthService();
 
         if ($oauthService->disconnect(auth()->id())) {
             session()->flash('success', 'Successfully disconnected from Linnworks.');
@@ -113,9 +158,9 @@ class LinnworksSettings extends Component
         }
     }
 
-    public function testConnection()
+    public function testConnection(): void
     {
-        $oauthService = app(LinnworksOAuthService::class);
+        $oauthService = $this->linnworksOAuthService();
         $connection = $oauthService->getActiveConnection(auth()->id());
 
         if (! $connection) {
@@ -142,9 +187,9 @@ class LinnworksSettings extends Component
         }
     }
 
-    public function refreshSession()
+    public function refreshSession(): void
     {
-        $oauthService = app(LinnworksOAuthService::class);
+        $oauthService = $this->linnworksOAuthService();
         $connection = $oauthService->getActiveConnection(auth()->id());
 
         if (! $connection) {
@@ -168,7 +213,7 @@ class LinnworksSettings extends Component
         }
     }
 
-    private function checkConnectionStatus()
+    private function checkConnectionStatus(): void
     {
         // This will trigger the computed property to refresh
         unset($this->connectionStatus);
@@ -187,20 +232,20 @@ class LinnworksSettings extends Component
             return;
         }
 
-        $oauthService = app(LinnworksOAuthService::class);
+        $oauthService = $this->linnworksOAuthService();
         $connection = $oauthService->getActiveConnection($userId);
 
         $locations = LinnworksLocation::forUser($userId)->orderBy('name')->get();
 
         if ($locations->isEmpty() && $connection) {
-            app(LocationsService::class)->getLocations($userId);
+            $this->locationsService()->getLocations($userId);
             $locations = LinnworksLocation::forUser($userId)->orderBy('name')->get();
         }
 
         $views = LinnworksView::forUser($userId)->orderBy('name')->get();
 
         if ($views->isEmpty() && $connection) {
-            app(ViewsService::class)->getOpenOrderViews($userId);
+            $this->viewsService()->getOpenOrderViews($userId);
             $views = LinnworksView::forUser($userId)->orderBy('name')->get();
         }
 
@@ -241,7 +286,7 @@ class LinnworksSettings extends Component
                 return;
             }
 
-            $connection = app(LinnworksOAuthService::class)->getActiveConnection($userId);
+            $connection = $this->linnworksOAuthService()->getActiveConnection($userId);
 
             if (! $connection) {
                 session()->flash('error', 'Connect to Linnworks before refreshing locations or views.');
@@ -249,8 +294,8 @@ class LinnworksSettings extends Component
                 return;
             }
 
-            app(LocationsService::class)->getLocations($userId);
-            app(ViewsService::class)->getOpenOrderViews($userId);
+            $this->locationsService()->getLocations($userId);
+            $this->viewsService()->getOpenOrderViews($userId);
 
             $this->loadPreferences();
 
@@ -276,7 +321,7 @@ class LinnworksSettings extends Component
             return;
         }
 
-        $oauthService = app(LinnworksOAuthService::class);
+        $oauthService = $this->linnworksOAuthService();
         $connection = $oauthService->getActiveConnection($userId);
 
         if (! $connection) {
@@ -305,7 +350,7 @@ class LinnworksSettings extends Component
         $this->selectedLocation = $value !== '' ? $value : null;
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.settings.linnworks-settings')
             ->title('Linnworks Settings');

@@ -2,20 +2,22 @@
 
 namespace App\Console\Commands;
 
-use App\DataTransferObjects\LinnworksOrder;
-use App\Events\ImportCompleted;
-use App\Events\ImportProgressUpdated;
-use App\Events\ImportStarted;
+use Carbon\Carbon;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Services\LinnworksApiService;
-use Carbon\Carbon;
+use App\Events\ImportStarted;
+use App\Events\ImportCompleted;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Events\ImportProgressUpdated;
+use App\Services\LinnworksApiService;
+use App\DataTransferObjects\LinnworksOrder;
 
-class ImportHistoricalOrders extends Command
+final class ImportHistoricalOrders extends Command
 {
+    private const BACKFILL_CHUNK_SIZE = 50;
+
     protected $signature = 'import:historical-orders
                             {--from= : Start date (YYYY-MM-DD)}
                             {--to= : End date (YYYY-MM-DD)}
@@ -452,7 +454,7 @@ class ImportHistoricalOrders extends Command
         $progressBar->start();
 
         // Process in chunks of 50 to respect rate limits
-        foreach ($ordersWithoutItems->chunk(50) as $chunk) {
+        foreach ($ordersWithoutItems->chunk(self::BACKFILL_CHUNK_SIZE) as $chunk) {
             $orderIds = $chunk->pluck('linnworks_order_id')->filter()->toArray();
 
             if (empty($orderIds)) {

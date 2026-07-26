@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics;
 
-use App\Factories\Metrics\Sales\SalesFactory;
 use App\Models\Order;
-use App\ValueObjects\Analytics\AnalyticsFilter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use App\Factories\Metrics\Sales\SalesFactory;
+use App\ValueObjects\Analytics\AnalyticsFilter;
 
 final class AnalyticsService
 {

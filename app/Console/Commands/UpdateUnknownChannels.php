@@ -3,12 +3,16 @@
 namespace App\Console\Commands;
 
 use App\Models\Order;
-use App\Services\LinnworksApiService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use App\Services\LinnworksApiService;
 
-class UpdateUnknownChannels extends Command
+final class UpdateUnknownChannels extends Command
 {
+    private const ORDER_CHUNK_SIZE = 50;
+
+    private const SAMPLE_LIMIT = 10;
+
     protected $signature = 'orders:update-unknown-channels
                             {--limit= : Maximum number of orders to update}
                             {--dry-run : Show what would be updated without making changes}';
@@ -71,7 +75,7 @@ class UpdateUnknownChannels extends Command
         $progressBar->start();
 
         // Process in chunks of 50 to respect rate limits
-        foreach ($unknownOrders->chunk(50) as $chunk) {
+        foreach ($unknownOrders->chunk(self::ORDER_CHUNK_SIZE) as $chunk) {
             $orderIds = $chunk->pluck('order_id')->filter()->toArray();
 
             if (empty($orderIds)) {
@@ -186,7 +190,7 @@ class UpdateUnknownChannels extends Command
             $channels = Order::selectRaw('source, COUNT(*) as count')
                 ->groupBy('source')
                 ->orderByDesc('count')
-                ->limit(10)
+                ->limit(self::SAMPLE_LIMIT)
                 ->get();
 
             foreach ($channels as $channel) {

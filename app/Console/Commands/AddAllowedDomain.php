@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use App\Services\SettingsService;
 use Illuminate\Console\Command;
+use App\Services\SettingsService;
 
-class AddAllowedDomain extends Command
+final class AddAllowedDomain extends Command
 {
     /**
      * The name and signature of the console command.

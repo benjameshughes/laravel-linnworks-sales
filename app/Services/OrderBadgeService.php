@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Enums\OrderBadgeType;
 use App\Models\Order;
+use App\Enums\OrderBadgeType;
 use App\ValueObjects\OrderBadge;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
-readonly class OrderBadgeService
+final readonly class OrderBadgeService
 {
     public function __construct(
         private float $highValueThreshold = 100.0,

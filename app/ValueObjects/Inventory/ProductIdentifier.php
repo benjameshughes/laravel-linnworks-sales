@@ -12,7 +12,7 @@ use Illuminate\Contracts\Support\Arrayable;
  * Represents a single product identifier (GTIN, EAN, UPC, etc.).
  * Uses PHP 8.2+ readonly properties for complete immutability.
  */
-readonly class ProductIdentifier implements Arrayable
+final readonly class ProductIdentifier implements Arrayable
 {
     public function __construct(
         public ProductIdentifierType $type,

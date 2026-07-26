@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class OrderShipping extends Model
+final class OrderShipping extends Model
 {
     protected $table = 'order_shipping';
 

@@ -1,5 +1,6 @@
 <?php
 
+use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Order;
 use Livewire\Livewire;
@@ -230,4 +231,96 @@ it('falls back to the latest data month when the query string month is malformed
     Livewire::withQueryParams(['month' => 'not-a-month'])
         ->test(ChannelComparison::class)
         ->assertSet('month', '2025-06');
+});
+
+it('rejects an out-of-range month instead of silently overflowing', function () {
+    // "2025-13" would parse as January 2026 if only the shape were checked
+    expect(ChannelComparisonQuery::parseMonth('2025-13'))->toBeNull()
+        ->and(ChannelComparisonQuery::parseMonth('2025-00'))->toBeNull()
+        ->and(ChannelComparisonQuery::parseMonth(''))->toBeNull()
+        ->and(ChannelComparisonQuery::parseMonth('9999-99'))->toBeNull()
+        ->and(ChannelComparisonQuery::parseMonth('2025-06')?->format('Y-m'))->toBe('2025-06');
+});
+
+it('normalises an out-of-range query string month so the picker matches the heading', function () {
+    Livewire::withQueryParams(['month' => '2025-13'])
+        ->test(ChannelComparison::class)
+        ->assertSet('month', '2025-06')
+        ->assertSee('June 2025');
+});
+
+it('defaults to a month whose baseline also holds data', function () {
+    // January 2026 is the newest month, but December 2025 is empty, so
+    // anchoring there would report every channel as new
+    seedOrder('2026-01-10 10:00:00', 'AMAZON', 400.00);
+
+    expect(ChannelComparisonQuery::availableMonths()->keys()->first())->toBe('2026-01');
+
+    Livewire::test(ChannelComparison::class)
+        ->assertSet('month', '2025-06');
+});
+
+it('falls back to the latest month when no pair of months qualifies', function () {
+    Order::query()->delete();
+    seedOrder('2026-01-10 10:00:00', 'AMAZON', 400.00);
+
+    expect(ChannelComparisonQuery::defaultAnchor(ComparisonMode::MonthOverMonth)->format('Y-m'))->toBe('2026-01');
+});
+
+it('leaves days the month never had as null so the chart breaks the line', function () {
+    // June has 30 days, May has 31 - day 31 does not exist for the anchor
+    $trend = Livewire::test(ChannelComparison::class)
+        ->set('month', '2025-06')
+        ->set('mode', ComparisonMode::MonthOverMonth->value)
+        ->instance()->comparison['trend'];
+
+    expect($trend['current'])->toHaveCount(31)
+        ->and($trend['current'][30])->toBeNull()
+        ->and($trend['current'][29])->toBe(0.0)
+        ->and($trend['baseline'][30])->toBe(0.0);
+});
+
+it('leaves future days of an in-progress month as null', function () {
+    Carbon::setTestNow(Carbon::parse('2025-06-10 12:00:00'));
+
+    $component = Livewire::test(ChannelComparison::class)->set('month', '2025-06');
+    $trend = $component->instance()->comparison['trend'];
+
+    expect($trend['current'][9])->not->toBeNull()   // 10 June, today
+        ->and($trend['current'][10])->toBeNull()    // 11 June, not yet happened
+        ->and($component->instance()->isInProgress)->toBeTrue()
+        ->and($component->instance()->progressLabel)->toBe('10 of 30 days');
+
+    Carbon::setTestNow();
+});
+
+it('does not flag a completed month as in progress', function () {
+    expect(
+        Livewire::test(ChannelComparison::class)->set('month', '2025-06')->instance()->isInProgress
+    )->toBeFalse();
+});
+
+it('reports when the baseline period has no orders at all', function () {
+    $withBaseline = Livewire::test(ChannelComparison::class)
+        ->set('month', '2025-06')
+        ->set('mode', ComparisonMode::MonthOverMonth->value);
+
+    expect($withBaseline->instance()->hasBaselineData)->toBeTrue();
+
+    // April 2025 has no orders, so May 2025 has nothing to measure against
+    $withoutBaseline = Livewire::test(ChannelComparison::class)
+        ->set('month', '2025-05')
+        ->set('mode', ComparisonMode::MonthOverMonth->value);
+
+    expect($withoutBaseline->instance()->hasBaselineData)->toBeFalse();
+    $withoutBaseline->assertSee('No orders were recorded in');
+});
+
+it('rounds the trend series without tripping over nulls', function () {
+    $datasets = Livewire::test(ChannelComparison::class)
+        ->set('month', '2025-06')
+        ->instance()->trendChart['datasets'];
+
+    expect($datasets[0]['data'][30])->toBeNull()
+        ->and($datasets[0]['data'][4])->toBe(100.0);
 });

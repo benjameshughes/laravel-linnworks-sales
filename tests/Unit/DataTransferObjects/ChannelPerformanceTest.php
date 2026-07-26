@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\GrowthDirection;
 use App\DataTransferObjects\ChannelPerformance;
 
 function makeChannel(array $overrides = []): ChannelPerformance
@@ -82,4 +83,25 @@ it('exposes every comparison figure through toArray', function () {
             'current_aov', 'baseline_aov', 'aov_growth', 'revenue_share',
         ])
         ->and($channel->toArray()['items_delta'])->toBe(4);
+});
+
+it('colours a flat channel neutrally rather than as a loss', function () {
+    $channel = makeChannel(['currentRevenue' => 100.0, 'baselineRevenue' => 100.0]);
+
+    expect($channel->revenueDeltaDirection())->toBe(GrowthDirection::Flat)
+        ->and($channel->formattedRevenueDelta())->toBe('£0.00');
+});
+
+it('puts the sign outside the currency symbol', function () {
+    expect(makeChannel(['currentRevenue' => 250.0, 'baselineRevenue' => 100.0])->formattedRevenueDelta())
+        ->toBe('+£150.00')
+        ->and(makeChannel(['currentRevenue' => 80.0, 'baselineRevenue' => 100.0])->formattedRevenueDelta())
+        ->toBe('-£20.00');
+});
+
+it('directs the delta tone by movement', function () {
+    expect(makeChannel(['currentRevenue' => 250.0, 'baselineRevenue' => 100.0])->revenueDeltaDirection())
+        ->toBe(GrowthDirection::Up)
+        ->and(makeChannel(['currentRevenue' => 10.0, 'baselineRevenue' => 100.0])->revenueDeltaDirection())
+        ->toBe(GrowthDirection::Down);
 });

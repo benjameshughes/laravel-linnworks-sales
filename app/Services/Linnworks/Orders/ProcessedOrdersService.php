@@ -2,17 +2,24 @@
 
 namespace App\Services\Linnworks\Orders;
 
-use App\Services\Linnworks\Auth\SessionManager;
-use App\Services\Linnworks\Core\LinnworksClient;
-use App\Services\Linnworks\Parsers\ProcessedOrdersResponseParser;
-use App\ValueObjects\Linnworks\ApiRequest;
-use App\ValueObjects\Linnworks\ApiResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use App\ValueObjects\Linnworks\ApiRequest;
+use App\ValueObjects\Linnworks\ApiResponse;
+use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
+use App\Exceptions\Linnworks\LinnworksApiException;
+use App\Services\Linnworks\Parsers\ProcessedOrdersResponseParser;
 
-class ProcessedOrdersService
+final class ProcessedOrdersService
 {
+    /**
+     * Spacing between per-order requests so a large batch does not trip
+     * Linnworks' rate limit.
+     */
+    private const REQUEST_SPACING_MICROSECONDS = 50000;
+
     public function __construct(
         private readonly LinnworksClient $client,
         private readonly SessionManager $sessionManager,
@@ -99,14 +106,13 @@ class ProcessedOrdersService
         do {
             $response = $this->searchProcessedOrders($userId, $from, $to, $filters, $page, $entriesPerPage);
 
-            if ($response->isError()) {
-                Log::error('Error fetching processed orders page', [
-                    'user_id' => $userId,
-                    'page' => $page,
-                    'error' => $response->error,
-                ]);
-                break;
-            }
+            // Breaking here would end the loop normally and the caller would
+            // record a half-finished fetch as a complete one.
+            throw_if(
+                $response->isError(),
+                LinnworksApiException::class,
+                "Failed fetching processed orders page {$page}: {$response->error}",
+            );
 
             // Use parser to extract data
             $orders = $this->parser->parseOrders($response);
@@ -131,13 +137,18 @@ class ProcessedOrdersService
 
             $page++;
 
-            // Safety checks
+            // Returning the truncated set would hand the caller a partial
+            // result it has no way to distinguish from a complete one. The cap
+            // exists to protect memory, so refuse the range instead of quietly
+            // dropping the overflow - use streamProcessedOrderIds() for volume.
+            throw_if(
+                $allOrders->count() >= $maxOrders && $totalResults > $maxOrders,
+                LinnworksApiException::class,
+                "Date range holds {$totalResults} processed orders, above the {$maxOrders} limit. Use streamProcessedOrderIds() instead.",
+            );
+
+            // Cap reached but nothing was left behind - everything is fetched
             if ($allOrders->count() >= $maxOrders) {
-                Log::warning('Maximum processed orders limit reached', [
-                    'user_id' => $userId,
-                    'total_orders' => $allOrders->count(),
-                    'max_orders' => $maxOrders,
-                ]);
                 break;
             }
 
@@ -187,14 +198,13 @@ class ProcessedOrdersService
         do {
             $response = $this->searchProcessedOrders($userId, $from, $to, $filters, $page, $entriesPerPage);
 
-            if ($response->isError()) {
-                Log::error('Error fetching processed orders page', [
-                    'user_id' => $userId,
-                    'page' => $page,
-                    'error' => $response->error,
-                ]);
-                break;
-            }
+            // Breaking here would end the loop normally and the caller would
+            // record a half-finished fetch as a complete one.
+            throw_if(
+                $response->isError(),
+                LinnworksApiException::class,
+                "Failed fetching processed orders page {$page}: {$response->error}",
+            );
 
             // Use parser to extract data
             $orders = $this->parser->parseOrders($response);
@@ -286,6 +296,7 @@ class ProcessedOrdersService
         }
 
         $orders = collect();
+        $failed = 0;
 
         Log::info('Fetching processed order details', [
             'user_id' => $userId,
@@ -297,6 +308,8 @@ class ProcessedOrdersService
                 $response = $this->getProcessedOrderById($userId, $orderId);
 
                 if ($response->isError()) {
+                    $failed++;
+
                     Log::warning('Failed to fetch processed order details', [
                         'order_id' => $orderId,
                         'error' => $response->error,
@@ -314,10 +327,10 @@ class ProcessedOrdersService
                     }
                 }
 
-                // Rate limiting - be nice to Linnworks API
-                usleep(50000); // 50ms between requests
-
+                usleep(self::REQUEST_SPACING_MICROSECONDS);
             } catch (\Throwable $e) {
+                $failed++;
+
                 Log::error('Exception fetching processed order details', [
                     'order_id' => $orderId,
                     'error' => $e->getMessage(),
@@ -329,6 +342,7 @@ class ProcessedOrdersService
             'user_id' => $userId,
             'requested_count' => count($orderIds),
             'fetched_count' => $orders->count(),
+            'failed_count' => $failed,
         ]);
 
         return $orders;

@@ -8,15 +8,13 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use InvalidArgumentException;
 
-readonly class DateRange
+final readonly class DateRange
 {
     public function __construct(
         public Carbon $start,
         public Carbon $end,
     ) {
-        if ($this->start->isAfter($this->end)) {
-            throw new InvalidArgumentException('Start date must be before or equal to end date');
-        }
+        throw_if($this->start->isAfter($this->end), InvalidArgumentException::class, 'Start date must be before or equal to end date');
     }
 
     public static function fromDays(int $days): self

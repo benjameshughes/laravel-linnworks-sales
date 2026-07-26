@@ -52,6 +52,27 @@
             </div>
         </div>
 
+        {{-- Data-quality notices --}}
+        @unless ($this->hasBaselineData)
+            <div class="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-200">
+                <flux:icon name="exclamation-triangle" class="mt-0.5 size-4 shrink-0" />
+                <span>
+                    No orders were recorded in <strong>{{ $this->baselineLabel }}</strong>, so every channel is reported as new
+                    and the percentages have nothing to measure against. Choose a month with trading history in both periods.
+                </span>
+            </div>
+        @endunless
+
+        @if ($this->isInProgress)
+            <div class="flex items-start gap-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-700/60 dark:bg-blue-900/20 dark:text-blue-200">
+                <flux:icon name="clock" class="mt-0.5 size-4 shrink-0" />
+                <span>
+                    <strong>{{ $this->currentLabel }}</strong> is still in progress ({{ $this->progressLabel }}).
+                    Totals are partial and will read low against a complete {{ $this->baselineLabel }}.
+                </span>
+            </div>
+        @endif
+
         {{-- Summary --}}
         <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
@@ -106,7 +127,7 @@
                     </div>
                 </div>
                 <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    {{ $this->channels->count() }} {{ Str::plural('channel', $this->channels->count()) }} tracked
+                    {{ $this->channelCount }} {{ Str::plural('channel', $this->channelCount) }} tracked
                 </div>
             </div>
         </div>
@@ -210,8 +231,8 @@
 
                                 <x-table.cell class="text-right">
                                     <div class="flex flex-col items-end gap-0.5">
-                                        <span class="font-medium {{ $channel->isImproving() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
-                                            {{ $channel->revenueDelta() >= 0 ? '+' : '-' }}£{{ number_format(abs($channel->revenueDelta()), 2) }}
+                                        <span class="font-medium {{ $channel->revenueDeltaDirection()->toneClass() }}">
+                                            {{ $channel->formattedRevenueDelta() }}
                                         </span>
                                         <x-growth-badge :growth="$channel->revenueIndicator()" />
                                     </div>

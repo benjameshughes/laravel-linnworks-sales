@@ -4,7 +4,7 @@ namespace App\DataTransferObjects;
 
 use Illuminate\Contracts\Support\Arrayable;
 
-readonly class LinnworksOrderItem implements Arrayable
+final readonly class LinnworksOrderItem implements Arrayable
 {
     public function __construct(
         // Core identification

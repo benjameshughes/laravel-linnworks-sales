@@ -2,7 +2,7 @@
 
 namespace App\Reports\Filters;
 
-class SkuFilter extends AbstractFilter
+final class SkuFilter extends AbstractFilter
 {
     public function __construct(
         private readonly bool $multiple = true,

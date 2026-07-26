@@ -1,13 +1,13 @@
 <?php
 
-use App\Http\Controllers\Auth\VerifyEmailController;
-use App\Livewire\Auth\ConfirmPassword;
-use App\Livewire\Auth\ForgotPassword;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
-use App\Livewire\Auth\ResetPassword;
 use App\Livewire\Auth\VerifyEmail;
+use App\Livewire\Auth\ResetPassword;
+use App\Livewire\Auth\ForgotPassword;
 use Illuminate\Support\Facades\Route;
+use App\Livewire\Auth\ConfirmPassword;
+use App\Http\Controllers\Auth\VerifyEmailController;
 
 Route::middleware('guest')->group(function () {
     Route::get('login', Login::class)->middleware('throttle:login')->name('login');

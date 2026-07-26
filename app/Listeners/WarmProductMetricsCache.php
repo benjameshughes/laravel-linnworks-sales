@@ -6,9 +6,9 @@ namespace App\Listeners;
 
 use App\Enums\Period;
 use App\Events\OrdersSynced;
-use App\Jobs\WarmProductMetricsCacheJob;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
+use App\Jobs\WarmProductMetricsCacheJob;
 
 /**
  * Warm product metrics cache when orders are synced

@@ -4,25 +4,27 @@ declare(strict_types=1);
 
 namespace App\Jobs\Middleware;
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
-class RateLimitLinnworks
+final class RateLimitLinnworks
 {
     /**
-     * Process the queued job.
-     *
-     * @param  mixed  $job
-     * @param  callable  $next
-     * @return mixed
+     * Linnworks allows 150 requests per minute - we stay under it deliberately
+     * so a burst never trips their limit.
      */
-    public function handle($job, $next)
+    private const MAX_REQUESTS_PER_WINDOW = 120;
+
+    private const WINDOW_SECONDS = 60;
+
+    /**
+     * Process the queued job.
+     */
+    public function handle(mixed $job, callable $next): mixed
     {
-        // Linnworks API rate limit: 150 requests per minute
-        // We'll throttle to 120 requests per minute to be safe
         $rateLimitKey = 'linnworks-api-rate-limit';
-        $maxRequests = 120;
-        $windowSeconds = 60;
+        $maxRequests = self::MAX_REQUESTS_PER_WINDOW;
+        $windowSeconds = self::WINDOW_SECONDS;
 
         // Get current request count for this window
         $currentCount = (int) Cache::get($rateLimitKey, 0);

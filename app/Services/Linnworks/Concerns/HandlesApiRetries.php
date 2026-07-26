@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Linnworks\Concerns;
 
-use App\Exceptions\Linnworks\LinnworksApiException;
 use Closure;
-use Illuminate\Support\Facades\Log;
 use Throwable;
+use Illuminate\Support\Facades\Log;
+use App\Exceptions\Linnworks\LinnworksApiException;
 
 trait HandlesApiRetries
 {

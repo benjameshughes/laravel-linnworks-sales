@@ -14,7 +14,7 @@ use App\Enums\GrowthDirection;
  * template only interpolates. A null percentage means the baseline period had
  * no volume, which is reported as unmeasurable rather than infinite growth.
  */
-readonly class GrowthIndicator implements JsonSerializable
+final readonly class GrowthIndicator implements JsonSerializable
 {
     private const FLAT_THRESHOLD = 0.05;
 

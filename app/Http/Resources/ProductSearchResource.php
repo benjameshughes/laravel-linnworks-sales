@@ -6,7 +6,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ProductSearchResource extends JsonResource
+final class ProductSearchResource extends JsonResource
 {
     public function __construct(
         private readonly Product $product,

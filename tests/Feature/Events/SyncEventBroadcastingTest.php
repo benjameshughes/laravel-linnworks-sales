@@ -1,8 +1,8 @@
 <?php
 
+use App\Events\SyncStarted;
 use App\Events\SyncCompleted;
 use App\Events\SyncProgressUpdated;
-use App\Events\SyncStarted;
 use Illuminate\Support\Facades\Event;
 
 it('broadcasts sync events with correct event names', function () {

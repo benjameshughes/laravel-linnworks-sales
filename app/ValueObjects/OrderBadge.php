@@ -2,10 +2,10 @@
 
 namespace App\ValueObjects;
 
-use App\Enums\OrderBadgeType;
 use JsonSerializable;
+use App\Enums\OrderBadgeType;
 
-readonly class OrderBadge implements JsonSerializable
+final readonly class OrderBadge implements JsonSerializable
 {
     public function __construct(
         public OrderBadgeType $type,

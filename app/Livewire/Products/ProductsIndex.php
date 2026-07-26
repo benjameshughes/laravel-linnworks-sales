@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Products;
 
 use Livewire\Component;
+use Illuminate\Contracts\View\View;
 
 /**
  * Products Index - Island Architecture Shell
@@ -24,7 +25,7 @@ use Livewire\Component;
  */
 final class ProductsIndex extends Component
 {
-    public function render()
+    public function render(): View
     {
         return view('livewire.products.products-index')
             ->title('Product Analytics');

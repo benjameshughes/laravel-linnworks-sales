@@ -3,11 +3,11 @@
 namespace App\Services\Api;
 
 use App\Enums\SearchType;
-use App\Services\ProductSearchService;
-use App\ValueObjects\Api\ApiResponse;
 use Illuminate\Support\Collection;
+use App\ValueObjects\Api\ApiResponse;
+use App\Services\ProductSearchService;
 
-readonly class SearchAnalyticsService
+final readonly class SearchAnalyticsService
 {
     public function __construct(
         private ProductSearchService $searchService

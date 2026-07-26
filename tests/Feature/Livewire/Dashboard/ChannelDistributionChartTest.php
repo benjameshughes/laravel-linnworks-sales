@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Livewire\Dashboard\ChannelDistributionChart;
-use App\Models\Order;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\Order;
 use Livewire\Livewire;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Livewire\Dashboard\ChannelDistributionChart;
 
 uses(RefreshDatabase::class);
 

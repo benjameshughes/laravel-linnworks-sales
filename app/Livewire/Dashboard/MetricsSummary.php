@@ -4,16 +4,37 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
+use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use App\Services\Metrics\ChunkedMetricsCalculator;
 use App\Services\Metrics\Sales\SalesMetrics as SalesMetricsService;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
-use Livewire\Component;
 
 final class MetricsSummary extends Component
 {
+    private ?SalesMetricsService $salesMetrics = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(SalesMetricsService $salesMetrics): void
+    {
+        $this->salesMetrics = $salesMetrics;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function salesMetrics(): SalesMetricsService
+    {
+        return $this->salesMetrics ??= app(SalesMetricsService::class);
+    }
+
     public string $period = '7';
 
     public string $channel = 'all';
@@ -111,7 +132,7 @@ final class MetricsSummary extends Component
     #[Computed]
     public function dateRange(): Collection
     {
-        return app(SalesMetricsService::class)->getDateRange(
+        return $this->salesMetrics()->getDateRange(
             period: $this->period,
             customFrom: $this->customFrom,
             customTo: $this->customTo
@@ -150,7 +171,7 @@ final class MetricsSummary extends Component
         return [];
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.dashboard.metrics-summary');
     }
@@ -158,7 +179,7 @@ final class MetricsSummary extends Component
     /**
      * Skeleton loader shown while lazy loading
      */
-    public function placeholder(array $params = [])
+    public function placeholder(array $params = []): View
     {
         return view('livewire.placeholders.metrics-summary', $params);
     }

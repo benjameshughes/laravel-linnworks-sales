@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\Linnworks\Orders;
 
-use App\Services\Linnworks\Orders\OrdersApiService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use App\Services\Linnworks\Orders\OrdersApiService;
 
-class FetchOrdersWithDetails
+final class FetchOrdersWithDetails
 {
     public function __construct(
         private readonly OrdersApiService $orders,

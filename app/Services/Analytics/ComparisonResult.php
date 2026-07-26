@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics;
 
-readonly class ComparisonResult
+final readonly class ComparisonResult
 {
     public function __construct(
         public float $currentRevenue,

@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api\Search;
 
-use App\Http\Controllers\Controller;
-use App\Services\Api\ProductSearchApiService;
-use App\ValueObjects\Api\SearchRequest;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use App\Http\Controllers\Controller;
+use App\ValueObjects\Api\SearchRequest;
+use App\Services\Api\ProductSearchApiService;
 
-class QuickSearchController extends Controller
+final class QuickSearchController extends Controller
 {
     public function __construct(
         private readonly ProductSearchApiService $searchApiService

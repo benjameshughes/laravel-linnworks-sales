@@ -2,18 +2,18 @@
 
 namespace App\Services\Linnworks\Core;
 
-use App\Exceptions\Linnworks\LinnworksApiException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
 use App\ValueObjects\Linnworks\SessionToken;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\ConnectionException;
+use App\Exceptions\Linnworks\LinnworksApiException;
 
-class LinnworksClient
+final class LinnworksClient
 {
     private const BASE_URL = 'https://api.linnworks.net/api/';
 

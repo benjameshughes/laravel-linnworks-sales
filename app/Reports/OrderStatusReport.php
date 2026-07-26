@@ -2,13 +2,13 @@
 
 namespace App\Reports;
 
-use App\Reports\Enums\ReportCategory;
-use App\Reports\Filters\DateRangeFilter;
 use Carbon\Carbon;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use App\Reports\Enums\ReportCategory;
+use Illuminate\Database\Query\Builder;
+use App\Reports\Filters\DateRangeFilter;
 
-class OrderStatusReport extends AbstractReport
+final class OrderStatusReport extends AbstractReport
 {
     public function name(): string
     {

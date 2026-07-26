@@ -2,14 +2,14 @@
 
 namespace App\Reports;
 
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use App\Reports\Enums\ReportCategory;
 use App\Reports\Filters\ChannelFilter;
-use App\Reports\Filters\DateRangeFilter;
-use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
+use App\Reports\Filters\DateRangeFilter;
 
-class ChannelPerformanceReport extends AbstractReport
+final class ChannelPerformanceReport extends AbstractReport
 {
     public function name(): string
     {

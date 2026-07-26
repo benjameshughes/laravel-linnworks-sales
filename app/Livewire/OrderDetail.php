@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Models\Order;
-use App\Services\Metrics\Orders\OrderService;
-use Illuminate\Support\Collection;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Attributes\Title;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
+use App\Services\Metrics\Orders\OrderService;
 
 /**
  * Order Detail Page
@@ -33,6 +34,26 @@ use Livewire\Component;
 #[Title('Order Detail')]
 final class OrderDetail extends Component
 {
+    private ?OrderService $orderService = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(OrderService $orderService): void
+    {
+        $this->orderService = $orderService;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function orderService(): OrderService
+    {
+        return $this->orderService ??= app(OrderService::class);
+    }
+
     public string $orderNumber;
 
     public int $period = 30;
@@ -57,7 +78,7 @@ final class OrderDetail extends Component
     #[Computed]
     public function orderDetail(): ?Collection
     {
-        return app(OrderService::class)->getOrderDetail(
+        return $this->orderService()->getOrderDetail(
             orderNumber: $this->orderNumber,
             period: $this->period
         );
@@ -208,7 +229,7 @@ final class OrderDetail extends Component
         $this->dispatch('period-changed');
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.order-detail');
     }

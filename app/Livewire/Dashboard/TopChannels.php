@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Services\Metrics\ChunkedMetricsCalculator;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
+use App\Services\Metrics\ChunkedMetricsCalculator;
 
 final class TopChannels extends Component
 {
@@ -77,7 +78,7 @@ final class TopChannels extends Component
         return collect();
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.dashboard.top-channels');
     }
@@ -85,7 +86,7 @@ final class TopChannels extends Component
     /**
      * Skeleton loader shown while lazy loading
      */
-    public function placeholder(array $params = [])
+    public function placeholder(array $params = []): View
     {
         return view('livewire.placeholders.top-list', $params);
     }

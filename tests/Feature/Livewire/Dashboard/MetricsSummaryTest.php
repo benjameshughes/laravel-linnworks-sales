@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Livewire\Dashboard\MetricsSummary;
-use App\Models\Order;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\Order;
 use Livewire\Livewire;
+use App\Livewire\Dashboard\MetricsSummary;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 

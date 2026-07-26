@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * @property int $id
@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read float $success_rate
  * @property-read bool $is_successful
  */
-class SyncCheckpoint extends Model
+final class SyncCheckpoint extends Model
 {
     protected $fillable = [
         'sync_type',

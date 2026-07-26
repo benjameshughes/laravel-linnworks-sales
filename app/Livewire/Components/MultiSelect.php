@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Livewire\Components;
 
-use Livewire\Attributes\Modelable;
 use Livewire\Component;
+use Livewire\Attributes\Modelable;
+use Illuminate\Contracts\View\View;
 
-class MultiSelect extends Component
+final class MultiSelect extends Component
 {
     #[Modelable]
     public array $selected = [];
@@ -137,7 +138,7 @@ class MultiSelect extends Component
         return "{$count} selected";
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.components.multi-select');
     }

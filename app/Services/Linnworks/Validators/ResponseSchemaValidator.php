@@ -9,7 +9,7 @@ use App\ValueObjects\Linnworks\Validation\ValidationResult;
 /**
  * Validates Linnworks API response schemas
  */
-class ResponseSchemaValidator
+final class ResponseSchemaValidator
 {
     /**
      * Validate OpenOrders response structure

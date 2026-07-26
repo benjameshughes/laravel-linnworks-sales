@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Livewire\Dashboard;
 
 use App\Enums\Period;
-use App\Services\Metrics\ChunkedMetricsCalculator;
-use Illuminate\Support\Facades\Cache;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
+use App\Services\Metrics\ChunkedMetricsCalculator;
 
 /**
  * Dead simple chart component.
@@ -140,7 +141,7 @@ final class ChannelDistributionChart extends Component
         return [];
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.dashboard.channel-distribution-chart');
     }

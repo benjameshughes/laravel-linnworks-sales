@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api\Search;
 
-use App\Http\Controllers\Controller;
-use App\Services\Api\SearchAutocompleteService;
-use App\ValueObjects\Api\AutocompleteRequest;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use App\Http\Controllers\Controller;
+use App\ValueObjects\Api\AutocompleteRequest;
+use App\Services\Api\SearchAutocompleteService;
 
-class AutocompleteController extends Controller
+final class AutocompleteController extends Controller
 {
     public function __construct(
         private readonly SearchAutocompleteService $autocompleteService

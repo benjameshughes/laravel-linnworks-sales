@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api\Analytics;
 
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Services\Api\SearchAnalyticsService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
-class TrendingController extends Controller
+final class TrendingController extends Controller
 {
     public function __construct(
         private readonly SearchAnalyticsService $analyticsService

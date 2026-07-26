@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Linnworks\AuditTrail;
 
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use App\ValueObjects\Linnworks\ApiRequest;
 use App\Services\Linnworks\Auth\SessionManager;
 use App\Services\Linnworks\Core\LinnworksClient;
 use App\ValueObjects\AuditTrail\AuditTrailCollection;
-use App\ValueObjects\Linnworks\ApiRequest;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Modern audit trail service for tracking system changes.
@@ -25,8 +25,14 @@ use Illuminate\Support\Facades\Log;
  * - Logging
  * - Collection pipeline
  */
-class AuditTrailService
+final class AuditTrailService
 {
+    private const RECENT_CRITICAL_LIMIT = 10;
+
+    private const RECENT_EVENTS_LIMIT = 20;
+
+    private const USER_EVENTS_LIMIT = 50;
+
     private const MAX_PAGE_SIZE = 100;
 
     private const DEFAULT_PAGE_SIZE = 50;
@@ -62,9 +68,7 @@ class AuditTrailService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $pageSize = min($pageSize, self::MAX_PAGE_SIZE);
 
@@ -120,9 +124,7 @@ class AuditTrailService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $request = ApiRequest::post('Orders/GetOrderAuditTrail', [
             'orderId' => $orderId,
@@ -171,9 +173,7 @@ class AuditTrailService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $request = ApiRequest::post('Orders/GetOrderAuditTrailsByIds', [
             'orderIds' => $orderIds,
@@ -234,9 +234,7 @@ class AuditTrailService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $pageSize = min($pageSize, self::MAX_PAGE_SIZE);
 
@@ -331,8 +329,8 @@ class AuditTrailService
             'summary' => $events->summary(),
             'type_statistics' => $events->typeStatistics(),
             'user_statistics' => $events->userStatistics(),
-            'recent_critical' => $events->critical()->take(10)->toArray(),
-            'recent_events' => $events->take(20)->toArray(),
+            'recent_critical' => $events->critical()->take(self::RECENT_CRITICAL_LIMIT)->toArray(),
+            'recent_events' => $events->take(self::RECENT_EVENTS_LIMIT)->toArray(),
         ];
     }
 
@@ -365,7 +363,7 @@ class AuditTrailService
             'summary' => $userEvents->summary(),
             'type_statistics' => $userEvents->typeStatistics(),
             'timeline' => $userEvents->timeline('day'),
-            'recent_events' => $userEvents->take(50)->toArray(),
+            'recent_events' => $userEvents->take(self::USER_EVENTS_LIMIT)->toArray(),
         ];
     }
 

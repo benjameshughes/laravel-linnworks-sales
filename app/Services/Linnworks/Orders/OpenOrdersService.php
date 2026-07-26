@@ -2,15 +2,15 @@
 
 namespace App\Services\Linnworks\Orders;
 
-use App\Services\Linnworks\Auth\SessionManager;
-use App\Services\Linnworks\Concerns\HandlesApiRetries;
-use App\Services\Linnworks\Core\LinnworksClient;
-use App\ValueObjects\Linnworks\ApiRequest;
-use App\ValueObjects\Linnworks\ApiResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use App\ValueObjects\Linnworks\ApiRequest;
+use App\ValueObjects\Linnworks\ApiResponse;
+use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
+use App\Services\Linnworks\Concerns\HandlesApiRetries;
 
-class OpenOrdersService
+final class OpenOrdersService
 {
     use HandlesApiRetries;
 

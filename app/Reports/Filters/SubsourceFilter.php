@@ -2,7 +2,7 @@
 
 namespace App\Reports\Filters;
 
-class SubsourceFilter extends AbstractFilter
+final class SubsourceFilter extends AbstractFilter
 {
     public function __construct(
         private readonly bool $multiple = true,

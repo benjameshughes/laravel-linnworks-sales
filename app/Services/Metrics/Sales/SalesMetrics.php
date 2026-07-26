@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Metrics\Sales;
 
-use App\Actions\Calculations\Sales\BuildDailyBreakdown;
-use App\Actions\Calculations\Sales\BuildDateRangeForPeriod;
-use App\Actions\Calculations\Sales\CalculatePeriodDates;
-use App\Factories\Metrics\Sales\SalesFactory;
-use App\Repositories\Metrics\Sales\SalesRepository;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use App\Factories\Metrics\Sales\SalesFactory;
+use App\Repositories\Metrics\Sales\SalesRepository;
+use App\Actions\Calculations\Sales\BuildDailyBreakdown;
+use App\Actions\Calculations\Sales\CalculatePeriodDates;
+use App\Actions\Calculations\Sales\BuildDateRangeForPeriod;
 
 final readonly class SalesMetrics
 {

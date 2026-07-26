@@ -6,7 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
-class AnalyticsCacheStatus extends Command
+final class AnalyticsCacheStatus extends Command
 {
     /**
      * The name and signature of the console command.

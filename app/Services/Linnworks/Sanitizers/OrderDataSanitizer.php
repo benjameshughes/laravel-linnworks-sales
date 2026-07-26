@@ -9,7 +9,7 @@ use Carbon\Carbon;
 /**
  * Sanitizes order data from Linnworks API responses
  */
-class OrderDataSanitizer
+final class OrderDataSanitizer
 {
     /**
      * Sanitize complete order data

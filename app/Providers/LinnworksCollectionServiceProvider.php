@@ -2,12 +2,12 @@
 
 namespace App\Providers;
 
-use App\DataTransferObjects\LinnworksOrder;
-use App\DataTransferObjects\LinnworksOrderItem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\ServiceProvider;
+use App\DataTransferObjects\LinnworksOrder;
+use App\DataTransferObjects\LinnworksOrderItem;
 
-class LinnworksCollectionServiceProvider extends ServiceProvider
+final class LinnworksCollectionServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {

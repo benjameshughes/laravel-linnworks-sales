@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Performance;
 
-use App\ValueObjects\Performance\PerformanceMetrics;
 use Closure;
 use Illuminate\Support\Facades\Log;
+use App\ValueObjects\Performance\PerformanceMetrics;
 
 /**
  * Service for monitoring and tracking performance metrics
  */
-class PerformanceMonitor
+final class PerformanceMonitor
 {
     private array $activeOperations = [];
 
@@ -39,9 +39,7 @@ class PerformanceMonitor
      */
     public function stop(string $trackingId, int $itemsProcessed = 0, array $metadata = []): PerformanceMetrics
     {
-        if (! isset($this->activeOperations[$trackingId])) {
-            throw new \InvalidArgumentException("Unknown tracking ID: {$trackingId}");
-        }
+        throw_unless(isset($this->activeOperations[$trackingId]), \InvalidArgumentException::class, "Unknown tracking ID: {$trackingId}");
 
         $operation = $this->activeOperations[$trackingId];
         $endTime = microtime(true);

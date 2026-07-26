@@ -56,7 +56,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderProperty> $properties
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderIdentifier> $identifiers
  */
-class Order extends Model
+final class Order extends Model
 {
     use HasFactory;
 

@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
-use App\Enums\ProductFilterType;
 use App\Models\Product;
-use App\ValueObjects\FilterCriteria;
+use App\Enums\ProductFilterType;
 use Illuminate\Support\Collection;
+use App\ValueObjects\FilterCriteria;
 use Illuminate\Support\Facades\Cache;
 
-readonly class ProductFilterService
+final readonly class ProductFilterService
 {
     public function __construct(
         private ProductBadgeService $badgeService = new ProductBadgeService,

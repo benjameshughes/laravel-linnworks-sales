@@ -3,15 +3,16 @@
 namespace App\Livewire\Auth;
 
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
+use Livewire\Component;
+use Livewire\Attributes\Layout;
+use Illuminate\Validation\Rules;
+use App\Rules\BusinessEmailDomain;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
-use Livewire\Attributes\Layout;
-use Livewire\Component;
+use Illuminate\Auth\Events\Registered;
 
 #[Layout('components.layouts.auth')]
-class Register extends Component
+final class Register extends Component
 {
     public string $name = '';
 
@@ -24,7 +25,7 @@ class Register extends Component
     /**
      * Handle an incoming registration request.
      */
-    public function register(): void
+    public function register(BusinessEmailDomain $businessEmailDomain): void
     {
         // Normalize email to lowercase before validation for better UX
         $this->email = strtolower(trim($this->email));
@@ -37,7 +38,7 @@ class Register extends Component
                 'email',
                 'max:255',
                 'unique:'.User::class,
-                app(\App\Rules\BusinessEmailDomain::class),
+                $businessEmailDomain,
             ],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
         ]);

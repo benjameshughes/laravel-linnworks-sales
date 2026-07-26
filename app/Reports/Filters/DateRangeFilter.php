@@ -4,7 +4,7 @@ namespace App\Reports\Filters;
 
 use Carbon\Carbon;
 
-class DateRangeFilter extends AbstractFilter
+final class DateRangeFilter extends AbstractFilter
 {
     public function __construct(
         private readonly bool $required = true,

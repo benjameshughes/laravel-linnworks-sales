@@ -30,6 +30,12 @@ final readonly class ChannelComparisonQuery
 
     private const MONTHS_CACHE_MINUTES = 60;
 
+    private const MONTH_FORMAT = 'Y-m';
+
+    private const LABEL_FORMAT = 'F Y';
+
+    private const MONTH_PATTERN = '/^\d{4}-(0[1-9]|1[0-2])$/';
+
     public function __construct(
         private ComparisonMode $mode,
         private CarbonImmutable $anchor,
@@ -41,9 +47,11 @@ final readonly class ChannelComparisonQuery
     /**
      * @return array{
      *     channels: Collection<int, ChannelPerformance>,
-     *     trend: array{labels: array<int, string>, current: array<int, float>, baseline: array<int, float>},
+     *     trend: array{labels: array<int, string>, current: array<int, float|null>, baseline: array<int, float|null>},
      *     current_label: string,
-     *     baseline_label: string
+     *     baseline_label: string,
+     *     elapsed_days: int,
+     *     total_days: int
      * }
      */
     public function compare(): array
@@ -54,8 +62,10 @@ final readonly class ChannelComparisonQuery
         return [
             'channels' => $this->mergePeriods($current, $baseline),
             'trend' => $this->trend(),
-            'current_label' => $this->currentStart()->format('F Y'),
-            'baseline_label' => $this->baselineStart()->format('F Y'),
+            'current_label' => $this->currentStart()->format(self::LABEL_FORMAT),
+            'baseline_label' => $this->baselineStart()->format(self::LABEL_FORMAT),
+            'elapsed_days' => $this->lastElapsedDay($this->currentEnd()),
+            'total_days' => $this->currentEnd()->day,
         ];
     }
 
@@ -111,8 +121,54 @@ final readonly class ChannelComparisonQuery
         $month = self::availableMonths()->keys()->first();
 
         return $month
-            ? CarbonImmutable::createFromFormat('Y-m-d', $month.'-01')->startOfMonth()
+            ? self::monthToDate($month)
             : CarbonImmutable::now()->startOfMonth();
+    }
+
+    /**
+     * The newest month whose baseline also holds data.
+     *
+     * Order history can be sparse - landing on a month whose comparison period
+     * is empty renders every channel as "New", which tells the user nothing.
+     * Falls back to the latest month when no pair qualifies.
+     */
+    public static function defaultAnchor(ComparisonMode $mode): CarbonImmutable
+    {
+        $months = self::availableMonths();
+
+        $anchor = $months->keys()
+            ->map(fn (string $month): CarbonImmutable => self::monthToDate($month))
+            ->first(fn (CarbonImmutable $candidate): bool => $months->has(
+                $mode->baseline($candidate)->format(self::MONTH_FORMAT)
+            ));
+
+        return $anchor ?? self::latestMonth();
+    }
+
+    /**
+     * Parse a Y-m key, rejecting anything impossible.
+     *
+     * The pattern runs first because Carbon throws on unparseable input rather
+     * than returning false, and it bounds the month to 01-12 so "2025-13"
+     * cannot silently overflow into January 2026. The round-trip check then
+     * catches any remaining calendar oddity.
+     */
+    public static function parseMonth(string $month): ?CarbonImmutable
+    {
+        if (preg_match(self::MONTH_PATTERN, $month) !== 1) {
+            return null;
+        }
+
+        $parsed = CarbonImmutable::createFromFormat('Y-m-d', $month.'-01');
+
+        return $parsed->format(self::MONTH_FORMAT) === $month
+            ? $parsed->startOfMonth()
+            : null;
+    }
+
+    private static function monthToDate(string $month): CarbonImmutable
+    {
+        return CarbonImmutable::createFromFormat('Y-m-d', $month.'-01')->startOfMonth();
     }
 
     /**
@@ -205,27 +261,52 @@ final readonly class ChannelComparisonQuery
      * Daily revenue for both periods, overlaid by day of month so the two
      * lines sit on a shared axis.
      *
-     * @return array{labels: array<int, string>, current: array<int, float>, baseline: array<int, float>}
+     * @return array{labels: array<int, string>, current: array<int, float|null>, baseline: array<int, float|null>}
      */
     private function trend(): array
     {
         $current = $this->dailyRevenue($this->currentStart(), $this->currentEnd());
         $baseline = $this->dailyRevenue($this->baselineStart(), $this->baselineEnd());
 
-        $currentDays = $this->currentEnd()->day;
-        $baselineDays = $this->baselineEnd()->day;
-
-        $axis = collect(range(1, max($currentDays, $baselineDays)));
+        $axis = collect(range(1, max($this->currentEnd()->day, $this->baselineEnd()->day)));
 
         return [
             'labels' => $axis->map(fn (int $day): string => (string) $day)->all(),
-            'current' => $axis->map(
-                fn (int $day): float => $day <= $currentDays ? ($current[$day] ?? 0.0) : 0.0
-            )->all(),
-            'baseline' => $axis->map(
-                fn (int $day): float => $day <= $baselineDays ? ($baseline[$day] ?? 0.0) : 0.0
-            )->all(),
+            'current' => $this->series($axis, $current, $this->currentEnd()),
+            'baseline' => $this->series($axis, $baseline, $this->baselineEnd()),
         ];
+    }
+
+    /**
+     * Map a month's daily revenue onto the shared axis.
+     *
+     * Days the month never had - and days that have not happened yet in an
+     * in-progress month - stay null so Chart.js breaks the line instead of
+     * drawing a cliff down to zero.
+     *
+     * @param  Collection<int, int>  $axis
+     * @param  array<int, float>  $revenue
+     * @return array<int, float|null>
+     */
+    private function series(Collection $axis, array $revenue, CarbonImmutable $monthEnd): array
+    {
+        $lastRealDay = $this->lastElapsedDay($monthEnd);
+
+        return $axis
+            ->map(fn (int $day): ?float => $day <= $lastRealDay ? ($revenue[$day] ?? 0.0) : null)
+            ->all();
+    }
+
+    /**
+     * The last day of the month that has actually happened.
+     */
+    private function lastElapsedDay(CarbonImmutable $monthEnd): int
+    {
+        $today = CarbonImmutable::now();
+
+        return $monthEnd->isSameMonth($today)
+            ? min($today->day, $monthEnd->day)
+            : $monthEnd->day;
     }
 
     /**

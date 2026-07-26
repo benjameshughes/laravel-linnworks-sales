@@ -2,17 +2,18 @@
 
 namespace App\Livewire\Reports;
 
+use Livewire\Component;
 use App\Reports\AbstractReport;
 use App\Reports\ReportRegistry;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
-use Livewire\Component;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
 
 /**
  * @property-read AbstractReport|null $reportA
  * @property-read AbstractReport|null $reportB
  */
-class ReportComparison extends Component
+final class ReportComparison extends Component
 {
     public ?string $reportClassA = null;
 
@@ -111,7 +112,7 @@ class ReportComparison extends Component
         $this->totalRowsB = null;
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.reports.report-comparison');
     }

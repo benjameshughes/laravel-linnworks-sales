@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Enums\ProductBadgeType;
-use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\OrderItem;
+use App\Enums\ProductBadgeType;
 use App\ValueObjects\DateRange;
 use App\ValueObjects\ProductBadge;
-use App\ValueObjects\ProductMetrics;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use App\ValueObjects\ProductMetrics;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\Eloquent\Builder;
 
-readonly class ProductBadgeService
+final readonly class ProductBadgeService
 {
     public function __construct(
         private float $hotSellerThreshold = 2.0,

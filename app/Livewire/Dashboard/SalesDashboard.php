@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Dashboard;
 
 use Livewire\Component;
+use Illuminate\Contracts\View\View;
 
 /**
  * Sales Dashboard - Island Architecture Shell
@@ -26,7 +27,7 @@ use Livewire\Component;
  */
 final class SalesDashboard extends Component
 {
-    public function render()
+    public function render(): View
     {
         return view('livewire.dashboard.sales-dashboard')
             ->title('Sales Dashboard');

@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Linnworks\Inventory;
 
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use App\ValueObjects\Linnworks\ApiRequest;
+use App\ValueObjects\Inventory\InventoryItem;
+use Illuminate\Validation\ValidationException;
 use App\Services\Linnworks\Auth\SessionManager;
 use App\Services\Linnworks\Core\LinnworksClient;
 use App\ValueObjects\Inventory\BatchOperationResult;
-use App\ValueObjects\Inventory\InventoryItem;
-use App\ValueObjects\Linnworks\ApiRequest;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Modern batch inventory operations service.
@@ -28,7 +28,7 @@ use Illuminate\Validation\ValidationException;
  * - Logging
  * - Collection pipeline
  */
-class BatchInventoryService
+final class BatchInventoryService
 {
     private const MAX_BATCH_SIZE = 200; // Linnworks API limit
 
@@ -71,9 +71,7 @@ class BatchInventoryService
 
         // Get session token
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         // Transform items to API format
         $apiItems = $items->map(fn (InventoryItem $item) => $item->toApiFormat())->toArray();
@@ -129,9 +127,7 @@ class BatchInventoryService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         // Transform stock updates to API format
         $updates = collect($stockUpdates)->map(function (int $newLevel, string $sku) use ($locationId, $changeSource) {
@@ -189,9 +185,7 @@ class BatchInventoryService
         ]);
 
         $sessionToken = $this->sessionManager->getValidSessionToken($userId);
-        if (! $sessionToken) {
-            throw new \RuntimeException('No valid session token available');
-        }
+        throw_unless($sessionToken, \RuntimeException::class, 'No valid session token available');
 
         $request = ApiRequest::post('Inventory/DeleteInventoryItemBulk', [
             'inventoryItemIds' => $stockItemIds,

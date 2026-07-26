@@ -7,7 +7,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class SyncLog extends Model
+final class SyncLog extends Model
 {
     use HasFactory;
 

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  * This will take a collection of order data from Linnworks and update the corresponding
  * orders in the database with their processed status.
  */
-class MarkOrderAsProcessed
+final class MarkOrderAsProcessed
 {
     /**
      * Update orders' processed status in the database

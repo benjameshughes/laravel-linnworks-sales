@@ -2,13 +2,13 @@
 
 namespace App\Services\Linnworks\Products;
 
-use App\Services\Linnworks\Auth\SessionManager;
-use App\Services\Linnworks\Core\LinnworksClient;
+use Illuminate\Support\Facades\Log;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\ApiResponse;
-use Illuminate\Support\Facades\Log;
+use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
 
-class InventoryService
+final class InventoryService
 {
     public function __construct(
         private readonly LinnworksClient $client,

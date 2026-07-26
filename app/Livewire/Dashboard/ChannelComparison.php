@@ -10,6 +10,7 @@ use Livewire\Attributes\Url;
 use App\Enums\ComparisonMode;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
 use App\ValueObjects\GrowthIndicator;
 use App\DataTransferObjects\ChannelPerformance;
 use App\Services\Metrics\ChannelComparisonQuery;
@@ -41,15 +42,24 @@ final class ChannelComparison extends Component
     #[Url(as: 'sort')]
     public string $sortBy = 'revenue';
 
+    private const MONTH_FORMAT = 'Y-m';
+
+    private const MONEY_DECIMALS = 2;
+
+    private const CHART_CHANNEL_LIMIT = 10;
+
+    /**
+     * Normalising both properties here keeps the controls in step with the
+     * data - an unparseable month in the query string would otherwise leave
+     * the picker showing one month while the page reported another.
+     */
     public function mount(): void
     {
-        if (! $this->isValidMonth($this->month)) {
-            $this->month = ChannelComparisonQuery::latestMonth()->format('Y-m');
-        }
-
         if (ComparisonMode::tryFrom($this->mode) === null) {
             $this->mode = ComparisonMode::MonthOverMonth->value;
         }
+
+        $this->month = $this->resolveAnchor()->format(self::MONTH_FORMAT);
     }
 
     public function toggleSubsources(): void
@@ -88,11 +98,21 @@ final class ChannelComparison extends Component
     {
         return (new ChannelComparisonQuery(
             mode: $this->comparisonMode,
-            anchor: CarbonImmutable::createFromFormat('Y-m-d', $this->month.'-01')->startOfMonth(),
+            anchor: $this->resolveAnchor(),
             includeSubsources: $this->includeSubsources,
             status: $this->status,
             source: $this->source,
         ))->compare();
+    }
+
+    /**
+     * A month the user cannot reach through the UI can still arrive via the
+     * query string, so fall back rather than trusting it.
+     */
+    private function resolveAnchor(): CarbonImmutable
+    {
+        return ChannelComparisonQuery::parseMonth($this->month)
+            ?? ChannelComparisonQuery::defaultAnchor($this->comparisonMode);
     }
 
     /**
@@ -126,8 +146,6 @@ final class ChannelComparison extends Component
         $baselineAov = $baselineOrders > 0 ? $baselineRevenue / $baselineOrders : 0.0;
 
         return [
-            'current_label' => $this->comparison['current_label'],
-            'baseline_label' => $this->comparison['baseline_label'],
             'current_revenue' => $currentRevenue,
             'baseline_revenue' => $baselineRevenue,
             'revenue_indicator' => $this->indicator($currentRevenue, $baselineRevenue),
@@ -159,20 +177,20 @@ final class ChannelComparison extends Component
     #[Computed]
     public function revenueChart(): array
     {
-        $channels = $this->channels->take(10);
+        $channels = $this->channels->take(self::CHART_CHANNEL_LIMIT);
 
         return [
             'labels' => $channels->map(fn (ChannelPerformance $c): string => $c->name)->all(),
             'datasets' => [
                 [
                     'label' => $this->comparison['current_label'],
-                    'data' => $channels->map(fn (ChannelPerformance $c): float => round($c->currentRevenue, 2))->all(),
+                    'data' => $channels->map(fn (ChannelPerformance $c): float => round($c->currentRevenue, self::MONEY_DECIMALS))->all(),
                     'backgroundColor' => 'rgba(59, 130, 246, 0.85)',
                     'borderRadius' => 4,
                 ],
                 [
                     'label' => $this->comparison['baseline_label'],
-                    'data' => $channels->map(fn (ChannelPerformance $c): float => round($c->baselineRevenue, 2))->all(),
+                    'data' => $channels->map(fn (ChannelPerformance $c): float => round($c->baselineRevenue, self::MONEY_DECIMALS))->all(),
                     'backgroundColor' => 'rgba(148, 163, 184, 0.6)',
                     'borderRadius' => 4,
                 ],
@@ -193,7 +211,7 @@ final class ChannelComparison extends Component
             'datasets' => [
                 [
                     'label' => $this->comparison['current_label'],
-                    'data' => array_map(fn (float $value): float => round($value, 2), $trend['current']),
+                    'data' => $this->roundSeries($trend['current']),
                     'borderColor' => '#3B82F6',
                     'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
                     'tension' => 0.35,
@@ -203,7 +221,7 @@ final class ChannelComparison extends Component
                 ],
                 [
                     'label' => $this->comparison['baseline_label'],
-                    'data' => array_map(fn (float $value): float => round($value, 2), $trend['baseline']),
+                    'data' => $this->roundSeries($trend['baseline']),
                     'borderColor' => '#94A3B8',
                     'backgroundColor' => 'transparent',
                     'tension' => 0.35,
@@ -214,6 +232,20 @@ final class ChannelComparison extends Component
                 ],
             ],
         ];
+    }
+
+    /**
+     * Nulls mark days the month never had, and must survive rounding so
+     * Chart.js keeps breaking the line there.
+     *
+     * @param  array<int, float|null>  $series
+     * @return array<int, float|null>
+     */
+    private function roundSeries(array $series): array
+    {
+        return collect($series)
+            ->map(fn (?float $value): ?float => $value === null ? null : round($value, self::MONEY_DECIMALS))
+            ->all();
     }
 
     /**
@@ -234,12 +266,43 @@ final class ChannelComparison extends Component
         return ChannelComparisonQuery::availableSources();
     }
 
-    private function isValidMonth(string $month): bool
+    #[Computed]
+    public function channelCount(): int
     {
-        return preg_match('/^\d{4}-\d{2}$/', $month) === 1;
+        return $this->channels->count();
     }
 
-    public function render()
+    #[Computed]
+    public function progressLabel(): string
+    {
+        return sprintf(
+            '%d of %d days',
+            $this->comparison['elapsed_days'],
+            $this->comparison['total_days'],
+        );
+    }
+
+    /**
+     * True when the baseline period holds no orders at all, which makes every
+     * channel read as "New" and the comparison meaningless.
+     */
+    #[Computed]
+    public function hasBaselineData(): bool
+    {
+        return $this->totals['baseline_orders'] > 0;
+    }
+
+    /**
+     * True while the anchor month is still running, so partial figures are not
+     * mistaken for a full month's trading.
+     */
+    #[Computed]
+    public function isInProgress(): bool
+    {
+        return $this->comparison['elapsed_days'] < $this->comparison['total_days'];
+    }
+
+    public function render(): View
     {
         return view('livewire.dashboard.channel-comparison')
             ->title('Channel Comparison');

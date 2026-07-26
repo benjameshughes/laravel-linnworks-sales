@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Livewire\Orders;
 
-use App\Services\Metrics\Orders\OrderService;
-use App\Services\OrderBadgeService;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Contracts\View\View;
-use Livewire\Attributes\Computed;
+use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
-use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\Computed;
+use App\Services\OrderBadgeService;
+use Illuminate\Contracts\View\View;
+use App\Services\Metrics\Orders\OrderService;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * Orders Table Island
@@ -27,6 +27,38 @@ use Livewire\WithPagination;
 final class OrdersTable extends Component
 {
     use WithPagination;
+
+    private ?OrderBadgeService $orderBadgeService = null;
+
+    private ?OrderService $orderService = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(OrderBadgeService $orderBadgeService, OrderService $orderService): void
+    {
+        $this->orderBadgeService = $orderBadgeService;
+        $this->orderService = $orderService;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function orderBadgeService(): OrderBadgeService
+    {
+        return $this->orderBadgeService ??= app(OrderBadgeService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function orderService(): OrderService
+    {
+        return $this->orderService ??= app(OrderService::class);
+    }
 
     public string $period = '7';
 
@@ -93,7 +125,7 @@ final class OrdersTable extends Component
     #[Computed]
     public function orders(): LengthAwarePaginator
     {
-        return app(OrderService::class)->getPaginatedOrders(
+        return $this->orderService()->getPaginatedOrders(
             period: $this->period,
             channel: $this->channel !== 'all' ? $this->channel : null,
             status: $this->status !== 'all' ? $this->status : null,
@@ -108,13 +140,13 @@ final class OrdersTable extends Component
 
     public function getOrderBadges($order): array
     {
-        $badgeService = app(OrderBadgeService::class);
+        $badgeService = $this->orderBadgeService();
         $badges = $badgeService->getOrderBadges($order, (int) $this->period);
 
         return $badges->take(3)->map(fn ($badge) => $badge->toArray())->toArray();
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.orders.orders-table');
     }

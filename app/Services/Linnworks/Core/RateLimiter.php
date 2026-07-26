@@ -2,11 +2,11 @@
 
 namespace App\Services\Linnworks\Core;
 
-use App\ValueObjects\Linnworks\RateLimitConfig;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use App\ValueObjects\Linnworks\RateLimitConfig;
 
-class RateLimiter
+final class RateLimiter
 {
     private const CACHE_PREFIX = 'linnworks_rate_limit:';
 

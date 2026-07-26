@@ -272,24 +272,17 @@
                     <div class="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-700">
                         <flux:heading size="sm" class="text-zinc-700 dark:text-zinc-300 mb-3">Active Filters ({{ $this->activeFiltersCount }})</flux:heading>
                         <div class="flex flex-wrap gap-2">
-                            @foreach($filters as $filterType => $filterValue)
-                                @if(!is_null($filterValue) && $filterValue !== '')
-                                    @php
-                                        $filterEnum = \App\Enums\ProductFilterType::tryFrom($filterType);
-                                        $filterOptions = $filterEnum?->getOptions() ?? [];
-                                        $displayValue = $filterOptions[$filterValue]['label'] ?? $filterValue;
-                                    @endphp
-                                    <flux:badge 
-                                        color="blue" 
-                                        size="sm"
-                                        class="cursor-pointer"
-                                        wire:click="clearFilter('{{ $filterType }}')"
-                                        title="Click to remove"
-                                    >
-                                        {{ $filterEnum?->label() ?? $filterType }}: {{ $displayValue }}
-                                        <flux:icon name="x-mark" class="size-3 ml-1" />
-                                    </flux:badge>
-                                @endif
+                            @foreach($this->activeFilters as $filter)
+                                <flux:badge
+                                    color="blue"
+                                    size="sm"
+                                    class="cursor-pointer"
+                                    wire:click="clearFilter('{{ $filter['type'] }}')"
+                                    title="Click to remove"
+                                >
+                                    {{ $filter['label'] }}: {{ $filter['value'] }}
+                                    <flux:icon name="x-mark" class="size-3 ml-1" />
+                                </flux:badge>
                             @endforeach
                         </div>
                     </div>

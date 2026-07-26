@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Linnworks\Products;
 
-use App\Services\Linnworks\Auth\SessionManager;
-use App\Services\Linnworks\Core\LinnworksClient;
-use App\ValueObjects\Linnworks\ApiRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use App\ValueObjects\Linnworks\ApiRequest;
+use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
 
 final class ProductsService
 {

@@ -2,11 +2,11 @@
 
 namespace App\ValueObjects;
 
+use JsonSerializable;
 use App\Enums\ProductFilterType;
 use Illuminate\Support\Collection;
-use JsonSerializable;
 
-readonly class FilterCriteria implements JsonSerializable
+final readonly class FilterCriteria implements JsonSerializable
 {
     public function __construct(
         public ProductFilterType $type,

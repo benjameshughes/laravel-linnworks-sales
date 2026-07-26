@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Livewire\Dashboard;
 
-use App\Enums\Period;
-use App\Services\Metrics\ChunkedMetricsCalculator;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Cache;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
+use App\Enums\Period;
 use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
+use App\Services\Metrics\ChunkedMetricsCalculator;
 
 /**
  * Dead simple chart component.
@@ -120,7 +121,7 @@ final class SalesTrendChart extends Component
         return $cached['daily_breakdown'] ?? [];
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.dashboard.sales-trend-chart');
     }

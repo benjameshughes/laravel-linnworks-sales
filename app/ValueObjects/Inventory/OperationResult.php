@@ -9,7 +9,7 @@ namespace App\ValueObjects\Inventory;
  *
  * Uses PHP 8.2+ readonly properties.
  */
-readonly class OperationResult
+final readonly class OperationResult
 {
     public function __construct(
         public bool $success,

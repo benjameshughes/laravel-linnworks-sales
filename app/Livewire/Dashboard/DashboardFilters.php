@@ -12,6 +12,7 @@ use Livewire\Attributes\On;
 use App\Jobs\SyncRecentOrdersJob;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -377,7 +378,7 @@ final class DashboardFilters extends Component
         );
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.dashboard.dashboard-filters');
     }

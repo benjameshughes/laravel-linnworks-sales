@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Api\Search;
 
+use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Services\Api\ProductSearchApiService;
-use Illuminate\Http\JsonResponse;
 
-class ProductLookupController extends Controller
+final class ProductLookupController extends Controller
 {
     public function __construct(
         private readonly ProductSearchApiService $searchApiService

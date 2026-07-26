@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Livewire\Products;
 
 use App\Models\Product;
-use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
-use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Livewire\Attributes\Title;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Validate;
+use Illuminate\Contracts\View\View;
 
 #[Layout('components.layouts.app')]
 #[Title('Edit Product')]
@@ -111,7 +112,7 @@ final class ProductEdit extends Component
         $this->dispatch('product-updated');
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.products.product-edit');
     }

@@ -2,7 +2,7 @@
 
 namespace App\Reports\Filters;
 
-class NumberRangeFilter extends AbstractFilter
+final class NumberRangeFilter extends AbstractFilter
 {
     public function __construct(
         private readonly string $name,

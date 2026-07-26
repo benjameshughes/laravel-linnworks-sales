@@ -2,10 +2,10 @@
 
 namespace App\ValueObjects\Api;
 
-use Illuminate\Support\Collection;
 use JsonSerializable;
+use Illuminate\Support\Collection;
 
-readonly class ApiResponse implements JsonSerializable
+final readonly class ApiResponse implements JsonSerializable
 {
     public function __construct(
         public Collection $data,

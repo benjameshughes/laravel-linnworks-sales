@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\LinnworksConnection;
-use Carbon\Carbon;
 use Exception;
-use Illuminate\Support\Facades\Http;
+use Carbon\Carbon;
+use App\Models\LinnworksConnection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 
-class LinnworksOAuthService
+final class LinnworksOAuthService
 {
     private string $baseUrl;
 

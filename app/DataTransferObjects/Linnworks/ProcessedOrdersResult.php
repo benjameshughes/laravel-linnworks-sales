@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\DataTransferObjects\Linnworks;
 
 use Countable;
-use Illuminate\Contracts\Support\Arrayable;
-use Illuminate\Support\Collection;
-use IteratorAggregate;
-use JsonSerializable;
 use Traversable;
+use JsonSerializable;
+use IteratorAggregate;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\Support\Arrayable;
 
 final class ProcessedOrdersResult implements \ArrayAccess, Arrayable, Countable, IteratorAggregate, JsonSerializable
 {

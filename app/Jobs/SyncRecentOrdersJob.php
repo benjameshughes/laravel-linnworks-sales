@@ -4,26 +4,25 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Actions\Sync\Orders\BulkImportOrders;
-use App\Actions\Sync\TrackSyncProgress;
-use App\DataTransferObjects\ProcessedOrderFilters;
+use Carbon\Carbon;
+use App\Models\Order;
+use App\Models\SyncLog;
+use App\Events\SyncStarted;
 use App\Events\OrdersSynced;
 use App\Events\SyncCompleted;
-use App\Events\SyncProgressUpdated;
-use App\Events\SyncStarted;
-use App\Models\Order;
-use App\Models\SyncCheckpoint;
-use App\Models\SyncLog;
-use App\Services\Linnworks\Sync\Orders\OrderSyncOrchestrator;
-use App\Services\LinnworksApiService;
-use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use App\Models\SyncCheckpoint;
+use App\Events\SyncProgressUpdated;
+use Illuminate\Support\Facades\Log;
+use App\Services\LinnworksApiService;
+use Illuminate\Queue\SerializesModels;
+use App\Actions\Sync\TrackSyncProgress;
+use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use App\Actions\Sync\Orders\BulkImportOrders;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
+use App\DataTransferObjects\ProcessedOrderFilters;
 
 /**
  * Sync recent orders - fast and incremental
@@ -59,6 +58,8 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    private const OPEN_ORDER_CHUNK_SIZE = 200;
+
     public readonly int $uniqueFor;
 
     public readonly int $tries;
@@ -82,7 +83,6 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
     public function handle(
         LinnworksApiService $api,
         BulkImportOrders $importer,
-        OrderSyncOrchestrator $sync
     ): void {
         // Get or create checkpoint for incremental sync
         $checkpoint = SyncCheckpoint::getOrCreateCheckpoint('recent_orders', 'linnworks');
@@ -184,7 +184,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
 
             // Process open orders first
             if ($openOrderIds->isNotEmpty()) {
-                $openChunks = $openOrderIds->chunk(200);
+                $openChunks = $openOrderIds->chunk(self::OPEN_ORDER_CHUNK_SIZE);
                 foreach ($openChunks as $chunk) {
                     $currentBatch++;
                     $this->processBatch($api, $importer, $progressTracker, $chunk, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);

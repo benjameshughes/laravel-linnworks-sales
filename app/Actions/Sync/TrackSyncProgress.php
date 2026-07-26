@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Sync;
 
+use App\Models\SyncLog;
 use App\Events\ImportBatchProcessed;
 use App\Events\ImportPerformanceUpdate;
-use App\Models\SyncLog;
 
 /**
  * Track and broadcast sync progress

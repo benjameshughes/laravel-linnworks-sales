@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use App\Jobs\WarmProductMetricsCacheJob;
 use App\Models\Order;
 use App\Models\Product;
-use App\Services\ProductAnalyticsService;
 use App\Services\ProductBadgeService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use App\Jobs\WarmProductMetricsCacheJob;
+use App\Services\ProductAnalyticsService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 

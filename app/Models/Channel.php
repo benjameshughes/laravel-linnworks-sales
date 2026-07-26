@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Channel extends Model
+final class Channel extends Model
 {
     use HasFactory;
 
@@ -50,12 +51,12 @@ class Channel extends Model
         return $this->total_revenue / $totalOrders;
     }
 
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
-    public function scopeByType($query, string $type)
+    public function scopeByType(Builder $query, string $type): Builder
     {
         return $query->where('type', $type);
     }

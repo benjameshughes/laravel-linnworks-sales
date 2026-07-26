@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Livewire\Orders;
 
-use App\Enums\Period;
-use App\Services\Metrics\Orders\OrderService;
 use Carbon\Carbon;
 use Flux\DateRange;
-use Illuminate\Support\Collection;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
+use App\Enums\Period;
 use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
+use App\Services\Metrics\Orders\OrderService;
 
 /**
  * Order Filters Component
@@ -25,6 +26,26 @@ use Livewire\Component;
  */
 final class OrderFilters extends Component
 {
+    private ?OrderService $orderService = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(OrderService $orderService): void
+    {
+        $this->orderService = $orderService;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function orderService(): OrderService
+    {
+        return $this->orderService ??= app(OrderService::class);
+    }
+
     public string $period = '7';
 
     public string $channel = 'all';
@@ -145,7 +166,7 @@ final class OrderFilters extends Component
     {
         return collect(['all' => 'All Channels'])
             ->merge(
-                app(OrderService::class)->getUniqueChannels()
+                $this->orderService()->getUniqueChannels()
                     ->mapWithKeys(fn ($channel) => [$channel => $channel])
             );
     }
@@ -180,7 +201,7 @@ final class OrderFilters extends Component
         return $periodEnum?->label() ?? "Last {$this->period} days";
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.orders.order-filters');
     }

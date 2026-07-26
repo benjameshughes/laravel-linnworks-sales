@@ -2,11 +2,11 @@
 
 namespace App\ValueObjects;
 
+use JsonSerializable;
 use App\Enums\SearchType;
 use Illuminate\Support\Collection;
-use JsonSerializable;
 
-readonly class SearchCriteria implements JsonSerializable
+final readonly class SearchCriteria implements JsonSerializable
 {
     public function __construct(
         public string $query,

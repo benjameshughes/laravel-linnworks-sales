@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Products;
 
-use App\Services\ProductAnalyticsService;
-use Illuminate\Support\Collection;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
+use App\Services\ProductAnalyticsService;
 
 /**
  * Product Quick View Island
@@ -18,6 +19,26 @@ use Livewire\Component;
  */
 final class ProductQuickView extends Component
 {
+    private ?ProductAnalyticsService $productAnalyticsService = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(ProductAnalyticsService $productAnalyticsService): void
+    {
+        $this->productAnalyticsService = $productAnalyticsService;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productAnalyticsService(): ProductAnalyticsService
+    {
+        return $this->productAnalyticsService ??= app(ProductAnalyticsService::class);
+    }
+
     public ?string $selectedProduct = null;
 
     public string $period = '30';
@@ -85,7 +106,7 @@ final class ProductQuickView extends Component
             return null;
         }
 
-        return app(ProductAnalyticsService::class)->getProductDetails($this->selectedProduct);
+        return $this->productAnalyticsService()->getProductDetails($this->selectedProduct);
     }
 
     #[Computed]
@@ -95,13 +116,13 @@ final class ProductQuickView extends Component
             return [];
         }
 
-        return app(ProductAnalyticsService::class)->getProductSalesChart(
+        return $this->productAnalyticsService()->getProductSalesChart(
             $this->selectedProduct,
             (int) $this->period
         );
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.products.product-quick-view');
     }

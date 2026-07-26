@@ -6,10 +6,13 @@ use Livewire\Component;
 use App\Enums\SearchType;
 use Livewire\WithPagination;
 use App\Jobs\SyncProductsJob;
+use App\Enums\ProductFilterType;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
 use App\ValueObjects\FilterCriteria;
 use App\ValueObjects\SearchCriteria;
+use App\Services\ProductBadgeService;
 use App\Services\ProductFilterService;
 use App\Services\ProductSearchService;
 use App\Services\ProductAnalyticsService;
@@ -17,9 +20,67 @@ use App\Services\ProductAnalyticsService;
 /**
  * @property-read Collection $topSellingProducts
  */
-class ProductAnalytics extends Component
+final class ProductAnalytics extends Component
 {
     use WithPagination;
+
+    private const TOP_PRODUCTS_LIMIT = 20;
+
+    private ?ProductAnalyticsService $productAnalyticsService = null;
+
+    private ?ProductBadgeService $productBadgeService = null;
+
+    private ?ProductFilterService $productFilterService = null;
+
+    private ?ProductSearchService $productSearchService = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(ProductAnalyticsService $productAnalyticsService, ProductBadgeService $productBadgeService, ProductFilterService $productFilterService, ProductSearchService $productSearchService): void
+    {
+        $this->productAnalyticsService = $productAnalyticsService;
+        $this->productBadgeService = $productBadgeService;
+        $this->productFilterService = $productFilterService;
+        $this->productSearchService = $productSearchService;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productAnalyticsService(): ProductAnalyticsService
+    {
+        return $this->productAnalyticsService ??= app(ProductAnalyticsService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productBadgeService(): ProductBadgeService
+    {
+        return $this->productBadgeService ??= app(ProductBadgeService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productFilterService(): ProductFilterService
+    {
+        return $this->productFilterService ??= app(ProductFilterService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productSearchService(): ProductSearchService
+    {
+        return $this->productSearchService ??= app(ProductSearchService::class);
+    }
 
     public string $period = '30';
 
@@ -57,14 +118,14 @@ class ProductAnalytics extends Component
 
     public bool $fuzzySearch = true;
 
-    public function mount()
+    public function mount(): void
     {
         $this->initializeFilters();
     }
 
     private function initializeFilters(): void
     {
-        $filterService = app(ProductFilterService::class);
+        $filterService = $this->productFilterService();
         $defaultFilters = $filterService->createDefaultFilters();
 
         $this->filters = $defaultFilters->mapWithKeys(fn (FilterCriteria $filter) => [
@@ -73,7 +134,7 @@ class ProductAnalytics extends Component
     }
 
     #[Computed]
-    public function periodSummary()
+    public function periodSummary(): Collection
     {
         $days = (int) $this->period;
         $periodEnum = \App\Enums\Period::tryFrom((string) $days);
@@ -85,9 +146,9 @@ class ProductAnalytics extends Component
     }
 
     #[Computed]
-    public function metrics()
+    public function metrics(): Collection
     {
-        return collect(app(ProductAnalyticsService::class)->getMetrics(
+        return collect($this->productAnalyticsService()->getMetrics(
             period: (int) $this->period,
             search: $this->search ?: null,
             category: $this->selectedCategory
@@ -102,7 +163,7 @@ class ProductAnalytics extends Component
             return $this->performEnhancedSearch();
         }
 
-        $products = app(ProductAnalyticsService::class)->getTopSellingProducts(
+        $products = $this->productAnalyticsService()->getTopSellingProducts(
             period: (int) $this->period,
             search: null, // Let our enhanced search handle this
             category: $this->selectedCategory,
@@ -119,7 +180,7 @@ class ProductAnalytics extends Component
 
         // Add badges to each product
         $products = $products->map(function ($item) {
-            $badges = app(\App\Services\ProductBadgeService::class)->getProductBadges($item['product'], (int) $this->period);
+            $badges = $this->productBadgeService()->getProductBadges($item['product'], (int) $this->period);
             $item['badges'] = $badges->map(fn ($badge) => $badge->toArray());
 
             return $item;
@@ -142,7 +203,7 @@ class ProductAnalytics extends Component
 
     private function performEnhancedSearch(): Collection
     {
-        $searchService = app(ProductSearchService::class);
+        $searchService = $this->productSearchService();
         $searchType = SearchType::tryFrom($this->searchType) ?? SearchType::COMBINED;
 
         $criteria = new SearchCriteria(
@@ -165,7 +226,7 @@ class ProductAnalytics extends Component
         // Convert search results to analytics format
         return $searchResults->map(function ($product) {
             $analytics = $product->getProfitAnalysis();
-            $badges = app(\App\Services\ProductBadgeService::class)->getProductBadges($product, (int) $this->period);
+            $badges = $this->productBadgeService()->getProductBadges($product, (int) $this->period);
 
             return array_merge($analytics, [
                 'product' => $product,
@@ -176,7 +237,7 @@ class ProductAnalytics extends Component
 
     private function applyFilters(Collection $products): Collection
     {
-        $filterService = app(ProductFilterService::class);
+        $filterService = $this->productFilterService();
         $filterCriteria = $filterService->createFiltersFromArray($this->filters);
 
         return $filterService->applyFilters($products, $filterCriteria, (int) $this->period);
@@ -186,19 +247,19 @@ class ProductAnalytics extends Component
     public function products()
     {
         // Return paginated top selling products for the main table
-        return $this->topSellingProducts->take(20);
+        return $this->topSellingProducts->take(self::TOP_PRODUCTS_LIMIT);
     }
 
     #[Computed]
     public function topCategories()
     {
-        return app(ProductAnalyticsService::class)->getTopCategories((int) $this->period);
+        return $this->productAnalyticsService()->getTopCategories((int) $this->period);
     }
 
     #[Computed]
     public function stockAlerts()
     {
-        return app(ProductAnalyticsService::class)->getStockAlerts();
+        return $this->productAnalyticsService()->getStockAlerts();
     }
 
     #[Computed]
@@ -208,7 +269,7 @@ class ProductAnalytics extends Component
             return null;
         }
 
-        return app(ProductAnalyticsService::class)->getProductDetails($this->selectedProduct);
+        return $this->productAnalyticsService()->getProductDetails($this->selectedProduct);
     }
 
     #[Computed]
@@ -218,18 +279,18 @@ class ProductAnalytics extends Component
             return [];
         }
 
-        return app(ProductAnalyticsService::class)->getProductSalesChart(
+        return $this->productAnalyticsService()->getProductSalesChart(
             $this->selectedProduct,
             (int) $this->period
         );
     }
 
-    public function toggleMetrics()
+    public function toggleMetrics(): void
     {
         $this->showMetrics = ! $this->showMetrics;
     }
 
-    public function toggleCharts()
+    public function toggleCharts(): void
     {
         $this->showCharts = ! $this->showCharts;
         if ($this->showCharts) {
@@ -237,9 +298,9 @@ class ProductAnalytics extends Component
         }
     }
 
-    public function syncProducts()
+    public function syncProducts(): void
     {
-        app(ProductAnalyticsService::class)->invalidateCache();
+        $this->productAnalyticsService()->invalidateCache();
 
         SyncProductsJob::dispatch(startedBy: 'dashboard');
 
@@ -247,7 +308,7 @@ class ProductAnalytics extends Component
         $this->dispatch('product-sync-started');
     }
 
-    public function sortBy(string $column)
+    public function sortBy(string $column): void
     {
         if ($this->sortBy === $column) {
             $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
@@ -259,39 +320,39 @@ class ProductAnalytics extends Component
         $this->resetPage();
     }
 
-    public function selectProduct(string $sku)
+    public function selectProduct(string $sku): void
     {
         $this->selectedProduct = $sku;
     }
 
-    public function clearSelection()
+    public function clearSelection(): void
     {
         $this->selectedProduct = null;
     }
 
-    public function selectCategory(string $category)
+    public function selectCategory(string $category): void
     {
         $this->selectedCategory = $category;
     }
 
-    public function clearCategoryFilter()
+    public function clearCategoryFilter(): void
     {
         $this->selectedCategory = null;
     }
 
-    public function toggleSalesFilter()
+    public function toggleSalesFilter(): void
     {
         $this->showOnlyWithSales = ! $this->showOnlyWithSales;
         $this->resetPage();
     }
 
-    public function updatedSearch()
+    public function updatedSearch(): void
     {
         $this->resetPage();
         $this->loadSearchSuggestions();
     }
 
-    public function updatedSearchType()
+    public function updatedSearchType(): void
     {
         $this->resetPage();
         if (! empty($this->search)) {
@@ -299,7 +360,7 @@ class ProductAnalytics extends Component
         }
     }
 
-    public function loadSearchSuggestions()
+    public function loadSearchSuggestions(): void
     {
         if (strlen($this->search) < 2) {
             $this->searchSuggestions = [];
@@ -307,58 +368,58 @@ class ProductAnalytics extends Component
             return;
         }
 
-        $searchService = app(ProductSearchService::class);
+        $searchService = $this->productSearchService();
         $searchType = SearchType::tryFrom($this->searchType) ?? SearchType::COMBINED;
 
         $suggestions = $searchService->autocomplete($this->search, $searchType);
         $this->searchSuggestions = $suggestions->take(5)->toArray();
     }
 
-    public function selectSearchSuggestion(string $value)
+    public function selectSearchSuggestion(string $value): void
     {
         $this->search = $value;
         $this->searchSuggestions = [];
         $this->resetPage();
     }
 
-    public function toggleSearchOptions()
+    public function toggleSearchOptions(): void
     {
         $this->showSearchOptions = ! $this->showSearchOptions;
     }
 
-    public function clearSearch()
+    public function clearSearch(): void
     {
         $this->search = '';
         $this->searchSuggestions = [];
         $this->resetPage();
     }
 
-    public function updatedPeriod()
+    public function updatedPeriod(): void
     {
         $this->resetPage();
     }
 
-    public function updatedFilters()
+    public function updatedFilters(): void
     {
         $this->resetPage();
         $this->activePreset = null; // Clear preset when manual filter changes
     }
 
-    public function toggleFilters()
+    public function toggleFilters(): void
     {
         $this->showFilters = ! $this->showFilters;
     }
 
-    public function clearAllFilters()
+    public function clearAllFilters(): void
     {
         $this->initializeFilters();
         $this->activePreset = null;
         $this->resetPage();
     }
 
-    public function applyPreset(string $presetName)
+    public function applyPreset(string $presetName): void
     {
-        $filterService = app(ProductFilterService::class);
+        $filterService = $this->productFilterService();
         $presets = $filterService->getFilterPresets();
 
         if (! $presets->has($presetName)) {
@@ -370,7 +431,7 @@ class ProductAnalytics extends Component
         $this->resetPage();
     }
 
-    public function clearFilter(string $filterType)
+    public function clearFilter(string $filterType): void
     {
         if (isset($this->filters[$filterType])) {
             $this->filters[$filterType] = null;
@@ -382,23 +443,45 @@ class ProductAnalytics extends Component
     #[Computed]
     public function availableCategories()
     {
-        return app(ProductFilterService::class)->getAvailableCategories();
+        return $this->productFilterService()->getAvailableCategories();
     }
 
     #[Computed]
     public function filterPresets()
     {
-        return app(ProductFilterService::class)->getFilterPresets();
+        return $this->productFilterService()->getFilterPresets();
     }
 
+    /**
+     * Applied filters resolved to their display labels, ready for the badges.
+     *
+     * @return Collection<int, array{type: string, label: string, value: string}>
+     */
     #[Computed]
-    public function activeFiltersCount()
+    public function activeFilters(): Collection
     {
-        return collect($this->filters)->filter(fn ($value) => ! is_null($value) && $value !== '')->count();
+        return collect($this->filters)
+            ->reject(fn ($value): bool => is_null($value) || $value === '')
+            ->map(function ($value, string $type): array {
+                $filter = ProductFilterType::tryFrom($type);
+
+                return [
+                    'type' => $type,
+                    'label' => $filter?->label() ?? $type,
+                    'value' => $filter?->getOptions()[$value]['label'] ?? $value,
+                ];
+            })
+            ->values();
     }
 
     #[Computed]
-    public function searchTypes()
+    public function activeFiltersCount(): int
+    {
+        return $this->activeFilters->count();
+    }
+
+    #[Computed]
+    public function searchTypes(): Collection
     {
         return collect(SearchType::cases())->map(fn (SearchType $type) => [
             'value' => $type->value,
@@ -414,7 +497,7 @@ class ProductAnalytics extends Component
         return SearchType::tryFrom($this->searchType) ?? SearchType::COMBINED;
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.dashboard.product-analytics')
             ->title('Product Analytics');

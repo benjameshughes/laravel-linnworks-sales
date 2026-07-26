@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Linnworks\Auth\AuthenticationService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Services\Linnworks\Auth\AuthenticationService;
 use Symfony\Component\HttpFoundation\Response as BaseResponse;
 
-class LinnworksCallbackController extends Controller
+final class LinnworksCallbackController extends Controller
 {
     public function __construct(
         private readonly AuthenticationService $authService,

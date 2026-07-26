@@ -7,7 +7,7 @@ namespace App\Events;
 use Carbon\Carbon;
 use Illuminate\Foundation\Events\Dispatchable;
 
-class ImportStarted
+final class ImportStarted
 {
     use Dispatchable;
 

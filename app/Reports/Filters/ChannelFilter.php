@@ -2,7 +2,7 @@
 
 namespace App\Reports\Filters;
 
-class ChannelFilter extends AbstractFilter
+final class ChannelFilter extends AbstractFilter
 {
     public function __construct(
         private readonly bool $multiple = true,

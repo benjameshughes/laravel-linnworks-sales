@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Orders;
 
-use App\Services\Metrics\Orders\OrderService;
-use Illuminate\Contracts\View\View;
-use Illuminate\Support\Collection;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
+use App\Services\Metrics\Orders\OrderService;
 
 /**
  * Order Metrics Island
@@ -25,6 +25,26 @@ use Livewire\Component;
  */
 final class OrderMetrics extends Component
 {
+    private ?OrderService $orderService = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(OrderService $orderService): void
+    {
+        $this->orderService = $orderService;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function orderService(): OrderService
+    {
+        return $this->orderService ??= app(OrderService::class);
+    }
+
     public string $period = '7';
 
     public string $channel = 'all';
@@ -63,7 +83,7 @@ final class OrderMetrics extends Component
     #[Computed]
     public function metrics(): Collection
     {
-        return app(OrderService::class)->getOrderMetrics(
+        return $this->orderService()->getOrderMetrics(
             period: $this->period,
             channel: $this->channel !== 'all' ? $this->channel : null,
             status: $this->status !== 'all' ? $this->status : null,
@@ -75,7 +95,7 @@ final class OrderMetrics extends Component
     #[Computed]
     public function comparison(): Collection
     {
-        return app(OrderService::class)->getComparisonMetrics(
+        return $this->orderService()->getComparisonMetrics(
             period: $this->period,
             channel: $this->channel !== 'all' ? $this->channel : null,
             customFrom: $this->customFrom,
@@ -83,7 +103,7 @@ final class OrderMetrics extends Component
         );
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.orders.order-metrics');
     }

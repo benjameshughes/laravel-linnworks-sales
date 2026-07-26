@@ -2,15 +2,15 @@
 
 namespace App\Services\Linnworks\Orders;
 
-use App\Services\Linnworks\Auth\SessionManager;
-use App\Services\Linnworks\Core\LinnworksClient;
-use App\ValueObjects\Linnworks\ApiRequest;
-use App\ValueObjects\Linnworks\ApiResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use App\ValueObjects\Linnworks\ApiRequest;
+use App\ValueObjects\Linnworks\ApiResponse;
+use App\Services\Linnworks\Auth\SessionManager;
+use App\Services\Linnworks\Core\LinnworksClient;
 
-class OrdersApiService
+final class OrdersApiService
 {
     public function __construct(
         private readonly LinnworksClient $client,

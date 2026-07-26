@@ -2,12 +2,12 @@
 
 namespace App\Console\Commands;
 
-use App\Services\ProductAnalyticsService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use App\Services\ProductAnalyticsService;
 
-class RefreshProductAnalyticsCache extends Command
+final class RefreshProductAnalyticsCache extends Command
 {
     /**
      * The name and signature of the console command.

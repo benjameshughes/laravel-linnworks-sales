@@ -3,11 +3,11 @@
 namespace App\Services\Linnworks\Auth;
 
 use App\Models\LinnworksConnection;
-use App\ValueObjects\Linnworks\SessionToken;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use App\ValueObjects\Linnworks\SessionToken;
 
-class SessionManager
+final class SessionManager
 {
     private const CACHE_PREFIX = 'linnworks_session:';
 

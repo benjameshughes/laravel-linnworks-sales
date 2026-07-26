@@ -10,9 +10,11 @@ use Livewire\Attributes\On;
 use App\Jobs\SyncProductsJob;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
 use App\ValueObjects\FilterCriteria;
 use Illuminate\Support\Facades\Cache;
 use App\Services\ProductFilterService;
+use App\Services\ProductSearchService;
 use App\Services\ProductAnalyticsService;
 
 /**
@@ -23,6 +25,50 @@ use App\Services\ProductAnalyticsService;
  */
 final class ProductFilters extends Component
 {
+    private ?ProductAnalyticsService $productAnalyticsService = null;
+
+    private ?ProductFilterService $productFilterService = null;
+
+    private ?ProductSearchService $productSearchService = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(ProductAnalyticsService $productAnalyticsService, ProductFilterService $productFilterService, ProductSearchService $productSearchService): void
+    {
+        $this->productAnalyticsService = $productAnalyticsService;
+        $this->productFilterService = $productFilterService;
+        $this->productSearchService = $productSearchService;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productAnalyticsService(): ProductAnalyticsService
+    {
+        return $this->productAnalyticsService ??= app(ProductAnalyticsService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productFilterService(): ProductFilterService
+    {
+        return $this->productFilterService ??= app(ProductFilterService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productSearchService(): ProductSearchService
+    {
+        return $this->productSearchService ??= app(ProductSearchService::class);
+    }
+
     public string $period = '30';
 
     public string $search = '';
@@ -57,7 +103,7 @@ final class ProductFilters extends Component
 
     private function initializeFilters(): void
     {
-        $filterService = app(ProductFilterService::class);
+        $filterService = $this->productFilterService();
         $defaultFilters = $filterService->createDefaultFilters();
 
         $this->filters = $defaultFilters->mapWithKeys(fn (FilterCriteria $filter) => [
@@ -108,7 +154,7 @@ final class ProductFilters extends Component
 
     public function syncProducts(): void
     {
-        app(ProductAnalyticsService::class)->invalidateCache();
+        $this->productAnalyticsService()->invalidateCache();
 
         SyncProductsJob::dispatch(startedBy: 'products-page');
 
@@ -179,7 +225,7 @@ final class ProductFilters extends Component
 
     public function applyPreset(string $presetName): void
     {
-        $filterService = app(ProductFilterService::class);
+        $filterService = $this->productFilterService();
         $presets = $filterService->getFilterPresets();
 
         if (! $presets->has($presetName)) {
@@ -199,7 +245,7 @@ final class ProductFilters extends Component
             return;
         }
 
-        $searchService = app(\App\Services\ProductSearchService::class);
+        $searchService = $this->productSearchService();
         $searchType = SearchType::tryFrom($this->searchType) ?? SearchType::COMBINED;
 
         $suggestions = $searchService->autocomplete($this->search, $searchType);
@@ -237,13 +283,13 @@ final class ProductFilters extends Component
     #[Computed]
     public function availableCategories(): Collection
     {
-        return app(ProductFilterService::class)->getAvailableCategories();
+        return $this->productFilterService()->getAvailableCategories();
     }
 
     #[Computed]
     public function filterPresets(): Collection
     {
-        return app(ProductFilterService::class)->getFilterPresets();
+        return $this->productFilterService()->getFilterPresets();
     }
 
     #[Computed]
@@ -277,7 +323,7 @@ final class ProductFilters extends Component
         return $cached['warmed_at'] ?? null;
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.products.product-filters');
     }

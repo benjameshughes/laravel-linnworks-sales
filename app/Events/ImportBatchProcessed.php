@@ -6,7 +6,7 @@ namespace App\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
 
-class ImportBatchProcessed
+final class ImportBatchProcessed
 {
     use Dispatchable;
 

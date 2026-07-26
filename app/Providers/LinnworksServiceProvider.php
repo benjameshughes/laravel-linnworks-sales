@@ -23,7 +23,7 @@ use App\Services\Linnworks\Contracts\RateLimitedServiceInterface;
 use App\Services\Linnworks\Parsers\ProcessedOrdersResponseParser;
 use App\Services\Linnworks\Contracts\AuthenticationServiceInterface;
 
-class LinnworksServiceProvider extends ServiceProvider
+final class LinnworksServiceProvider extends ServiceProvider
 {
     /**
      * Register services.

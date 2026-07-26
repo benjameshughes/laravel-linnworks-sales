@@ -12,7 +12,7 @@ use Illuminate\Contracts\Support\Arrayable;
  *
  * Handles both GetStockItems (basic) and GetStockItemFull (detailed) responses.
  */
-readonly class LinnworksProduct implements Arrayable
+final readonly class LinnworksProduct implements Arrayable
 {
     public function __construct(
         public ?string $stockItemId,

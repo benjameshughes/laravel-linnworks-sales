@@ -11,7 +11,7 @@ use App\Models\LinnworksConnection;
 use Illuminate\Support\Facades\Log;
 use App\Services\Linnworks\Orders\ProcessedOrdersService;
 
-class CheckProcessedStatus extends Command
+final class CheckProcessedStatus extends Command
 {
     protected $signature = 'sync:check-processed
                             {--limit=100 : Number of orders to check}

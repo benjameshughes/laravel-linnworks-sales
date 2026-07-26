@@ -6,7 +6,7 @@ namespace App\ValueObjects\Analytics;
 
 use Illuminate\Database\Eloquent\Builder;
 
-readonly class AnalyticsFilter
+final readonly class AnalyticsFilter
 {
     public function __construct(
         public DateRange $dateRange,

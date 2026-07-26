@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Crypt;
 
-class EncryptLinnworksCredentials extends Command
+final class EncryptLinnworksCredentials extends Command
 {
     protected $signature = 'linnworks:encrypt-credentials
                           {--force : Force re-encryption even if already encrypted}';

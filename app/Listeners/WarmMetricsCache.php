@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Events\CacheWarmingCompleted;
-use App\Events\CacheWarmingStarted;
 use App\Events\OrdersSynced;
 use App\Jobs\WarmPeriodCacheJob;
-use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use App\Events\CacheWarmingStarted;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
+use App\Events\CacheWarmingCompleted;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Warm metrics cache when orders are synced

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Repositories\Metrics\Orders;
 
-use App\Models\Order;
 use Carbon\Carbon;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Models\Order;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * Data access layer for order analytics.

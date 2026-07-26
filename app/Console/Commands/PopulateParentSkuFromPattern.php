@@ -6,8 +6,12 @@ use App\Models\OrderItem;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
-class PopulateParentSkuFromPattern extends Command
+final class PopulateParentSkuFromPattern extends Command
 {
+    private const PREVIEW_LIMIT = 10;
+
+    private const UPDATE_CHUNK_SIZE = 1000;
+
     /**
      * The name and signature of the console command.
      *
@@ -63,7 +67,7 @@ class PopulateParentSkuFromPattern extends Command
 
         // Show sample mappings
         $this->info('Sample mappings:');
-        foreach ($mappings->take(10) as $child => $parent) {
+        foreach ($mappings->take(self::PREVIEW_LIMIT) as $child => $parent) {
             $this->line("  {$child} → {$parent}");
         }
         $this->newLine();
@@ -82,7 +86,7 @@ class PopulateParentSkuFromPattern extends Command
         $progressBar->start();
 
         // Batch update using raw SQL for maximum performance
-        foreach ($mappings->chunk(1000) as $batch) {
+        foreach ($mappings->chunk(self::UPDATE_CHUNK_SIZE) as $batch) {
             // Build CASE statement for bulk update
             $cases = [];
             $skuList = [];

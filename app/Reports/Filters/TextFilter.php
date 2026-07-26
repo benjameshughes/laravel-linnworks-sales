@@ -2,7 +2,7 @@
 
 namespace App\Reports\Filters;
 
-class TextFilter extends AbstractFilter
+final class TextFilter extends AbstractFilter
 {
     public function __construct(
         private readonly string $name,

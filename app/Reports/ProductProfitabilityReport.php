@@ -2,16 +2,16 @@
 
 namespace App\Reports;
 
+use Carbon\Carbon;
+use App\Reports\Filters\SkuFilter;
+use Illuminate\Support\Facades\DB;
 use App\Reports\Enums\ReportCategory;
 use App\Reports\Filters\ChannelFilter;
-use App\Reports\Filters\DateRangeFilter;
-use App\Reports\Filters\SkuFilter;
-use App\Reports\Filters\SubsourceFilter;
-use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
+use App\Reports\Filters\DateRangeFilter;
+use App\Reports\Filters\SubsourceFilter;
 
-class ProductProfitabilityReport extends AbstractReport
+final class ProductProfitabilityReport extends AbstractReport
 {
     public function name(): string
     {

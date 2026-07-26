@@ -5,7 +5,7 @@ namespace App\ValueObjects\Api;
 use App\Enums\SearchType;
 use Illuminate\Http\Request;
 
-readonly class AutocompleteRequest
+final readonly class AutocompleteRequest
 {
     public function __construct(
         public string $query,

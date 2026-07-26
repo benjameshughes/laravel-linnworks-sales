@@ -2,13 +2,13 @@
 
 namespace App\Services\Api;
 
-use App\Http\Resources\ProductSearchResource;
-use App\Services\ProductSearchService;
-use App\ValueObjects\Api\ApiResponse;
-use App\ValueObjects\Api\SearchRequest;
 use Illuminate\Support\Collection;
+use App\ValueObjects\Api\ApiResponse;
+use App\Services\ProductSearchService;
+use App\ValueObjects\Api\SearchRequest;
+use App\Http\Resources\ProductSearchResource;
 
-readonly class ProductSearchApiService
+final readonly class ProductSearchApiService
 {
     public function __construct(
         private ProductSearchService $searchService

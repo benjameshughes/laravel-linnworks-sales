@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Linnworks\Sync\Orders;
 
-use App\Services\Linnworks\Orders\OpenOrdersService;
-use App\Services\Linnworks\Orders\OrdersApiService;
-use App\Services\Linnworks\Orders\ProcessedOrdersService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use App\Services\Linnworks\Orders\OrdersApiService;
+use App\Services\Linnworks\Orders\OpenOrdersService;
+use App\Services\Linnworks\Orders\ProcessedOrdersService;
 
 /**
  * Orchestrates order syncing operations

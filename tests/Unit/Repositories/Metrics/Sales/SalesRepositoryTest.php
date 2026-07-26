@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Models\Order;
-use App\Repositories\Metrics\Sales\SalesRepository;
 use Carbon\Carbon;
+use App\Models\Order;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Repositories\Metrics\Sales\SalesRepository;
 
 uses(RefreshDatabase::class);
 

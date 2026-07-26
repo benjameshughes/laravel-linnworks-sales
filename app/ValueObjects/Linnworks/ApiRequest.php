@@ -2,10 +2,10 @@
 
 namespace App\ValueObjects\Linnworks;
 
-use Illuminate\Support\Collection;
 use JsonSerializable;
+use Illuminate\Support\Collection;
 
-readonly class ApiRequest implements JsonSerializable
+final readonly class ApiRequest implements JsonSerializable
 {
     public function __construct(
         public string $endpoint,

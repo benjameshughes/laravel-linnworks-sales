@@ -3,8 +3,8 @@
 namespace App\ValueObjects\Linnworks;
 
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use JsonSerializable;
+use Illuminate\Support\Collection;
 
 readonly class ApiResponse implements JsonSerializable
 {

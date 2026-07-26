@@ -2,15 +2,15 @@
 
 namespace App\Reports;
 
-use App\Reports\Enums\ReportCategory;
-use App\Reports\Filters\DateRangeFilter;
-use App\Reports\Filters\SkuFilter;
-use App\Reports\Filters\StatusFilter;
 use Carbon\Carbon;
-use Illuminate\Database\Query\Builder;
+use App\Reports\Filters\SkuFilter;
 use Illuminate\Support\Facades\DB;
+use App\Reports\Enums\ReportCategory;
+use App\Reports\Filters\StatusFilter;
+use Illuminate\Database\Query\Builder;
+use App\Reports\Filters\DateRangeFilter;
 
-class ProductPerformanceReport extends AbstractReport
+final class ProductPerformanceReport extends AbstractReport
 {
     public function name(): string
     {

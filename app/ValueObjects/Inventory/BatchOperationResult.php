@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
  *
  * Uses PHP 8.2+ readonly properties and constructor property promotion.
  */
-readonly class BatchOperationResult
+final readonly class BatchOperationResult
 {
     /**
      * @param  Collection<int, OperationResult>  $results

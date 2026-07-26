@@ -4,13 +4,13 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 
-class SafetyCheckCommand extends Command
+final class SafetyCheckCommand extends Command
 {
     protected $signature = 'db:safety-check';
 
     protected $description = 'Check if we are about to modify production database';
 
-    public function handle()
+    public function handle(): int
     {
         $env = app()->environment();
         $dbConnection = config('database.default');

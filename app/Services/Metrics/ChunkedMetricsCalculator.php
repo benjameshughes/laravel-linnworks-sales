@@ -7,8 +7,9 @@ namespace App\Services\Metrics;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\Query\Builder;
 
 /**
  * Memory-efficient metrics calculator for large datasets
@@ -677,7 +678,7 @@ final readonly class ChunkedMetricsCalculator
     /**
      * Apply status filter to query builder
      */
-    private function applyStatusFilter($query)
+    private function applyStatusFilter(Builder $query): Builder
     {
         return $query->when($this->status !== 'all', function ($q) {
             if ($this->status === 'open_paid') {

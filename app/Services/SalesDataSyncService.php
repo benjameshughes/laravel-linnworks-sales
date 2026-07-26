@@ -2,14 +2,14 @@
 
 namespace App\Services;
 
-use App\Models\Channel;
-use App\Models\Order;
-use App\Models\OrderItem;
 use Carbon\Carbon;
+use App\Models\Order;
+use App\Models\Channel;
+use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class SalesDataSyncService
+final class SalesDataSyncService
 {
     public function __construct(
         private LinnworksApiService $linnworksApi

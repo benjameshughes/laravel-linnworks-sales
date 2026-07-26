@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Actions\Calculations\Sales\BuildDateRangeForPeriod;
 use Carbon\Carbon;
+use App\Actions\Calculations\Sales\BuildDateRangeForPeriod;
 
 beforeEach(function () {
     Carbon::setTestNow('2025-01-15 14:30:00');

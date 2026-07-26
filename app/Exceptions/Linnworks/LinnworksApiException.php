@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Exceptions\Linnworks;
 
 use Exception;
-use Illuminate\Http\Client\Response;
 use Psr\Log\LogLevel;
+use Illuminate\Http\Client\Response;
 
-class LinnworksApiException extends Exception
+final class LinnworksApiException extends Exception
 {
     public function __construct(
         string $message,
@@ -126,7 +126,7 @@ class LinnworksApiException extends Exception
     public function context(): array
     {
         return array_merge($this->context, [
-            'exception_class' => static::class,
+            'exception_class' => self::class,
             'is_retryable' => $this->isRetryable(),
             'is_rate_limited' => $this->isRateLimited(),
         ]);

@@ -2,15 +2,15 @@
 
 namespace App\Services;
 
-use App\Enums\SearchType;
 use App\Models\Product;
-use App\ValueObjects\SearchCriteria;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
+use App\Enums\SearchType;
 use Laravel\Scout\Builder;
+use Illuminate\Support\Collection;
+use App\ValueObjects\SearchCriteria;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
-readonly class ProductSearchService
+final readonly class ProductSearchService
 {
     public function __construct(
         private int $defaultLimit = 50,

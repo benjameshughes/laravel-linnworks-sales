@@ -2,17 +2,17 @@
 
 namespace App\Reports;
 
-use App\Reports\Enums\ReportCategory;
-use App\Reports\Filters\ChannelFilter;
-use App\Reports\Filters\DateRangeFilter;
-use App\Reports\Filters\SkuFilter;
-use App\Reports\Filters\StatusFilter;
-use App\Reports\Filters\SubsourceFilter;
 use Carbon\Carbon;
-use Illuminate\Database\Query\Builder;
+use App\Reports\Filters\SkuFilter;
 use Illuminate\Support\Facades\DB;
+use App\Reports\Enums\ReportCategory;
+use App\Reports\Filters\StatusFilter;
+use App\Reports\Filters\ChannelFilter;
+use Illuminate\Database\Query\Builder;
+use App\Reports\Filters\DateRangeFilter;
+use App\Reports\Filters\SubsourceFilter;
 
-class OrderSalesReport extends AbstractReport
+final class OrderSalesReport extends AbstractReport
 {
     public function name(): string
     {

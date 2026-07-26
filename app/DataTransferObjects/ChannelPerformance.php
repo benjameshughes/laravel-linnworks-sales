@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\DataTransferObjects;
 
 use JsonSerializable;
+use App\Enums\GrowthDirection;
 use App\ValueObjects\GrowthIndicator;
 use Illuminate\Contracts\Support\Arrayable;
 
@@ -17,6 +18,12 @@ use Illuminate\Contracts\Support\Arrayable;
  */
 final class ChannelPerformance implements Arrayable, JsonSerializable
 {
+    private const CURRENCY = '£';
+
+    private const MONEY_DECIMALS = 2;
+
+    private const FLAT_DELTA = 0.005;
+
     public function __construct(
         public readonly string $name,
         public readonly string $source,
@@ -73,6 +80,37 @@ final class ChannelPerformance implements Arrayable, JsonSerializable
     public function revenueIndicator(): GrowthIndicator
     {
         return GrowthIndicator::fromPercentage($this->revenueGrowth());
+    }
+
+    /**
+     * Tone for the cash movement, so a flat channel reads neutral rather than
+     * being coloured as a loss.
+     */
+    public function revenueDeltaDirection(): GrowthDirection
+    {
+        $delta = $this->revenueDelta();
+
+        return match (true) {
+            abs($delta) < self::FLAT_DELTA => GrowthDirection::Flat,
+            $delta > 0 => GrowthDirection::Up,
+            default => GrowthDirection::Down,
+        };
+    }
+
+    /**
+     * The cash movement with the sign outside the currency symbol.
+     */
+    public function formattedRevenueDelta(): string
+    {
+        $delta = $this->revenueDelta();
+
+        $sign = match ($this->revenueDeltaDirection()) {
+            GrowthDirection::Up => '+',
+            GrowthDirection::Down => '-',
+            default => '',
+        };
+
+        return $sign.self::CURRENCY.number_format(abs($delta), self::MONEY_DECIMALS);
     }
 
     public function ordersIndicator(): GrowthIndicator

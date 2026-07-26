@@ -4,7 +4,7 @@ namespace App\ValueObjects\Linnworks;
 
 use JsonSerializable;
 
-readonly class RateLimitConfig implements JsonSerializable
+final readonly class RateLimitConfig implements JsonSerializable
 {
     public function __construct(
         public int $maxRequests,

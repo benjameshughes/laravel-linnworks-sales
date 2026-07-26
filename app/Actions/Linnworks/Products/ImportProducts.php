@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Log;
 
 final class ImportProducts
 {
+    private const IMPORT_CHUNK_SIZE = 50;
+
     public function handle(iterable $products, bool $forceUpdate = false): array
     {
         $productsCollection = $products instanceof Collection ? $products : collect($products);
@@ -35,7 +37,7 @@ final class ImportProducts
             'failed' => 0,
         ];
 
-        $productsCollection->chunk(50)->each(function (Collection $chunk) use (&$counts, $forceUpdate) {
+        $productsCollection->chunk(self::IMPORT_CHUNK_SIZE)->each(function (Collection $chunk) use (&$counts, $forceUpdate) {
             DB::transaction(function () use ($chunk, &$counts, $forceUpdate) {
                 foreach ($chunk as $productData) {
                     $counts['processed']++;

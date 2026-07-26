@@ -2,21 +2,22 @@
 
 namespace App\Livewire\Reports;
 
-use App\Models\ReportExecution;
-use App\Reports\AbstractReport;
-use App\Reports\Enums\ExportFormat;
-use App\Reports\ReportRegistry;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Models\ReportExecution;
+use App\Reports\AbstractReport;
+use App\Reports\ReportRegistry;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use App\Reports\Enums\ExportFormat;
+use Illuminate\Contracts\View\View;
 
 /**
  * @property-read AbstractReport|null $report
  */
-class ReportViewer extends Component
+final class ReportViewer extends Component
 {
     use WithPagination;
 
@@ -178,7 +179,7 @@ class ReportViewer extends Component
         return "{$slug}-{$dateStr}.{$format->extension()}";
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.reports.report-viewer');
     }

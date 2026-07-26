@@ -12,7 +12,7 @@ use Illuminate\Contracts\Support\Arrayable;
  *
  * Uses PHP 8.2+ readonly properties for complete immutability.
  */
-readonly class AuditEvent implements Arrayable
+final readonly class AuditEvent implements Arrayable
 {
     public function __construct(
         public AuditEventType $type,

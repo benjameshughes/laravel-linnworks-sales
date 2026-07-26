@@ -4,7 +4,7 @@ namespace App\ValueObjects\Linnworks;
 
 use JsonSerializable;
 
-readonly class ApiCredentials implements JsonSerializable
+final readonly class ApiCredentials implements JsonSerializable
 {
     public function __construct(
         public string $applicationId,

@@ -3,12 +3,12 @@
 namespace App\Services\Linnworks\Auth;
 
 use App\Models\LinnworksConnection;
-use App\Services\Linnworks\Core\LinnworksClient;
+use Illuminate\Support\Facades\Log;
 use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\SessionToken;
-use Illuminate\Support\Facades\Log;
+use App\Services\Linnworks\Core\LinnworksClient;
 
-class AuthenticationService
+final class AuthenticationService
 {
     private const AUTH_BASE_URL = 'https://api.linnworks.net/api/';
 

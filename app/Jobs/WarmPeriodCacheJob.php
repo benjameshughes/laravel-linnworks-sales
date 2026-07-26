@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Events\CachePeriodWarmed;
-use App\Events\CachePeriodWarmingStarted;
-use App\Factories\Metrics\Sales\SalesFactory;
-use App\Repositories\Metrics\Sales\SalesRepository;
-use App\Services\Metrics\ChunkedMetricsCalculator;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
+use App\Events\CachePeriodWarmed;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Queue\InteractsWithQueue;
+use App\Events\CachePeriodWarmingStarted;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use App\Factories\Metrics\Sales\SalesFactory;
+use App\Services\Metrics\ChunkedMetricsCalculator;
+use App\Repositories\Metrics\Sales\SalesRepository;
 
 /**
  * Job to warm cache for a specific period and channel

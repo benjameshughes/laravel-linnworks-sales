@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
  *
  * Extends Laravel Collection with domain-specific methods.
  */
-class ProductIdentifierCollection extends Collection
+final class ProductIdentifierCollection extends Collection
 {
     /**
      * Create from API response.

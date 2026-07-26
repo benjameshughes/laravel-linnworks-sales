@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use App\Enums\Period;
 use App\Events\OrdersSynced;
+use Illuminate\Support\Facades\Bus;
 use App\Jobs\WarmProductMetricsCacheJob;
 use App\Listeners\WarmProductMetricsCache;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 

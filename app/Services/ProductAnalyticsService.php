@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Product;
-use App\Repositories\ProductRepository;
 use Carbon\Carbon;
+use App\Models\Product;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use App\Repositories\ProductRepository;
 
 final class ProductAnalyticsService
 {

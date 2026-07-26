@@ -3,13 +3,13 @@
 namespace App\DataTransferObjects;
 
 use Carbon\Carbon;
-use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Collection;
+use Illuminate\Contracts\Support\Arrayable;
 
 /**
  * @property-read int|null $orderNumber Alias for $number
  */
-readonly class LinnworksOrder implements Arrayable
+final readonly class LinnworksOrder implements Arrayable
 {
     public function __construct(
         public ?string $orderId,

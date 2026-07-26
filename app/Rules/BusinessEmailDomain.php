@@ -2,11 +2,11 @@
 
 namespace App\Rules;
 
-use App\Services\SettingsService;
 use Closure;
+use App\Services\SettingsService;
 use Illuminate\Contracts\Validation\ValidationRule;
 
-class BusinessEmailDomain implements ValidationRule
+final class BusinessEmailDomain implements ValidationRule
 {
     public function __construct(
         private readonly SettingsService $settings

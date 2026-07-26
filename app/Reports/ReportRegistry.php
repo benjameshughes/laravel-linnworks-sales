@@ -2,11 +2,11 @@
 
 namespace App\Reports;
 
+use ReflectionClass;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
-use ReflectionClass;
 
-class ReportRegistry
+final class ReportRegistry
 {
     private static ?Collection $reports = null;
 

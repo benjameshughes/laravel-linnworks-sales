@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics;
 
-use App\Factories\Metrics\Sales\SalesFactory;
 use Illuminate\Support\Collection;
+use App\Factories\Metrics\Sales\SalesFactory;
 
 final class ComparisonEngine
 {

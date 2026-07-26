@@ -2,12 +2,13 @@
 
 namespace App\Livewire\Settings;
 
-use App\Services\SettingsService;
-use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\Attributes\Layout;
+use App\Services\SettingsService;
+use Illuminate\Contracts\View\View;
 
 #[Layout('components.layouts.app')]
-class SecuritySettings extends Component
+final class SecuritySettings extends Component
 {
     public array $allowedDomains = [];
 
@@ -90,7 +91,7 @@ class SecuritySettings extends Component
         $settings->set('security.allowed_emails', $this->allowedEmails, auth()->id());
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.settings.security-settings');
     }

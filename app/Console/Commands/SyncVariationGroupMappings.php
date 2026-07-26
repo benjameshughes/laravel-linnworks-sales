@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\OrderItem;
-use App\Services\Linnworks\Products\ProductsService;
 use Illuminate\Console\Command;
+use App\Services\Linnworks\Products\ProductsService;
 
-class SyncVariationGroupMappings extends Command
+final class SyncVariationGroupMappings extends Command
 {
     /**
      * The name and signature of the console command.

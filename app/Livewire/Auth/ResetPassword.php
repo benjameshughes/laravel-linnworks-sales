@@ -2,18 +2,18 @@
 
 namespace App\Livewire\Auth;
 
-use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Session;
+use Livewire\Component;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
-use Livewire\Component;
+use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Auth\Events\PasswordReset;
 
 #[Layout('components.layouts.auth')]
-class ResetPassword extends Component
+final class ResetPassword extends Component
 {
     #[Locked]
     public string $token = '';

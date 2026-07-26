@@ -2,9 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Models\LinnworksConnection;
-use App\Models\User;
 use Carbon\Carbon;
+use App\Models\User;
+use App\Models\LinnworksConnection;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class LinnworksConnectionFactory extends Factory

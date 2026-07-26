@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use Carbon\Carbon;
 use App\Models\Order;
 use App\Services\Metrics\Sales\SalesMetrics;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);

@@ -2,16 +2,17 @@
 
 namespace App\Livewire\Reports;
 
+use Carbon\Carbon;
+use Livewire\Component;
 use App\Models\ReportExecution;
 use App\Reports\AbstractReport;
-use App\Reports\Enums\ExportFormat;
 use App\Reports\ReportRegistry;
-use Carbon\Carbon;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\Layout;
-use Livewire\Component;
+use App\Reports\Enums\ExportFormat;
+use Illuminate\Contracts\View\View;
 
 /**
  * @property-read \App\Reports\AbstractReport|null $selectedReport
@@ -20,7 +21,7 @@ use Livewire\Component;
  * @property-read \Illuminate\Support\Collection $recentExecutions
  */
 #[Layout('components.layouts.app')]
-class ReportsIndex extends Component
+final class ReportsIndex extends Component
 {
     public ?string $selectedReportSlug = null;
 
@@ -271,7 +272,7 @@ class ReportsIndex extends Component
         return "{$slug}-{$dateStr}.{$format->extension()}";
     }
 
-    public function render()
+    public function render(): View
     {
         $reportsByCategory = ReportRegistry::byCategory();
 

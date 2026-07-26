@@ -11,7 +11,7 @@ use Illuminate\Contracts\Support\Arrayable;
  *
  * Uses PHP 8.2+ readonly and constructor property promotion.
  */
-readonly class InventoryItem implements Arrayable
+final readonly class InventoryItem implements Arrayable
 {
     public function __construct(
         public string $sku,

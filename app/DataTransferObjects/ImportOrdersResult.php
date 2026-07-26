@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects;
 
-use Illuminate\Contracts\Support\Arrayable;
 use JsonSerializable;
+use Illuminate\Contracts\Support\Arrayable;
 
 final class ImportOrdersResult implements Arrayable, JsonSerializable
 {

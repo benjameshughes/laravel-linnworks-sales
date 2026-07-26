@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\AppSetting;
 use Illuminate\Support\Facades\Cache;
 
-class SettingsService
+final class SettingsService
 {
     /**
      * Cache TTL in seconds (1 hour)

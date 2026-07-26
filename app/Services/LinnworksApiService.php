@@ -2,24 +2,25 @@
 
 namespace App\Services;
 
-use App\Actions\Linnworks\Orders\CheckAndUpdateProcessedOrders;
-use App\Actions\Linnworks\Orders\FetchOrdersWithDetails;
-use App\DataTransferObjects\Linnworks\ProcessedOrdersResult;
-use App\DataTransferObjects\LinnworksOrder;
-use App\Models\LinnworksConnection;
-use App\Services\Linnworks\Auth\AuthenticationService;
-use App\Services\Linnworks\Auth\SessionManager;
-use App\Services\Linnworks\Orders\OpenOrdersService;
-use App\Services\Linnworks\Orders\OrdersApiService;
-use App\Services\Linnworks\Orders\ProcessedOrdersService;
-use App\Services\Linnworks\Products\ProductsApiService;
-use App\ValueObjects\Linnworks\SessionToken;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Illuminate\Support\Collection;
+use App\Models\LinnworksConnection;
+use Illuminate\Support\Facades\Log;
+use App\DataTransferObjects\LinnworksOrder;
+use App\ValueObjects\Linnworks\SessionToken;
+use App\Services\Linnworks\Auth\SessionManager;
+use App\Exceptions\Linnworks\LinnworksApiException;
+use App\Services\Linnworks\Orders\OrdersApiService;
+use App\Services\Linnworks\Orders\OpenOrdersService;
+use App\Services\Linnworks\Auth\AuthenticationService;
+use App\Services\Linnworks\Products\ProductsApiService;
+use App\Actions\Linnworks\Orders\FetchOrdersWithDetails;
+use App\Services\Linnworks\Orders\ProcessedOrdersService;
+use App\DataTransferObjects\Linnworks\ProcessedOrdersResult;
+use App\Actions\Linnworks\Orders\CheckAndUpdateProcessedOrders;
 
-class LinnworksApiService
+final class LinnworksApiService
 {
     private const DEFAULT_ORDER_PAGE_SIZE = 200;
 
@@ -112,90 +113,64 @@ class LinnworksApiService
         int $entriesPerPage = 200,
         ?int $userId = null
     ): ProcessedOrdersResult {
-        try {
-            $userId = $this->resolveUserId($userId);
-            $from ??= Carbon::now()->subDays(config('linnworks.sync.default_date_range', 30));
-            $to ??= Carbon::now();
+        $userId = $this->resolveUserId($userId);
+        $from ??= Carbon::now()->subDays(config('linnworks.sync.default_date_range', 30));
+        $to ??= Carbon::now();
 
-            $response = $this->processedOrders->searchProcessedOrders(
-                $userId,
-                $from,
-                $to,
-                filters: [],
-                page: $pageNumber,
-                entriesPerPage: $entriesPerPage,
-            );
+        $response = $this->processedOrders->searchProcessedOrders(
+            $userId,
+            $from,
+            $to,
+            filters: [],
+            page: $pageNumber,
+            entriesPerPage: $entriesPerPage,
+        );
 
-            if ($response->isError()) {
-                Log::error('Failed to fetch processed orders.', [
-                    'user_id' => $userId,
-                    'error' => $response->error,
-                ]);
+        // Returning an empty page here reads as "no more orders" to the
+        // caller, which turns a failed fetch into a silently short import.
+        throw_if(
+            $response->isError(),
+            LinnworksApiException::class,
+            "Failed fetching processed orders page {$pageNumber}: {$response->error}",
+        );
 
-                return new ProcessedOrdersResult(
-                    orders: collect(),
-                    hasMorePages: false,
-                    totalResults: 0,
-                    currentPage: $pageNumber,
-                    entriesPerPage: $entriesPerPage,
-                );
-            }
+        $data = $response->getData();
+        $ordersArray = $this->normaliseResultsPayload($data);
 
-            $data = $response->getData();
-            $ordersArray = $this->normaliseResultsPayload($data);
+        $orders = collect($ordersArray)
+            ->map(fn (array $order) => LinnworksOrder::fromArray($order));
 
-            $orders = collect($ordersArray)
-                ->map(fn (array $order) => LinnworksOrder::fromArray($order));
+        // Handle different API response structures for total count
+        $processedOrders = $data->get('ProcessedOrders');
+        $totalResults = (int) (
+            $data->get('ResultsCount')
+            ?? (is_array($processedOrders) ? ($processedOrders['TotalEntries'] ?? null) : null)
+            ?? count($ordersArray)
+        );
 
-            // Handle different API response structures for total count
-            $processedOrders = $data->get('ProcessedOrders');
-            $totalResults = (int) (
-                $data->get('ResultsCount')
-                ?? (is_array($processedOrders) ? ($processedOrders['TotalEntries'] ?? null) : null)
-                ?? count($ordersArray)
-            );
-            // Calculate total pages needed and continue until we've attempted them all
-            $totalPages = (int) ceil($totalResults / $entriesPerPage);
-            $hasMore = $pageNumber < $totalPages && ! $orders->isEmpty();
+        // Calculate total pages needed and continue until we've attempted them all
+        $totalPages = (int) ceil($totalResults / $entriesPerPage);
+        $hasMore = $pageNumber < $totalPages && ! $orders->isEmpty();
 
-            Log::info('Processed orders page fetched', [
-                'user_id' => $userId,
-                'page' => $pageNumber,
-                'entries_per_page' => $entriesPerPage,
-                'orders_in_page' => $orders->count(),
-                'total_results' => $totalResults,
-                'has_more_pages' => $hasMore,
-                'from' => $from->toISOString(),
-                'to' => $to->toISOString(),
-                'payload_keys' => $data->keys()->toArray(),
-            ]);
+        Log::info('Processed orders page fetched', [
+            'user_id' => $userId,
+            'page' => $pageNumber,
+            'entries_per_page' => $entriesPerPage,
+            'orders_in_page' => $orders->count(),
+            'total_results' => $totalResults,
+            'has_more_pages' => $hasMore,
+            'from' => $from->toISOString(),
+            'to' => $to->toISOString(),
+            'payload_keys' => $data->keys()->toArray(),
+        ]);
 
-            if ($orders->isEmpty()) {
-                Log::debug('Processed orders payload snapshot', [
-                    'raw' => $data->toArray(),
-                ]);
-            }
-
-            return new ProcessedOrdersResult(
-                orders: $orders,
-                hasMorePages: $hasMore,
-                totalResults: $totalResults,
-                currentPage: $pageNumber,
-                entriesPerPage: $entriesPerPage,
-            );
-        } catch (\Throwable $exception) {
-            Log::error('Unhandled error fetching processed orders.', [
-                'error' => $exception->getMessage(),
-            ]);
-
-            return new ProcessedOrdersResult(
-                orders: collect(),
-                hasMorePages: false,
-                totalResults: 0,
-                currentPage: $pageNumber,
-                entriesPerPage: $entriesPerPage,
-            );
-        }
+        return new ProcessedOrdersResult(
+            orders: $orders,
+            hasMorePages: $hasMore,
+            totalResults: $totalResults,
+            currentPage: $pageNumber,
+            entriesPerPage: $entriesPerPage,
+        );
     }
 
     private function normaliseResultsPayload(Collection $payload): array
@@ -279,6 +254,10 @@ class LinnworksApiService
      * No artificial limits - streams all orders in the date range.
      * Memory is controlled by batch size (200 orders per page).
      *
+     * Failures are deliberately allowed to bubble. Swallowing them here would
+     * end the generator early, and the caller would treat a half-finished
+     * import as a complete one.
+     *
      * @return \Generator<int, Collection> Yields Collection of order IDs per page
      */
     public function streamProcessedOrderIds(
@@ -288,23 +267,17 @@ class LinnworksApiService
         ?int $userId = null,
         ?\Closure $progressCallback = null
     ): \Generator {
-        try {
-            $userId = $this->resolveUserId($userId);
-            $from ??= Carbon::now()->subDays(config('linnworks.sync.default_date_range', 30));
-            $to ??= Carbon::now();
+        $userId = $this->resolveUserId($userId);
+        $from ??= Carbon::now()->subDays(config('linnworks.sync.default_date_range', 30));
+        $to ??= Carbon::now();
 
-            yield from $this->processedOrders->streamProcessedOrderIds(
-                $userId,
-                $from,
-                $to,
-                $filters,
-                $progressCallback
-            );
-        } catch (\Throwable $exception) {
-            Log::error('Unhandled error streaming processed order IDs.', [
-                'error' => $exception->getMessage(),
-            ]);
-        }
+        yield from $this->processedOrders->streamProcessedOrderIds(
+            $userId,
+            $from,
+            $to,
+            $filters,
+            $progressCallback
+        );
     }
 
     /**
@@ -725,9 +698,7 @@ class LinnworksApiService
             ->orderByDesc('updated_at')
             ->first();
 
-        if (! $connection) {
-            throw new RuntimeException('No active Linnworks connection configured.');
-        }
+        throw_unless($connection, RuntimeException::class, 'No active Linnworks connection configured.');
 
         return $connection->user_id;
     }

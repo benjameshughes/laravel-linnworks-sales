@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Orders;
 
 use Livewire\Component;
+use Illuminate\Contracts\View\View;
 
 /**
  * Orders Index - Island Architecture Shell
@@ -23,7 +24,7 @@ use Livewire\Component;
  */
 final class OrdersIndex extends Component
 {
-    public function render()
+    public function render(): View
     {
         return view('livewire.orders.orders-index')
             ->title('Order Analytics');

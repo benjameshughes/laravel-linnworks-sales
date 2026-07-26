@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Linnworks\Orders;
 
-use App\DataTransferObjects\LinnworksOrder;
 use App\Models\Order;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use App\DataTransferObjects\LinnworksOrder;
 
 /**
  * Service for deduplicating orders before import
  */
-class OrderDeduplicationService
+final class OrderDeduplicationService
 {
     /**
      * Deduplicate a collection of orders

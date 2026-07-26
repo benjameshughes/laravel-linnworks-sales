@@ -10,13 +10,16 @@ use App\Models\SyncLog;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
+use Illuminate\Contracts\View\View;
 use App\Jobs\SyncHistoricalOrdersJob;
 
 /**
  * @property-read \App\Models\SyncLog|null $activeSync
  */
-class ImportProgress extends Component
+final class ImportProgress extends Component
 {
+    private const RECENT_LOGS_LIMIT = 20;
+
     public ?DateRange $dateRange = null;
 
     // Version counter to force re-renders on WebSocket events
@@ -47,7 +50,7 @@ class ImportProgress extends Component
     {
         return SyncLog::where('sync_type', SyncLog::TYPE_HISTORICAL_ORDERS)
             ->orderByDesc('started_at')
-            ->limit(20)
+            ->limit(self::RECENT_LOGS_LIMIT)
             ->get()
             ->map(fn (SyncLog $log) => $this->formatImportRow($log))
             ->toArray();
@@ -142,7 +145,7 @@ class ImportProgress extends Component
         $this->refreshKey++;
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.settings.import-progress');
     }

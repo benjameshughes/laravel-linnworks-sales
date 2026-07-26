@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
-class CreateUserCommand extends Command
+final class CreateUserCommand extends Command
 {
     protected $signature = 'user:create
                             {--name= : The full name of the user}
@@ -52,7 +52,7 @@ class CreateUserCommand extends Command
             'email_verified_at' => now(),
         ]);
 
-        $this->info("User created successfully!");
+        $this->info('User created successfully!');
         $this->table(
             ['ID', 'Name', 'Email', 'Role'],
             [[$user->id, $user->name, $user->email, $role]]

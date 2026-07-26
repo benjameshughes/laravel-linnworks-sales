@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Linnworks\Parsers;
 
-use App\ValueObjects\Linnworks\ApiResponse;
 use Illuminate\Support\Collection;
+use App\ValueObjects\Linnworks\ApiResponse;
 
 /**
  * Parser for Linnworks ProcessedOrders API responses

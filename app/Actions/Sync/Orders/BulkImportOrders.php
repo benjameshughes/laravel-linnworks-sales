@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\Sync\Orders;
 
-use App\DataTransferObjects\ImportOrdersResult;
-use App\DataTransferObjects\LinnworksOrder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\DataTransferObjects\LinnworksOrder;
+use App\DataTransferObjects\ImportOrdersResult;
 
 /**
  * Bulk order import action - simplified architecture
@@ -28,6 +28,8 @@ use Illuminate\Support\Facades\Log;
  */
 final class BulkImportOrders
 {
+    private const UPDATE_CHUNK_SIZE = 50;
+
     public function __construct(
         private readonly bool $dryRun = false,
     ) {}
@@ -58,61 +60,45 @@ final class BulkImportOrders
             'dry_run' => $this->dryRun,
         ]);
 
-        try {
-            // Step 1: Ensure we have LinnworksOrder DTOs
-            $dtos = $this->normalizeToDTOs($linnworksOrders);
+        $dtos = $this->normalizeToDTOs($linnworksOrders);
 
-            // Step 2: Batch load existing orders (avoid N+1)
-            $existingMap = $this->loadExistingOrdersBatch($dtos);
+        $existingMap = $this->loadExistingOrdersBatch($dtos);
 
-            // Step 3: Partition into new vs updates
-            [$newOrders, $updates] = $this->partitionOrders($dtos, $existingMap);
+        [$newOrders, $updates] = $this->partitionOrders($dtos, $existingMap);
 
-            if ($this->dryRun) {
-                return $this->dryRunResults($dtos, $newOrders, $updates, $startTime, $peakMemoryBefore);
-            }
-
-            // Step 4: Bulk operations
-            $created = $this->bulkInsertOrders($newOrders);
-            $updated = $this->bulkUpdateOrders($updates, $existingMap);
-
-            // Step 5: Sync all relationships in bulk
-            $this->syncAllRelationships($dtos);
-
-            // Calculate performance metrics
-            $duration = round(microtime(true) - $startTime, 2);
-            $peakMemoryAfter = memory_get_peak_usage(true);
-            $memoryUsed = $peakMemoryAfter - $peakMemoryBefore;
-
-            $result = new ImportOrdersResult(
-                processed: $dtos->count(),
-                created: $created,
-                updated: $updated,
-                skipped: $dtos->count() - $created - $updated,
-                failed: 0,
-            );
-
-            Log::info('Sync/Orders/BulkImportOrders: Import completed', [
-                'processed' => $result->processed,
-                'created' => $result->created,
-                'updated' => $result->updated,
-                'skipped' => $result->skipped,
-                'duration_seconds' => $duration,
-                'orders_per_second' => $result->processed > 0 ? round($result->processed / $duration, 2) : 0,
-                'memory_used_mb' => round($memoryUsed / 1024 / 1024, 2),
-                'peak_memory_mb' => round($peakMemoryAfter / 1024 / 1024, 2),
-            ]);
-
-            return $result;
-
-        } catch (\Throwable $e) {
-            Log::error('Sync/Orders/BulkImportOrders: Import failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            throw $e;
+        if ($this->dryRun) {
+            return $this->dryRunResults($dtos, $newOrders, $updates, $startTime, $peakMemoryBefore);
         }
+
+        $created = $this->bulkInsertOrders($newOrders);
+        $updated = $this->bulkUpdateOrders($updates, $existingMap);
+
+        $this->syncAllRelationships($dtos);
+
+        $duration = round(microtime(true) - $startTime, 2);
+        $peakMemoryAfter = memory_get_peak_usage(true);
+        $memoryUsed = $peakMemoryAfter - $peakMemoryBefore;
+
+        $result = new ImportOrdersResult(
+            processed: $dtos->count(),
+            created: $created,
+            updated: $updated,
+            skipped: $dtos->count() - $created - $updated,
+            failed: 0,
+        );
+
+        Log::info('Sync/Orders/BulkImportOrders: Import completed', [
+            'processed' => $result->processed,
+            'created' => $result->created,
+            'updated' => $result->updated,
+            'skipped' => $result->skipped,
+            'duration_seconds' => $duration,
+            'orders_per_second' => $result->processed > 0 ? round($result->processed / $duration, 2) : 0,
+            'memory_used_mb' => round($memoryUsed / 1024 / 1024, 2),
+            'peak_memory_mb' => round($peakMemoryAfter / 1024 / 1024, 2),
+        ]);
+
+        return $result;
     }
 
     /**
@@ -277,7 +263,7 @@ final class BulkImportOrders
         $updated = 0;
 
         // Chunk to avoid massive queries (50 updates per transaction)
-        $dtos->chunk(50)->each(function (Collection $chunk) use ($orderIdMap, &$updated) {
+        $dtos->chunk(self::UPDATE_CHUNK_SIZE)->each(function (Collection $chunk) use ($orderIdMap, &$updated) {
             DB::transaction(function () use ($chunk, $orderIdMap, &$updated) {
                 foreach ($chunk as $dto) {
                     // Find existing order by order ID or number

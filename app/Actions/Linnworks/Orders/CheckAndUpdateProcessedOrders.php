@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Actions\Linnworks\Orders;
 
-use App\Actions\Orders\MarkOrderAsProcessed;
-use App\Services\Linnworks\Orders\OrdersApiService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use App\Actions\Orders\MarkOrderAsProcessed;
+use App\Services\Linnworks\Orders\OrdersApiService;
 
-class CheckAndUpdateProcessedOrders
+final class CheckAndUpdateProcessedOrders
 {
     public function __construct(
         private readonly OrdersApiService $orders,

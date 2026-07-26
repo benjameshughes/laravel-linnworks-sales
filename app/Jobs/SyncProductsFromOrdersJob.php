@@ -34,6 +34,10 @@ final class SyncProductsFromOrdersJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    private const STOCK_ITEM_BATCH_SIZE = 50;
+
+    private const THROTTLE_MICROSECONDS = 200000;
+
     public int $tries = 3;
 
     public int $timeout = 600; // 10 minutes
@@ -85,7 +89,7 @@ final class SyncProductsFromOrdersJob implements ShouldQueue
         $totalFailed = 0;
 
         // Process in batches of 50 (API rate limit friendly)
-        $stockItemIds->chunk(50)->each(function (Collection $batch) use (
+        $stockItemIds->chunk(self::STOCK_ITEM_BATCH_SIZE)->each(function (Collection $batch) use (
             $apiService,
             $importer,
             $userId,
@@ -135,7 +139,7 @@ final class SyncProductsFromOrdersJob implements ShouldQueue
             ]);
 
             // Rate limit courtesy - pause between batches
-            usleep(200000); // 200ms
+            usleep(self::THROTTLE_MICROSECONDS); // 200ms
         });
 
         Log::info('SyncProductsFromOrdersJob: Product sync completed', [

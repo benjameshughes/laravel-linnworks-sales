@@ -6,7 +6,7 @@ namespace App\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
 
-class ImportProgressUpdated
+final class ImportProgressUpdated
 {
     use Dispatchable;
 

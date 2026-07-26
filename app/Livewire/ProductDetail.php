@@ -11,6 +11,7 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
 use App\Services\ProductBadgeService;
 use App\Services\Metrics\Products\ProductService;
 
@@ -27,6 +28,40 @@ use App\Services\Metrics\Products\ProductService;
 #[Title('Product Detail')]
 final class ProductDetail extends Component
 {
+    private const RECENT_ORDERS_LIMIT = 10;
+
+    private ?ProductBadgeService $productBadgeService = null;
+
+    private ?ProductService $productService = null;
+
+    /**
+     * Livewire cannot inject through the constructor, so dependencies are
+     * resolved here - boot() runs on every request, mount and hydrate alike.
+     */
+    public function boot(ProductBadgeService $productBadgeService, ProductService $productService): void
+    {
+        $this->productBadgeService = $productBadgeService;
+        $this->productService = $productService;
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productBadgeService(): ProductBadgeService
+    {
+        return $this->productBadgeService ??= app(ProductBadgeService::class);
+    }
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function productService(): ProductService
+    {
+        return $this->productService ??= app(ProductService::class);
+    }
+
     public string $sku;
 
     public int $period = 30;
@@ -49,7 +84,7 @@ final class ProductDetail extends Component
     #[Computed]
     public function performance(): ?Collection
     {
-        return app(ProductService::class)->getProductPerformance(
+        return $this->productService()->getProductPerformance(
             sku: $this->sku,
             period: (string) $this->period
         );
@@ -145,7 +180,7 @@ final class ProductDetail extends Component
             ->whereBetween('received_at', [now()->subDays($this->period), now()])
             ->with(['orderItems' => fn ($query) => $query->where('sku', $this->sku)])
             ->orderByDesc('received_at')
-            ->limit(10)
+            ->limit(self::RECENT_ORDERS_LIMIT)
             ->get()
             ->map(function ($order) {
                 $item = $order->orderItems->first();
@@ -164,7 +199,7 @@ final class ProductDetail extends Component
     #[Computed]
     public function productBadges(): Collection
     {
-        $badgeService = app(ProductBadgeService::class);
+        $badgeService = $this->productBadgeService();
         $badges = $badgeService->getProductBadges($this->product, $this->period);
 
         return $badges->map(fn ($badge) => $badge->toArray());
@@ -203,7 +238,7 @@ final class ProductDetail extends Component
         return 'in_stock';
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.product-detail');
     }
