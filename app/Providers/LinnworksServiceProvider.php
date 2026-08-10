@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use RuntimeException;
+use App\Models\LinnworksConnection;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Linnworks\Core\RateLimiter;
 use App\Services\Linnworks\Auth\SessionManager;
@@ -16,6 +18,7 @@ use App\Services\Linnworks\Auth\AuthenticationService;
 use App\Services\Linnworks\Products\ProductsApiService;
 use App\Services\Linnworks\Products\ProductSyncService;
 use App\Services\Linnworks\Orders\ProcessedOrdersService;
+use BenHughes\Linnworks\LinnworksClient as PackageClient;
 use App\Services\Linnworks\Contracts\SessionManagerInterface;
 use App\Services\Linnworks\Contracts\LinnworksServiceInterface;
 use App\Services\Linnworks\Contracts\ProductSyncServiceInterface;
@@ -30,6 +33,8 @@ final class LinnworksServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->registerPackageClient();
+
         // Register value objects
         $this->app->singleton(RateLimitConfig::class, function () {
             return RateLimitConfig::standard();
@@ -124,6 +129,34 @@ final class LinnworksServiceProvider extends ServiceProvider
         $this->app->bind(LinnworksServiceInterface::class, LinnworksClient::class);
         $this->app->bind(RateLimitedServiceInterface::class, LinnworksClient::class);
         $this->app->bind(ProductSyncServiceInterface::class, ProductSyncService::class);
+    }
+
+    /**
+     * Point the package client at our stored credentials.
+     *
+     * The package reads them from config by default. This app keeps them
+     * encrypted per connection in the database instead, so the binding is
+     * replaced rather than the config populated.
+     */
+    private function registerPackageClient(): void
+    {
+        $this->app->singleton(PackageClient::class, function (): PackageClient {
+            $connection = LinnworksConnection::query()->active()->orderByDesc('updated_at')->first();
+
+            throw_unless(
+                $connection,
+                RuntimeException::class,
+                'No active Linnworks connection configured.',
+            );
+
+            return new PackageClient(
+                clientId: (string) $connection->application_id,
+                clientSecret: (string) $connection->application_secret,
+                appToken: (string) $connection->access_token,
+                baseUrl: config('linnworks.base_url'),
+                authUrl: config('linnworks.auth_url'),
+            );
+        });
     }
 
     /**

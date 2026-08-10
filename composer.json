@@ -20,7 +20,8 @@
         "meilisearch/meilisearch-php": "^1.16",
         "phpoffice/phpspreadsheet": "^5.2",
         "predis/predis": "^3.2",
-        "pusher/pusher-php-server": "^7.2"
+        "pusher/pusher-php-server": "^7.2",
+        "benhughes/linnworks-api": "dev-main"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -87,9 +88,18 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
-    "repositories": [{
-        "name": "flux-pro",
-        "type": "composer",
-        "url": "https://composer.fluxui.dev"
-    }]
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../linnworks-api",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "name": "flux-pro",
+            "type": "composer",
+            "url": "https://composer.fluxui.dev"
+        }
+    ]
 }
