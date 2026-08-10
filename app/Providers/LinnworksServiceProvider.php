@@ -12,11 +12,8 @@ use App\ValueObjects\Linnworks\RateLimitConfig;
 use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Orders\LocationsService;
 use App\Services\Linnworks\Auth\AuthenticationService;
-use App\Services\Linnworks\Products\ProductSyncService;
-use App\Services\Linnworks\Orders\ProcessedOrdersService;
 use BenHughes\Linnworks\LinnworksClient as PackageClient;
 use App\Services\Linnworks\Contracts\ProductSyncServiceInterface;
-use App\Services\Linnworks\Parsers\ProcessedOrdersResponseParser;
 
 final class LinnworksServiceProvider extends ServiceProvider
 {
@@ -59,18 +56,6 @@ final class LinnworksServiceProvider extends ServiceProvider
         });
 
         // Register API services
-
-        $this->app->singleton(ProcessedOrdersResponseParser::class, function () {
-            return new ProcessedOrdersResponseParser;
-        });
-
-        $this->app->singleton(ProcessedOrdersService::class, function ($app) {
-            return new ProcessedOrdersService(
-                client: $app->make(LinnworksClient::class),
-                sessionManager: $app->make(SessionManager::class),
-                parser: $app->make(ProcessedOrdersResponseParser::class),
-            );
-        });
 
         $this->app->singleton(LocationsService::class, function ($app) {
             return new LocationsService(
@@ -142,7 +127,6 @@ final class LinnworksServiceProvider extends ServiceProvider
             LinnworksClient::class,
             AuthenticationService::class,
             SessionManager::class,
-            ProcessedOrdersService::class,
             LocationsService::class,
             ViewsService::class,
             ProductSyncServiceInterface::class,

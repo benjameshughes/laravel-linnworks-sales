@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\OrderItem;
 use Illuminate\Console\Command;
-use App\Services\Linnworks\Products\ProductsService;
+use BenHughes\Linnworks\LinnworksClient;
 
 final class SyncVariationGroupMappings extends Command
 {
@@ -27,7 +27,7 @@ final class SyncVariationGroupMappings extends Command
     /**
      * Execute the console command.
      */
-    public function handle(ProductsService $productsService): int
+    public function handle(LinnworksClient $linnworks): int
     {
         $userId = (int) $this->option('user-id');
         $updateExisting = $this->option('update-existing');
@@ -37,7 +37,7 @@ final class SyncVariationGroupMappings extends Command
 
         // Step 1: Get all variation groups from Linnworks
         $this->info('Fetching all variation groups from Linnworks...');
-        $variationGroups = $productsService->getVariationId($userId, 'ParentSKU', '');
+        $variationGroups = $linnworks->stock()->searchVariationGroups(searchType: 'ParentSKU');
 
         if ($variationGroups->isEmpty()) {
             $this->error('No variation groups found.');
@@ -61,7 +61,7 @@ final class SyncVariationGroupMappings extends Command
             $variationId = $group['pkVariationItemId'];
 
             // Get all items in this variation group
-            $items = $productsService->getVariationGroupItems($userId, $variationId);
+            $items = $linnworks->stock()->variationItems($variationId);
 
             foreach ($items as $item) {
                 $childSku = $item['ItemNumber'];

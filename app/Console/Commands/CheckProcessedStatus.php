@@ -9,7 +9,7 @@ use App\Models\SyncLog;
 use Illuminate\Console\Command;
 use App\Models\LinnworksConnection;
 use Illuminate\Support\Facades\Log;
-use App\Services\Linnworks\Orders\ProcessedOrdersService;
+use BenHughes\Linnworks\LinnworksClient;
 
 final class CheckProcessedStatus extends Command
 {
@@ -19,7 +19,7 @@ final class CheckProcessedStatus extends Command
 
     protected $description = 'Check if open orders have been processed (oldest first)';
 
-    public function handle(ProcessedOrdersService $processedOrdersService): int
+    public function handle(LinnworksClient $linnworks): int
     {
         $limit = (int) $this->option('limit');
         $isDryRun = $this->option('dry-run');
@@ -85,21 +85,17 @@ final class CheckProcessedStatus extends Command
         foreach ($openOrders as $order) {
             try {
                 // Query ProcessedOrders API for this specific order
-                $response = $processedOrdersService->getProcessedOrderById(
-                    userId: $userId,
-                    orderId: $order->order_id
-                );
+                $found = $linnworks->orders()->find([$order->order_id]);
 
-                if ($response->isError()) {
-                    // Order not found in processed orders = still open
+                if ($found->isEmpty()) {
+                    // Not in processed orders, so it is genuinely still open
                     $notFoundCount++;
                     $progressBar->advance();
 
                     continue;
                 }
 
-                // Order found! It's been processed!
-                $processedData = $response->getData()->toArray();
+                $processedData = $found->first()->toArray();
 
                 // Update the order with processed data
                 $order->update([
