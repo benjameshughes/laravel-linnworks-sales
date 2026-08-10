@@ -10,24 +10,24 @@ use BenHughes\Linnworks\LinnworksClient as PackageClient;
 
 final class AuthenticationService
 {
-    private const AUTH_BASE_URL = 'https://api.linnworks.net/api/';
-
-    private const INSTALL_URL = 'https://api.linnworks.net/api/Auth/AuthorizeByApplication';
-
-    private const TOKEN_URL = 'https://api.linnworks.net/api/Auth/AuthorizeByApplication';
-
     /**
-     * Generate installation URL for OAuth flow
+     * Build the page a user is sent to in order to install the application.
+     *
+     * The application secret is deliberately absent: this URL is handed to a
+     * browser, and Linnworks only needs the secret later, server to server,
+     * when the installation token is exchanged for a session.
      */
-    public function generateInstallUrl(string $applicationId, string $applicationSecret, string $redirectUri): string
+    public function generateInstallUrl(string $applicationId, string $tracking): string
     {
-        $params = http_build_query([
-            'ApplicationId' => $applicationId,
-            'ApplicationSecret' => $applicationSecret,
-            'RedirectUri' => $redirectUri,
-        ]);
+        $client = new PackageClient(
+            clientId: $applicationId,
+            clientSecret: '',
+            appToken: '',
+            baseUrl: config('linnworks.base_url'),
+            authUrl: config('linnworks.auth_url'),
+        );
 
-        return self::INSTALL_URL.'?'.$params;
+        return $client->installUrl($tracking);
     }
 
     /**

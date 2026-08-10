@@ -130,28 +130,15 @@ final class LinnworksCallbackController extends Controller
         }
 
         $applicationId = config('linnworks.application_id');
-        $applicationSecret = config('linnworks.application_secret');
-        $redirectUri = config('linnworks.redirect_uri', route('linnworks.callback'));
 
         if (! $applicationId) {
             abort(500, 'Linnworks application not configured');
         }
 
-        // Generate tracking parameter with user ID
         $tracking = 'user_'.$user->id;
 
-        // Generate installation URL using new service
-        $installUrl = $this->authService->generateInstallUrl(
-            $applicationId,
-            $applicationSecret,
-            $redirectUri
-        );
-
-        // Add tracking parameter
-        $installUrlWithTracking = "{$installUrl}&Tracking={$tracking}";
-
         return response()->json([
-            'install_url' => $installUrlWithTracking,
+            'install_url' => $this->authService->generateInstallUrl($applicationId, $tracking),
             'tracking' => $tracking,
             'user_id' => $user->id,
         ]);
