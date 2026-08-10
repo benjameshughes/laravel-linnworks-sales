@@ -11,20 +11,12 @@ use App\Services\Linnworks\Orders\ViewsService;
 use App\ValueObjects\Linnworks\RateLimitConfig;
 use App\Services\Linnworks\Core\LinnworksClient;
 use App\Services\Linnworks\Orders\LocationsService;
-use App\Services\Linnworks\Orders\OrdersApiService;
-use App\Services\Linnworks\Orders\OpenOrdersService;
-use App\Services\Linnworks\Products\InventoryService;
 use App\Services\Linnworks\Auth\AuthenticationService;
-use App\Services\Linnworks\Products\ProductsApiService;
 use App\Services\Linnworks\Products\ProductSyncService;
 use App\Services\Linnworks\Orders\ProcessedOrdersService;
 use BenHughes\Linnworks\LinnworksClient as PackageClient;
-use App\Services\Linnworks\Contracts\SessionManagerInterface;
-use App\Services\Linnworks\Contracts\LinnworksServiceInterface;
 use App\Services\Linnworks\Contracts\ProductSyncServiceInterface;
-use App\Services\Linnworks\Contracts\RateLimitedServiceInterface;
 use App\Services\Linnworks\Parsers\ProcessedOrdersResponseParser;
-use App\Services\Linnworks\Contracts\AuthenticationServiceInterface;
 
 final class LinnworksServiceProvider extends ServiceProvider
 {
@@ -67,12 +59,6 @@ final class LinnworksServiceProvider extends ServiceProvider
         });
 
         // Register API services
-        $this->app->singleton(OrdersApiService::class, function ($app) {
-            return new OrdersApiService(
-                client: $app->make(LinnworksClient::class),
-                sessionManager: $app->make(SessionManager::class),
-            );
-        });
 
         $this->app->singleton(ProcessedOrdersResponseParser::class, function () {
             return new ProcessedOrdersResponseParser;
@@ -100,34 +86,7 @@ final class LinnworksServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->singleton(OpenOrdersService::class, function ($app) {
-            return new OpenOrdersService(
-                client: $app->make(LinnworksClient::class),
-                sessionManager: $app->make(SessionManager::class),
-                locations: $app->make(LocationsService::class),
-                views: $app->make(ViewsService::class),
-            );
-        });
-
-        $this->app->singleton(ProductsApiService::class, function ($app) {
-            return new ProductsApiService(
-                client: $app->make(LinnworksClient::class),
-                sessionManager: $app->make(SessionManager::class),
-            );
-        });
-
-        $this->app->singleton(InventoryService::class, function ($app) {
-            return new InventoryService(
-                client: $app->make(LinnworksClient::class),
-                sessionManager: $app->make(SessionManager::class),
-            );
-        });
-
         // Bind interfaces
-        $this->app->bind(AuthenticationServiceInterface::class, AuthenticationService::class);
-        $this->app->bind(SessionManagerInterface::class, SessionManager::class);
-        $this->app->bind(LinnworksServiceInterface::class, LinnworksClient::class);
-        $this->app->bind(RateLimitedServiceInterface::class, LinnworksClient::class);
         $this->app->bind(ProductSyncServiceInterface::class, ProductSyncService::class);
     }
 
@@ -183,17 +142,9 @@ final class LinnworksServiceProvider extends ServiceProvider
             LinnworksClient::class,
             AuthenticationService::class,
             SessionManager::class,
-            OrdersApiService::class,
             ProcessedOrdersService::class,
-            OpenOrdersService::class,
             LocationsService::class,
             ViewsService::class,
-            ProductsApiService::class,
-            InventoryService::class,
-            AuthenticationServiceInterface::class,
-            SessionManagerInterface::class,
-            LinnworksServiceInterface::class,
-            RateLimitedServiceInterface::class,
             ProductSyncServiceInterface::class,
         ];
     }
