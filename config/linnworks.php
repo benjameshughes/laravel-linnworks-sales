@@ -24,6 +24,17 @@ return [
 
     'fulfilment_center' => env('LINNWORKS_FULFILMENT_CENTER', '00000000-0000-0000-0000-000000000000'),
 
+    /*
+    | Variation groups whose SKU matches this pattern are skipped when syncing
+    | product parents. The P-prefixed groups are leftovers from a deleted
+    | experiment that still duplicate the real numeric groups in Linnworks;
+    | counting both would attribute the same sale to two parents. Set to null
+    | once they have been removed at source.
+    */
+    'variation_groups' => [
+        'exclude_pattern' => env('LINNWORKS_VARIATION_GROUP_EXCLUDE', '/^P\d+$/'),
+    ],
+
     'open_orders' => [
         // ViewId 4 is the standard "All Open Orders" view in Linnworks
         'view_id' => (int) env('LINNWORKS_OPEN_ORDERS_VIEW_ID', 4),

@@ -42,7 +42,7 @@ final readonly class SyncProductParents
                 ['linnworks_id' => (string) $group['pkVariationItemId']],
                 [
                     'sku' => (string) $group['VariationSKU'],
-                    'title' => $group['VariationTitle'] ?? $group['ItemTitle'] ?? null,
+                    'title' => $group['VariationGroupName'] ?? null,
                     'metadata' => $group,
                     'last_synced_at' => now(),
                 ],
@@ -95,7 +95,19 @@ final readonly class SyncProductParents
 
         return $groups
             ->filter(fn (array $group): bool => ! empty($group['pkVariationItemId']) && ! empty($group['VariationSKU']))
+            ->reject(fn (array $group): bool => $this->isExcluded((string) $group['VariationSKU']))
             ->values();
+    }
+
+    /**
+     * Duplicate groups left behind in Linnworks would attribute the same sale
+     * to two parents, so they are skipped rather than stored.
+     */
+    private function isExcluded(string $sku): bool
+    {
+        $pattern = config('linnworks.variation_groups.exclude_pattern');
+
+        return $pattern !== null && preg_match($pattern, $sku) === 1;
     }
 
     /**

@@ -35,7 +35,7 @@ function fakeVariationGroups(array $groups, int $totalPages = 1): void
                 'Data' => array_map(fn (array $g): array => [
                     'pkVariationItemId' => $g['id'],
                     'VariationSKU' => $g['sku'],
-                    'VariationTitle' => $g['sku'].' parent',
+                    'VariationGroupName' => $g['sku'].' parent',
                 ], $groups),
             ]);
         }
@@ -171,6 +171,32 @@ describe('SyncProductParents', function () {
         ]);
 
         expect(app(SyncProductParents::class)()['linked'])->toBe(1);
+    });
+
+    it('skips excluded duplicate groups so a sale is not counted twice', function () {
+        Product::factory()->create(['sku' => '026-004', 'linnworks_id' => 'si-026-004']);
+
+        fakeVariationGroups([
+            ['id' => 'v-1', 'sku' => '026', 'children' => ['si-026-004']],
+            ['id' => 'v-2', 'sku' => 'P026', 'children' => ['si-026-004']],
+        ]);
+
+        $result = app(SyncProductParents::class)();
+
+        expect($result['groups'])->toBe(1)
+            ->and(ProductParent::pluck('sku')->all())->toBe(['026'])
+            ->and(Product::first()->parent->sku)->toBe('026');
+    });
+
+    it('keeps every group when the exclude pattern is off', function () {
+        config(['linnworks.variation_groups.exclude_pattern' => null]);
+
+        fakeVariationGroups([
+            ['id' => 'v-1', 'sku' => '026', 'children' => []],
+            ['id' => 'v-2', 'sku' => 'P026', 'children' => []],
+        ]);
+
+        expect(app(SyncProductParents::class)()['groups'])->toBe(2);
     });
 
     it('skips malformed groups with no id or sku', function () {
