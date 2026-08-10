@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -54,6 +55,7 @@ final class Product extends Model
     protected $fillable = [
         'linnworks_id',
         'sku',
+        'product_parent_id',
         'title',
         'description',
         'category_id',
@@ -140,6 +142,14 @@ final class Product extends Model
     public function getScoutKeyName(): mixed
     {
         return $this->getKeyName();
+    }
+
+    /**
+     * The Linnworks variation group this product belongs to, if any.
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(ProductParent::class, 'product_parent_id');
     }
 
     /**

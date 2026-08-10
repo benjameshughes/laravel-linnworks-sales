@@ -1,0 +1,107 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Actions\Linnworks;
+
+use App\Models\Product;
+use App\Models\ProductParent;
+use Illuminate\Support\Collection;
+use BenHughes\Linnworks\LinnworksClient;
+
+/**
+ * Mirror Linnworks variation groups into product_parents and point each child
+ * product at the group it belongs to.
+ *
+ * A variation group is not a stock item, so it gets its own table rather than
+ * living on products. Children are linked by foreign key, which is what makes
+ * order_items.parent_sku redundant.
+ *
+ * @phpstan-type SyncResult array{groups: int, linked: int, unmatched: int}
+ */
+final readonly class SyncProductParents
+{
+    public function __construct(
+        private LinnworksClient $linnworks,
+    ) {}
+
+    /**
+     * @return SyncResult
+     */
+    public function __invoke(): array
+    {
+        $groups = $this->groups();
+        $linked = 0;
+        $unmatched = 0;
+
+        $groups->each(function (array $group) use (&$linked, &$unmatched): void {
+            $parent = ProductParent::updateOrCreate(
+                ['linnworks_id' => (string) $group['pkVariationItemId']],
+                [
+                    'sku' => (string) $group['VariationSKU'],
+                    'title' => $group['VariationTitle'] ?? $group['ItemTitle'] ?? null,
+                    'metadata' => $group,
+                    'last_synced_at' => now(),
+                ],
+            );
+
+            $childSkus = $this->childSkus($parent->linnworks_id);
+
+            if ($childSkus->isEmpty()) {
+                return;
+            }
+
+            $matched = Product::query()
+                ->whereIn('sku', $childSkus->all())
+                ->update(['product_parent_id' => $parent->id]);
+
+            $linked += $matched;
+            $unmatched += $childSkus->count() - $matched;
+        });
+
+        return [
+            'groups' => $groups->count(),
+            'linked' => $linked,
+            'unmatched' => $unmatched,
+        ];
+    }
+
+    /**
+     * Walk every page of variation groups rather than trusting the first.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function groups(): Collection
+    {
+        $groups = collect();
+        $page = 1;
+
+        do {
+            $response = $this->linnworks->stock()->searchVariationGroups(
+                searchType: 'ParentSKU',
+                page: $page,
+                pageSize: 200,
+            );
+
+            $groups = $groups->concat($response['Data'] ?? []);
+            $totalPages = (int) ($response['TotalPages'] ?? 1);
+            $page++;
+        } while ($page <= $totalPages);
+
+        return $groups
+            ->filter(fn (array $group): bool => ! empty($group['pkVariationItemId']) && ! empty($group['VariationSKU']))
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, string>
+     */
+    private function childSkus(string $variationId): Collection
+    {
+        return $this->linnworks->stock()->variationItems($variationId)
+            ->map(fn ($item): ?string => data_get($item, 'ItemNumber') ?? data_get($item, 'SKU'))
+            ->filter()
+            ->map(fn (string $sku): string => $sku)
+            ->values();
+    }
+}
