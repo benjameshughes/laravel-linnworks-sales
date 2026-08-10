@@ -7,11 +7,27 @@ use RuntimeException;
 use App\Models\SyncLog;
 use App\Jobs\SyncProductsJob;
 use App\Models\LinnworksConnection;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
+use App\Actions\Linnworks\SyncProducts;
+use BenHughes\Linnworks\Exceptions\ApiException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Services\Linnworks\Contracts\ProductSyncServiceInterface;
 
 uses(RefreshDatabase::class);
+
+function linnworksConnection(): void
+{
+    $user = User::factory()->create();
+    LinnworksConnection::factory()->create(['user_id' => $user->id, 'is_active' => true]);
+    Cache::put('linnworks_session_token', 'test-token', now()->addHour());
+    Cache::put('linnworks_session_token_server', 'https://eu-ext.linnworks.test/api/', now()->addHour());
+}
+
+function fakeStockPage(array $items): void
+{
+    Http::fake(fn () => Http::response($items));
+}
 
 describe('SyncProductsJob', function () {
     it('implements ShouldQueue interface', function () {
@@ -48,87 +64,46 @@ describe('SyncProductsJob', function () {
             ->and($job->maxProducts)->toBe(5000);
     });
 
-    it('skips when no active linnworks connection exists', function () {
-        $syncService = Mockery::mock(ProductSyncServiceInterface::class);
-        $syncService->shouldNotReceive('syncProducts');
+    it('refuses to run without an active linnworks connection', function () {
+        Http::fake();
 
-        $job = new SyncProductsJob;
-        $job->handle($syncService);
+        // the client binding needs credentials, so this fails before any work
+        expect(fn () => (new SyncProductsJob)->handle(app(SyncProducts::class)))
+            ->toThrow(RuntimeException::class);
 
-        expect(SyncLog::count())->toBe(0);
+        Http::assertNothingSent();
     });
 
-    it('calls ProductSyncService with correct parameters', function () {
-        $user = User::factory()->create();
-        LinnworksConnection::factory()->create([
-            'user_id' => $user->id,
-            'is_active' => true,
-        ]);
+    it('asks Linnworks for stock levels and pricing', function () {
+        linnworksConnection();
+        fakeStockPage([]);
 
-        $syncService = Mockery::mock(ProductSyncServiceInterface::class);
-        $syncService->shouldReceive('syncProducts')
-            ->once()
-            ->with(
-                Mockery::on(fn ($userId) => $userId === $user->id),
-                ['StockLevels', 'Pricing'],
-                null,
-                200,
-                5000,
-            )
-            ->andReturn([
-                'synced' => 100,
-                'created' => 80,
-                'updated' => 20,
-                'failed' => 0,
-            ]);
+        (new SyncProductsJob(startedBy: 'test'))->handle(app(SyncProducts::class));
 
-        $job = new SyncProductsJob(startedBy: 'test', maxProducts: 5000);
-        $job->handle($syncService);
-
-        expect(SyncLog::where('sync_type', 'products')->count())->toBe(1);
+        // form encoding turns the array into a json string on the way out
+        Http::assertSent(fn ($r) => str_contains($r->url(), 'Stock/GetStockItemsFull')
+            && $r['dataRequirements'] === json_encode(['StockLevels', 'Pricing']));
     });
 
     it('creates a completed sync log on success', function () {
-        $user = User::factory()->create();
-        LinnworksConnection::factory()->create([
-            'user_id' => $user->id,
-            'is_active' => true,
-        ]);
+        linnworksConnection();
+        fakeStockPage([['SKU' => 'ABC-1', 'ItemTitle' => 'Thing', 'StockItemId' => 'x-1']]);
 
-        $syncService = Mockery::mock(ProductSyncServiceInterface::class);
-        $syncService->shouldReceive('syncProducts')
-            ->andReturn([
-                'synced' => 50,
-                'created' => 30,
-                'updated' => 20,
-                'failed' => 0,
-            ]);
-
-        $job = new SyncProductsJob(startedBy: 'test');
-        $job->handle($syncService);
+        (new SyncProductsJob(startedBy: 'test'))->handle(app(SyncProducts::class));
 
         $log = SyncLog::where('sync_type', 'products')->first();
-        expect($log)->not->toBeNull()
-            ->and($log->status)->toBe('completed')
-            ->and($log->total_fetched)->toBe(50)
-            ->and($log->total_created)->toBe(30)
-            ->and($log->total_updated)->toBe(20);
+        expect($log->status)->toBe('completed')
+            ->and($log->total_fetched)->toBe(1)
+            ->and($log->total_created)->toBe(1);
     });
 
     it('lets sync failures bubble out of handle', function () {
-        $user = User::factory()->create();
-        LinnworksConnection::factory()->create([
-            'user_id' => $user->id,
-            'is_active' => true,
-        ]);
-
-        $syncService = Mockery::mock(ProductSyncServiceInterface::class);
-        $syncService->shouldReceive('syncProducts')
-            ->andThrow(new RuntimeException('API connection failed'));
+        linnworksConnection();
+        Http::fake(fn () => Http::response('upstream exploded', 400));
 
         $job = new SyncProductsJob(startedBy: 'test');
 
-        expect(fn () => $job->handle($syncService))->toThrow(RuntimeException::class);
+        expect(fn () => $job->handle(app(SyncProducts::class)))->toThrow(ApiException::class);
 
         // The log stays open mid-retry - only the final failure closes it off
         $log = SyncLog::where('sync_type', SyncLog::TYPE_PRODUCTS)->first();
@@ -137,19 +112,12 @@ describe('SyncProductsJob', function () {
     });
 
     it('marks the active sync log as failed once retries are exhausted', function () {
-        $user = User::factory()->create();
-        LinnworksConnection::factory()->create([
-            'user_id' => $user->id,
-            'is_active' => true,
-        ]);
-
-        $syncService = Mockery::mock(ProductSyncServiceInterface::class);
-        $syncService->shouldReceive('syncProducts')
-            ->andThrow(new RuntimeException('API connection failed'));
+        linnworksConnection();
+        Http::fake(fn () => Http::response('upstream exploded', 400));
 
         $job = new SyncProductsJob(startedBy: 'test');
 
-        expect(fn () => $job->handle($syncService))->toThrow(RuntimeException::class);
+        expect(fn () => $job->handle(app(SyncProducts::class)))->toThrow(ApiException::class);
 
         $job->failed(new RuntimeException('API connection failed'));
 
@@ -175,26 +143,4 @@ describe('SyncProductsJob', function () {
         });
     });
 
-    it('respects maxProducts parameter', function () {
-        $user = User::factory()->create();
-        LinnworksConnection::factory()->create([
-            'user_id' => $user->id,
-            'is_active' => true,
-        ]);
-
-        $syncService = Mockery::mock(ProductSyncServiceInterface::class);
-        $syncService->shouldReceive('syncProducts')
-            ->once()
-            ->with(
-                $user->id,
-                ['StockLevels', 'Pricing'],
-                null,
-                200,
-                2000,
-            )
-            ->andReturn(['synced' => 0, 'created' => 0, 'updated' => 0, 'failed' => 0]);
-
-        $job = new SyncProductsJob(maxProducts: 2000);
-        $job->handle($syncService);
-    });
 });

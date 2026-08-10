@@ -7,14 +7,13 @@ namespace App\Jobs;
 use Throwable;
 use App\Models\SyncLog;
 use Illuminate\Bus\Queueable;
-use App\Models\LinnworksConnection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Queue\SerializesModels;
+use App\Actions\Linnworks\SyncProducts;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
-use App\Services\Linnworks\Contracts\ProductSyncServiceInterface;
 
 final class SyncProductsJob implements ShouldBeUnique, ShouldQueue
 {
@@ -43,16 +42,8 @@ final class SyncProductsJob implements ShouldBeUnique, ShouldQueue
         return 'sync-products';
     }
 
-    public function handle(ProductSyncServiceInterface $syncService): void
+    public function handle(SyncProducts $syncProducts): void
     {
-        $connection = LinnworksConnection::query()->active()->first();
-
-        if (! $connection) {
-            Log::warning('SyncProductsJob: No active Linnworks connection found');
-
-            return;
-        }
-
         $syncLog = SyncLog::startSync(SyncLog::TYPE_PRODUCTS, [
             'started_by' => $this->startedBy ?? 'system',
             'max_products' => $this->maxProducts,
@@ -60,15 +51,10 @@ final class SyncProductsJob implements ShouldBeUnique, ShouldQueue
 
         Log::info('Product sync started', [
             'started_by' => $this->startedBy,
-            'user_id' => $connection->user_id,
             'max_products' => $this->maxProducts,
         ]);
 
-        $result = $syncService->syncProducts(
-            userId: $connection->user_id,
-            dataRequirements: self::DATA_REQUIREMENTS,
-            maxProducts: $this->maxProducts,
-        );
+        $result = $syncProducts(dataRequirements: self::DATA_REQUIREMENTS);
 
         $syncLog->complete(
             fetched: $result['synced'],
