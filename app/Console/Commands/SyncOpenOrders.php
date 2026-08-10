@@ -1,48 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Jobs\SyncRecentOrdersJob;
 
+/**
+ * Scheduler doorway to SyncRecentOrdersJob. The scheduler cannot dispatch a
+ * job directly, so this exists purely to knock on the queue.
+ */
 final class SyncOpenOrders extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'sync:orders
-                            {--force : Force sync all orders}
-                            {--debug : Show detailed output}';
+    protected $signature = 'sync:orders';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Sync recent orders (open + processed from last 30 days) from Linnworks';
+    protected $description = 'Queue a sync of open orders, updating any that have since been processed';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(): int
     {
-        $this->info('Dispatching recent orders sync job...');
+        SyncRecentOrdersJob::dispatch(startedBy: 'command');
 
-        try {
-            // Dispatch the recent orders sync job
-            SyncRecentOrdersJob::dispatch(startedBy: 'command');
+        $this->info('Queued. Run a worker on the high queue to process it.');
 
-            $this->info('Sync job dispatched successfully!');
-            $this->info('The job will sync all open orders + processed orders from last 30 days.');
-            $this->info('Use "php artisan queue:work" to process the job.');
-
-            return 0;
-        } catch (\Exception $e) {
-            $this->error('Failed to dispatch sync job: '.$e->getMessage());
-
-            return 1;
-        }
+        return self::SUCCESS;
     }
 }
