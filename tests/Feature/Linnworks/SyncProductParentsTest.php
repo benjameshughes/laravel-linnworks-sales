@@ -45,7 +45,7 @@ function fakeVariationGroups(array $groups, int $totalPages = 1): void
             $group = collect($groups)->firstWhere('id', $id);
 
             return Http::response(array_map(
-                fn (string $sku): array => ['ItemNumber' => $sku],
+                fn (string $id): array => ['pkStockItemId' => $id],
                 $group['children'] ?? [],
             ));
         }
@@ -57,8 +57,8 @@ function fakeVariationGroups(array $groups, int $totalPages = 1): void
 describe('SyncProductParents', function () {
     it('creates a product parent for each variation group', function () {
         fakeVariationGroups([
-            ['id' => 'v-1', 'sku' => '005', 'children' => ['005-001']],
-            ['id' => 'v-2', 'sku' => '026', 'children' => ['026-004']],
+            ['id' => 'v-1', 'sku' => '005', 'children' => ['si-005-001']],
+            ['id' => 'v-2', 'sku' => '026', 'children' => ['si-026-004']],
         ]);
 
         $result = app(SyncProductParents::class)();
@@ -69,11 +69,11 @@ describe('SyncProductParents', function () {
     });
 
     it('links child products to their parent', function () {
-        Product::factory()->create(['sku' => '005-001']);
-        Product::factory()->create(['sku' => '005-002']);
+        Product::factory()->create(['sku' => '005-001', 'linnworks_id' => 'si-005-001']);
+        Product::factory()->create(['sku' => '005-002', 'linnworks_id' => 'si-005-002']);
 
         fakeVariationGroups([
-            ['id' => 'v-1', 'sku' => '005', 'children' => ['005-001', '005-002']],
+            ['id' => 'v-1', 'sku' => '005', 'children' => ['si-005-001', 'si-005-002']],
         ]);
 
         $result = app(SyncProductParents::class)();
@@ -85,10 +85,10 @@ describe('SyncProductParents', function () {
     });
 
     it('reports children that have no local product', function () {
-        Product::factory()->create(['sku' => '005-001']);
+        Product::factory()->create(['sku' => '005-001', 'linnworks_id' => 'si-005-001']);
 
         fakeVariationGroups([
-            ['id' => 'v-1', 'sku' => '005', 'children' => ['005-001', '005-999']],
+            ['id' => 'v-1', 'sku' => '005', 'children' => ['si-005-001', 'si-005-999']],
         ]);
 
         $result = app(SyncProductParents::class)();
@@ -98,10 +98,10 @@ describe('SyncProductParents', function () {
     });
 
     it('is idempotent and does not duplicate parents', function () {
-        Product::factory()->create(['sku' => '005-001']);
+        Product::factory()->create(['sku' => '005-001', 'linnworks_id' => 'si-005-001']);
 
         fakeVariationGroups([
-            ['id' => 'v-1', 'sku' => '005', 'children' => ['005-001']],
+            ['id' => 'v-1', 'sku' => '005', 'children' => ['si-005-001']],
         ]);
 
         app(SyncProductParents::class)();

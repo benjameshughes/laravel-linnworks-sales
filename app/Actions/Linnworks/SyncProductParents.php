@@ -45,18 +45,18 @@ final readonly class SyncProductParents
                 ],
             );
 
-            $childSkus = $this->childSkus($parent->linnworks_id);
+            $childIds = $this->childStockItemIds($parent->linnworks_id);
 
-            if ($childSkus->isEmpty()) {
+            if ($childIds->isEmpty()) {
                 return;
             }
 
             $matched = Product::query()
-                ->whereIn('sku', $childSkus->all())
+                ->whereIn('linnworks_id', $childIds->all())
                 ->update(['product_parent_id' => $parent->id]);
 
             $linked += $matched;
-            $unmatched += $childSkus->count() - $matched;
+            $unmatched += $childIds->count() - $matched;
         });
 
         return [
@@ -94,14 +94,16 @@ final readonly class SyncProductParents
     }
 
     /**
+     * Children are matched on Linnworks stock item id, never on SKU text.
+     *
      * @return Collection<int, string>
      */
-    private function childSkus(string $variationId): Collection
+    private function childStockItemIds(string $variationId): Collection
     {
         return $this->linnworks->stock()->variationItems($variationId)
-            ->map(fn ($item): ?string => data_get($item, 'ItemNumber') ?? data_get($item, 'SKU'))
+            ->map(fn ($item): ?string => data_get($item, 'pkStockItemId'))
             ->filter()
-            ->map(fn (string $sku): string => $sku)
+            ->map(fn (string $id): string => $id)
             ->values();
     }
 }
