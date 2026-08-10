@@ -13,16 +13,17 @@ use App\Events\SyncCompleted;
 use Illuminate\Bus\Queueable;
 use App\Models\SyncCheckpoint;
 use App\Events\SyncProgressUpdated;
+use App\Models\LinnworksConnection;
 use Illuminate\Support\Facades\Log;
-use App\Services\LinnworksApiService;
 use Illuminate\Queue\SerializesModels;
 use App\Actions\Sync\TrackSyncProgress;
+use BenHughes\Linnworks\LinnworksClient;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use App\Actions\Linnworks\FetchOrderDetails;
 use App\Actions\Sync\Orders\BulkImportOrders;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
-use App\DataTransferObjects\ProcessedOrderFilters;
 
 /**
  * Sync recent orders - fast and incremental
@@ -60,6 +61,8 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
 
     private const OPEN_ORDER_CHUNK_SIZE = 200;
 
+    private const BROADCAST_EVERY_BATCHES = 5;
+
     public readonly int $uniqueFor;
 
     public readonly int $tries;
@@ -81,7 +84,8 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
     }
 
     public function handle(
-        LinnworksApiService $api,
+        LinnworksClient $linnworks,
+        FetchOrderDetails $fetchOrderDetails,
         BulkImportOrders $importer,
     ): void {
         // Get or create checkpoint for incremental sync
@@ -107,7 +111,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             'days_covered' => $processedFrom->diffInDays($processedTo),
         ]);
 
-        if (! $api->isConfigured()) {
+        if (! LinnworksConnection::query()->active()->exists()) {
             Log::error('Linnworks API is not configured');
             $syncLog->fail('Linnworks API not configured');
             throw new \Exception('Linnworks API is not configured. Please check your credentials.');
@@ -125,7 +129,14 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             event(new SyncProgressUpdated('fetching-open-ids', 'Fetching all open orders...'));
             Log::debug('Fetching open order IDs from Linnworks...');
 
-            $openOrderIds = $api->getAllOpenOrderIds();
+            // Orders/GetAllOpenOrders, not OpenOrders/GetOpenOrderIds - the
+            // paginated variant was measured dropping orders between pages.
+            $openOrderIds = $linnworks->orders()
+                ->all(fulfilmentCenter: config('linnworks.open_orders.location_id', '00000000-0000-0000-0000-000000000000'))
+                ->filter()
+                ->map(fn ($id): string => (string) $id)
+                ->unique()
+                ->values();
             Log::info("Found {$openOrderIds->count()} open order IDs");
             $syncLog->updateProgress('fetching_open_ids', 1, 4, [
                 'message' => "Found {$openOrderIds->count()} open orders",
@@ -134,7 +145,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
 
             // Mark orders that are no longer open as closed (fetch full details)
             if ($openOrderIds->isNotEmpty()) {
-                $this->markMissingOrdersAsClosed($openOrderIds, $api, $importer);
+                $this->markMissingOrdersAsClosed($openOrderIds, $fetchOrderDetails, $importer);
             }
 
             // Step 2: Stream processed order IDs since last checkpoint (incremental)
@@ -148,12 +159,12 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             ]);
 
             // Stream processed orders - gets IDs only, then we fetch details
-            $processedOrderIdsStream = $api->streamProcessedOrderIds(
-                from: $processedFrom,
-                to: $processedTo,
-                filters: ProcessedOrderFilters::forRecentSync()->toArray(),
-                userId: null,
-                progressCallback: function ($page, $totalPages, $fetchedCount, $totalResults) use ($syncLog) {
+            $processedOrderIdsStream = $linnworks->orders()->streamProcessed(
+                dateType: 'PROCESSED',
+                from: $processedFrom->toIso8601String(),
+                to: $processedTo->toIso8601String(),
+                onPage: function (int $page, int $totalPages, int $totalResults) use ($syncLog): void {
+                    $fetchedCount = $page * (int) config('linnworks.stream_page_size', 200);
                     $message = "Streaming processed orders: page {$page}/".($totalPages ?: '?')." ({$fetchedCount} fetched)";
                     event(new SyncProgressUpdated('fetching-processed-ids', $message, $fetchedCount));
 
@@ -187,7 +198,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 $openChunks = $openOrderIds->chunk(self::OPEN_ORDER_CHUNK_SIZE);
                 foreach ($openChunks as $chunk) {
                     $currentBatch++;
-                    $this->processBatch($api, $importer, $progressTracker, $chunk, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
+                    $this->processBatch($fetchOrderDetails, $importer, $progressTracker, $chunk, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
                     $totalOrdersFetched += $chunk->count();
                     $alreadyProcessedIds = $alreadyProcessedIds->merge($chunk); // Track these IDs
                     unset($chunk);
@@ -197,7 +208,14 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
             // Then stream and process processed orders page by page
             // getOrdersByIds returns full details with processedDate field
             // OrderImportDTO checks processedDate to determine is_open
-            foreach ($processedOrderIdsStream as $pageOrderIds) {
+            foreach ($processedOrderIdsStream as $pageRows) {
+                // The search endpoint yields order summaries; only the ids are
+                // needed here because detail is fetched per batch below.
+                $pageOrderIds = $pageRows
+                    ->map(fn (array $row): ?string => $row['pkOrderID'] ?? $row['pkOrderId'] ?? null)
+                    ->filter()
+                    ->values();
+
                 // Deduplicate: remove any IDs we already processed from open orders
                 $uniqueIds = $pageOrderIds->diff($alreadyProcessedIds);
 
@@ -219,10 +237,10 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
                 }
 
                 $currentBatch++;
-                $this->processBatch($api, $importer, $progressTracker, $uniqueIds, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
+                $this->processBatch($fetchOrderDetails, $importer, $progressTracker, $uniqueIds, $currentBatch, $totalCreated, $totalUpdated, $totalProcessed, $totalFailed);
                 $totalOrdersFetched += $uniqueIds->count();
                 $alreadyProcessedIds = $alreadyProcessedIds->merge($uniqueIds); // Track these too
-                unset($pageOrderIds, $uniqueIds);
+                unset($pageRows, $pageOrderIds, $uniqueIds);
 
                 // Explicit garbage collection hint every 10 batches
                 if ($currentBatch % 10 === 0 && function_exists('gc_collect_cycles')) {
@@ -319,7 +337,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
      * Includes retry logic with exponential backoff for resilience.
      */
     protected function processBatch(
-        LinnworksApiService $api,
+        FetchOrderDetails $fetchOrderDetails,
         BulkImportOrders $importer,
         TrackSyncProgress $progressTracker,
         \Illuminate\Support\Collection $orderIds,
@@ -329,148 +347,51 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
         int &$totalProcessed,
         int &$totalFailed
     ): void {
-        $maxRetries = 3;
-        $baseBackoffSeconds = 5;
-        $attempt = 0;
-        $lastException = null;
+        event(new SyncProgressUpdated(
+            'fetching-batch',
+            "Fetching batch {$currentBatch}...",
+            $totalProcessed
+        ));
 
-        while ($attempt < $maxRetries) {
-            try {
-                $attempt++;
+        // Retries, backoff and Retry-After live in the API client now, so a
+        // failure reaching here has already exhausted them.
+        $orders = $fetchOrderDetails($orderIds->all());
 
-                event(new SyncProgressUpdated(
-                    'fetching-batch',
-                    "Fetching batch {$currentBatch}...".($attempt > 1 ? " (attempt {$attempt}/{$maxRetries})" : ''),
-                    $totalProcessed
-                ));
+        Log::info('Fetched order batch', [
+            'batch' => $currentBatch,
+            'orders_in_batch' => $orders->count(),
+        ]);
 
-                // Fetch full order details for this batch
-                $orders = $api->getOrdersByIds($orderIds->toArray());
+        event(new SyncProgressUpdated(
+            'importing-batch',
+            "Importing batch {$currentBatch}...",
+            $totalProcessed
+        ));
 
-                Log::info('Fetched order batch', [
-                    'batch' => $currentBatch,
-                    'orders_in_batch' => $orders->count(),
-                    'attempt' => $attempt,
-                ]);
+        $result = $importer->import($orders);
 
-                event(new SyncProgressUpdated(
-                    'importing-batch',
-                    "Importing batch {$currentBatch}...",
-                    $totalProcessed
-                ));
+        $totalCreated += $result->created;
+        $totalUpdated += $result->updated;
+        $totalProcessed += $result->processed;
+        $totalFailed += $result->failed;
 
-                // Import this batch
-                $result = $importer->import($orders);
+        Log::info('Imported order batch', [
+            'batch' => $currentBatch,
+            'processed' => $result->processed,
+            'created' => $result->created,
+            'updated' => $result->updated,
+            'failed' => $result->failed,
+        ]);
 
-                $totalCreated += $result->created;
-                $totalUpdated += $result->updated;
-                $totalProcessed += $result->processed;
-                $totalFailed += $result->failed;
-
-                Log::info('Imported order batch', [
-                    'batch' => $currentBatch,
-                    'processed' => $result->processed,
-                    'created' => $result->created,
-                    'updated' => $result->updated,
-                    'failed' => $result->failed,
-                    'attempt' => $attempt,
-                ]);
-
-                // Broadcast progress every 5 batches
-                if ($currentBatch % 5 === 0) {
-                    $progressTracker->broadcastPerformanceUpdate(
-                        totalProcessed: $totalProcessed,
-                        created: $totalCreated,
-                        updated: $totalUpdated,
-                        failed: $totalFailed,
-                        currentBatch: $currentBatch,
-                        totalBatches: 0 // Unknown with streaming
-                    );
-                }
-
-                // Success! Free memory and return
-                unset($orders, $result);
-
-                return;
-
-            } catch (\App\Exceptions\Linnworks\LinnworksApiException $e) {
-                $lastException = $e;
-
-                // Check if this is a retryable error
-                if (! $e->isRetryable()) {
-                    Log::error('Non-retryable Linnworks API error on batch', [
-                        'batch' => $currentBatch,
-                        'attempt' => $attempt,
-                        'error' => $e->getUserMessage(),
-                        'status_code' => $e->getCode(),
-                    ]);
-
-                    throw $e;
-                }
-
-                // Log retryable error
-                Log::warning('Linnworks API error on batch, will retry', [
-                    'batch' => $currentBatch,
-                    'attempt' => $attempt,
-                    'max_retries' => $maxRetries,
-                    'error' => $e->getUserMessage(),
-                    'status_code' => $e->getCode(),
-                    'is_timeout' => $e->isTimeout(),
-                    'is_rate_limited' => $e->isRateLimited(),
-                ]);
-
-                // Calculate backoff with exponential increase
-                $backoffSeconds = $baseBackoffSeconds * (2 ** ($attempt - 1)); // 5s, 10s, 20s
-
-                // Special handling for rate limits
-                if ($e->isRateLimited() && $e->getRetryAfter()) {
-                    $backoffSeconds = $e->getRetryAfter();
-                    Log::info('Rate limited, using Retry-After header', [
-                        'batch' => $currentBatch,
-                        'retry_after_seconds' => $backoffSeconds,
-                    ]);
-                }
-
-                // If this was our last attempt, throw
-                if ($attempt >= $maxRetries) {
-                    Log::error('Batch failed after all retry attempts', [
-                        'batch' => $currentBatch,
-                        'total_attempts' => $attempt,
-                        'order_ids_count' => $orderIds->count(),
-                        'final_error' => $e->getUserMessage(),
-                    ]);
-
-                    throw $e;
-                }
-
-                // Wait before retrying
-                Log::debug('Waiting before retry', [
-                    'batch' => $currentBatch,
-                    'attempt' => $attempt,
-                    'backoff_seconds' => $backoffSeconds,
-                    'next_attempt' => $attempt + 1,
-                ]);
-
-                sleep($backoffSeconds);
-
-            } catch (\Throwable $e) {
-                $lastException = $e;
-
-                Log::error('Unexpected error processing batch', [
-                    'batch' => $currentBatch,
-                    'attempt' => $attempt,
-                    'error' => $e->getMessage(),
-                    'exception_class' => get_class($e),
-                ]);
-
-                // Don't retry unexpected errors
-                throw $e;
-            }
-        }
-
-        // Should never reach here, but if we do, throw the last exception
-        if ($lastException) {
-            throw $lastException;
+        if ($currentBatch % self::BROADCAST_EVERY_BATCHES === 0) {
+            $progressTracker->broadcastPerformanceUpdate(
+                totalProcessed: $totalProcessed,
+                created: $totalCreated,
+                updated: $totalUpdated,
+                failed: $totalFailed,
+                currentBatch: $currentBatch,
+                totalBatches: 0 // Unknown with streaming
+            );
         }
     }
 
@@ -483,7 +404,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
      */
     protected function markMissingOrdersAsClosed(
         \Illuminate\Support\Collection $currentOpenOrderIds,
-        LinnworksApiService $api,
+        FetchOrderDetails $fetchOrderDetails,
         BulkImportOrders $importer
     ): void {
         // Find orders in DB that are no longer in the open list
@@ -503,7 +424,7 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
         try {
             // Fetch full order details from Linnworks
             // This gives us the complete processed data (processed_date, status, shipping, etc.)
-            $orders = $api->getOrdersByIds($missingOrderIds->toArray());
+            $orders = $fetchOrderDetails($missingOrderIds->all());
 
             if ($orders->isEmpty()) {
                 Log::warning('No order details returned for missing orders', [
