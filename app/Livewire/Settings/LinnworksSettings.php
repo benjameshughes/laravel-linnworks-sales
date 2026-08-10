@@ -31,11 +31,13 @@ final class LinnworksSettings extends Component
     /**
      * Livewire cannot inject through the constructor, so dependencies are
      * resolved here - boot() runs on every request, mount and hydrate alike.
+     *
+     * CacheLocationsAndViews is deliberately absent: it needs a live Linnworks
+     * client, and this screen has to render while the account is disconnected.
      */
-    public function boot(LinnworksOAuthService $linnworksOAuthService, CacheLocationsAndViews $cacheLocationsAndViews): void
+    public function boot(LinnworksOAuthService $linnworksOAuthService): void
     {
         $this->linnworksOAuthService = $linnworksOAuthService;
-        $this->cacheLocationsAndViews = $cacheLocationsAndViews;
     }
 
     /**
@@ -47,14 +49,6 @@ final class LinnworksSettings extends Component
         return $this->linnworksOAuthService ??= app(LinnworksOAuthService::class);
     }
 
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
     public string $applicationId = '';
 
     public string $applicationSecret = '';
@@ -73,7 +67,7 @@ final class LinnworksSettings extends Component
 
     public bool $isRefreshingSources = false;
 
-    public function mount(LinnworksOAuthService $oauthService): void
+    public function mount(): void
     {
         $this->checkConnectionStatus();
         $this->loadPreferences();
