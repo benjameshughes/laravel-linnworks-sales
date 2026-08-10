@@ -33,8 +33,11 @@ final readonly class FetchOrderDetails
             return collect();
         }
 
+        // Collection::chunk() preserves keys, so a later chunk arrives keyed
+        // 200..399 and json_encode turns it into an object rather than an
+        // array. Linnworks answers that with "Invalid parameter pkOrderIds".
         return $this->linnworks->orders()
-            ->find($orderIds)
+            ->find(array_values($orderIds))
             ->map(fn (Order $order): LinnworksOrder => LinnworksOrder::fromArray($order->toArray()));
     }
 }
