@@ -5,58 +5,13 @@ namespace App\Providers;
 use RuntimeException;
 use App\Models\LinnworksConnection;
 use Illuminate\Support\ServiceProvider;
-use App\Services\Linnworks\Core\RateLimiter;
-use App\Services\Linnworks\Auth\SessionManager;
-use App\ValueObjects\Linnworks\RateLimitConfig;
-use App\Services\Linnworks\Core\LinnworksClient;
-use App\Services\Linnworks\Auth\AuthenticationService;
 use BenHughes\Linnworks\LinnworksClient as PackageClient;
-use App\Services\Linnworks\Contracts\ProductSyncServiceInterface;
 
 final class LinnworksServiceProvider extends ServiceProvider
 {
-    /**
-     * Register services.
-     */
     public function register(): void
     {
         $this->registerPackageClient();
-
-        // Register value objects
-        $this->app->singleton(RateLimitConfig::class, function () {
-            return RateLimitConfig::standard();
-        });
-
-        // Register core services
-        $this->app->singleton(RateLimiter::class, function ($app) {
-            return new RateLimiter($app->make(RateLimitConfig::class));
-        });
-
-        $this->app->singleton(LinnworksClient::class, function ($app) {
-            return new LinnworksClient(
-                rateLimiter: $app->make(RateLimiter::class),
-                timeout: config('linnworks.timeout', 30),
-                enableCaching: config('linnworks.enable_caching', true),
-            );
-        });
-
-        // Register authentication services
-        $this->app->singleton(AuthenticationService::class, function ($app) {
-            return new AuthenticationService(
-                client: $app->make(LinnworksClient::class),
-            );
-        });
-
-        $this->app->singleton(SessionManager::class, function ($app) {
-            return new SessionManager(
-                authService: $app->make(AuthenticationService::class),
-            );
-        });
-
-        // Register API services
-
-        // Bind interfaces
-        $this->app->bind(ProductSyncServiceInterface::class, ProductSyncService::class);
     }
 
     /**
@@ -106,12 +61,7 @@ final class LinnworksServiceProvider extends ServiceProvider
     public function provides(): array
     {
         return [
-            RateLimitConfig::class,
-            RateLimiter::class,
-            LinnworksClient::class,
-            AuthenticationService::class,
-            SessionManager::class,
-            ProductSyncServiceInterface::class,
+            PackageClient::class,
         ];
     }
 }

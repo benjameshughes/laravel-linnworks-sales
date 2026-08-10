@@ -4,9 +4,9 @@ namespace App\Services\Linnworks\Auth;
 
 use App\Models\LinnworksConnection;
 use Illuminate\Support\Facades\Log;
-use App\ValueObjects\Linnworks\ApiRequest;
 use App\ValueObjects\Linnworks\SessionToken;
-use App\Services\Linnworks\Core\LinnworksClient;
+use BenHughes\Linnworks\Exceptions\LinnworksException;
+use BenHughes\Linnworks\LinnworksClient as PackageClient;
 
 final class AuthenticationService
 {
@@ -15,10 +15,6 @@ final class AuthenticationService
     private const INSTALL_URL = 'https://api.linnworks.net/api/Auth/AuthorizeByApplication';
 
     private const TOKEN_URL = 'https://api.linnworks.net/api/Auth/AuthorizeByApplication';
-
-    public function __construct(
-        private readonly LinnworksClient $client,
-    ) {}
 
     /**
      * Generate installation URL for OAuth flow
@@ -50,49 +46,25 @@ final class AuthenticationService
             'token_length' => strlen($installationToken),
         ]);
 
-        $request = ApiRequest::post('Auth/AuthorizeByApplication', [
-            'ApplicationId' => $applicationId,
-            'ApplicationSecret' => $applicationSecret,
-            'Token' => $installationToken,
-        ])->withoutAuth();
+        // A one-off client for the credentials being installed - the shared
+        // singleton is bound to whatever connection is already active.
+        $client = new PackageClient(
+            clientId: $applicationId,
+            clientSecret: $applicationSecret,
+            appToken: $installationToken,
+            baseUrl: config('linnworks.base_url'),
+            authUrl: config('linnworks.auth_url'),
+        );
 
-        $response = $this->client->makeRequest($request);
+        $token = $client->authenticate();
 
-        if ($response->isError()) {
-            Log::error('Failed to exchange installation token', [
-                'error' => $response->error,
-                'status_code' => $response->statusCode,
-            ]);
+        Log::info('Installation token exchanged successfully');
 
-            return null;
-        }
-
-        $data = $response->getData();
-
-        if ($data->isEmpty()) {
-            Log::error('Empty response when exchanging installation token');
-
-            return null;
-        }
-
-        try {
-            $sessionToken = SessionToken::fromApiResponse($data->toArray());
-
-            Log::info('Installation token exchanged successfully', [
-                'server' => $sessionToken->server,
-                'expires_at' => $sessionToken->expiresAt->toISOString(),
-            ]);
-
-            return $sessionToken;
-
-        } catch (\Exception $e) {
-            Log::error('Error creating session token from response', [
-                'error' => $e->getMessage(),
-                'response_data' => $data->toArray(),
-            ]);
-
-            return null;
-        }
+        return new SessionToken(
+            token: $token,
+            server: $client->baseUrl(),
+            expiresAt: now()->addMinutes((int) config('linnworks.cache.token_ttl', 1440)),
+        );
     }
 
     /**
@@ -120,22 +92,19 @@ final class AuthenticationService
             'expires_at' => $sessionToken->expiresAt->toISOString(),
         ]);
 
-        // Test with a simple API call
-        $request = ApiRequest::get('Auth/Ping');
-        $response = $this->client->makeRequest($request, $sessionToken);
+        // Cheapest authenticated call that proves the token is live. A thrown
+        // ApiException means the credentials are no longer good.
+        try {
+            app(PackageClient::class)->locations()->all();
+        } catch (LinnworksException $e) {
+            Log::warning('Connection test failed', ['error' => $e->getMessage()]);
 
-        if ($response->isSuccess()) {
-            Log::info('Connection test successful');
-
-            return true;
+            return false;
         }
 
-        Log::warning('Connection test failed', [
-            'error' => $response->error,
-            'status_code' => $response->statusCode,
-        ]);
+        Log::info('Connection test successful');
 
-        return false;
+        return true;
     }
 
     /**
