@@ -11,85 +11,20 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 
 /**
- * Base class for all reports in the system.
+ * Base class for all reports.
  *
- * # Available Filter Types
- *
- * Reports can use the following filter types by returning filter objects from the filters() method:
- *
- * ## DateRangeFilter
- * - Type: 'date_range'
- * - Renders: Two date inputs (start and end)
- * - Usage: new DateRangeFilter(required: true, defaultDays: 30)
- *
- * ## SkuFilter
- * - Type: 'multi_select' (or 'select' if multiple: false)
- * - Renders: Pill selector with dynamic SKU options from database
- * - Usage: new SkuFilter(multiple: true, required: false)
- *
- * ## SubsourceFilter
- * - Type: 'multi_select' (or 'select' if multiple: false)
- * - Renders: Pill selector with dynamic subsource options from database
- * - Usage: new SubsourceFilter(multiple: true, required: false)
- *
- * ## ChannelFilter
- * - Type: 'multi_select' (or 'select' if multiple: false)
- * - Renders: Pill selector with dynamic channel options from database
- * - Usage: new ChannelFilter(multiple: true, required: false)
- *
- * ## StatusFilter
- * - Type: 'multi_select'
- * - Renders: Pill selector with order status options (processed, open, cancelled)
- * - Usage: new StatusFilter(required: false)
- *
- * ## TextFilter
- * - Type: 'text'
- * - Renders: Single text input
- * - Usage: new TextFilter(name: 'customer_name', label: 'Customer Name', required: false, placeholder: 'Enter name...')
- *
- * ## NumberRangeFilter
- * - Type: 'number_range'
- * - Renders: Two number inputs (min and max)
- * - Usage: new NumberRangeFilter(name: 'price_range', label: 'Price Range', required: false, min: 0, max: 1000)
- *
- * # Creating Custom Filters
- *
- * To create a custom filter:
- * 1. Extend AbstractFilter class
- * 2. Implement all required methods from FilterContract
- * 3. Override optional helper methods (placeholder(), helpText(), icon()) if needed
- * 4. Add the filter to your report's filters() method
- *
- * Example:
- *
- * ```php
- * class CustomFilter extends AbstractFilter
- * {
- *     public function name(): string { return 'custom'; }
- *     public function label(): string { return 'Custom Filter'; }
- *     public function type(): string { return 'text'; }
- *     public function required(): bool { return false; }
- *     public function default(): mixed { return null; }
- *     public function options(): array { return []; }
- *     public function validate(mixed $value): bool { return is_string($value); }
- *     public function placeholder(): ?string { return 'Enter custom value...'; }
- * }
- * ```
- *
- * Then in your report:
- *
- * ```php
- * public function filters(): array
- * {
- *     return [
- *         new DateRangeFilter(required: true, defaultDays: 30),
- *         new CustomFilter(),
- *     ];
- * }
- * ```
+ * Drop a subclass into app/Reports and ReportRegistry finds it by scanning the
+ * directory - no registration needed. Available filters live in Reports\Filters;
+ * custom ones extend AbstractFilter.
  */
 abstract class AbstractReport
 {
+    /**
+     * Ceiling on unpaginated fetches. Reports run against a table with 160k+
+     * rows, so an unbounded get() is an out-of-memory waiting to happen.
+     */
+    private const MAX_ROWS = 50_000;
+
     abstract public function name(): string;
 
     abstract public function description(): string;
@@ -131,7 +66,7 @@ abstract class AbstractReport
     {
         $this->validateFilters($filters);
 
-        return $this->buildQuery($filters)->get();
+        return $this->buildQuery($filters)->limit(self::MAX_ROWS)->get();
     }
 
     public function export(array $filters, ExportFormat $format = ExportFormat::XLSX): string
@@ -155,17 +90,22 @@ abstract class AbstractReport
 
     protected function validateFilters(array $filters): void
     {
-        foreach ($this->filters() as $filter) {
-            $filterName = $filter->name();
+        collect($this->filters())->each(function (Filters\FilterContract $filter) use ($filters): void {
+            $name = $filter->name();
+            $supplied = $filters[$name] ?? null;
 
-            if ($filter->required() && ! isset($filters[$filterName])) {
-                throw new \InvalidArgumentException("Filter '{$filterName}' is required");
-            }
+            throw_if(
+                $filter->required() && ! isset($filters[$name]),
+                \InvalidArgumentException::class,
+                "Filter '{$name}' is required",
+            );
 
-            if (isset($filters[$filterName]) && ! $filter->validate($filters[$filterName])) {
-                throw new \InvalidArgumentException("Filter '{$filterName}' has invalid value");
-            }
-        }
+            throw_if(
+                isset($filters[$name]) && ! $filter->validate($supplied),
+                \InvalidArgumentException::class,
+                "Filter '{$name}' has invalid value",
+            );
+        });
     }
 
     public function getDefaultFilters(): array
