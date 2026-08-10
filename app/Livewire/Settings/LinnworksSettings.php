@@ -9,28 +9,33 @@ use App\Models\LinnworksLocation;
 use Livewire\Attributes\Computed;
 use Illuminate\Contracts\View\View;
 use App\Services\LinnworksOAuthService;
-use App\Services\Linnworks\Orders\ViewsService;
+use App\Actions\Linnworks\CacheLocationsAndViews;
 use App\Exceptions\Linnworks\LinnworksApiException;
-use App\Services\Linnworks\Orders\LocationsService;
 use App\Exceptions\Linnworks\AuthenticationException;
 
 final class LinnworksSettings extends Component
 {
+    private ?CacheLocationsAndViews $cacheLocationsAndViews = null;
+
+    /**
+     * Livewire skips boot() on the lazy-load request, so always reach the
+     * dependency through here rather than the property directly.
+     */
+    private function cacheLocationsAndViews(): CacheLocationsAndViews
+    {
+        return $this->cacheLocationsAndViews ??= app(CacheLocationsAndViews::class);
+    }
+
     private ?LinnworksOAuthService $linnworksOAuthService = null;
-
-    private ?LocationsService $locationsService = null;
-
-    private ?ViewsService $viewsService = null;
 
     /**
      * Livewire cannot inject through the constructor, so dependencies are
      * resolved here - boot() runs on every request, mount and hydrate alike.
      */
-    public function boot(LinnworksOAuthService $linnworksOAuthService, LocationsService $locationsService, ViewsService $viewsService): void
+    public function boot(LinnworksOAuthService $linnworksOAuthService, CacheLocationsAndViews $cacheLocationsAndViews): void
     {
         $this->linnworksOAuthService = $linnworksOAuthService;
-        $this->locationsService = $locationsService;
-        $this->viewsService = $viewsService;
+        $this->cacheLocationsAndViews = $cacheLocationsAndViews;
     }
 
     /**
@@ -46,20 +51,10 @@ final class LinnworksSettings extends Component
      * Livewire skips boot() on the lazy-load request, so always reach the
      * dependency through here rather than the property directly.
      */
-    private function locationsService(): LocationsService
-    {
-        return $this->locationsService ??= app(LocationsService::class);
-    }
-
     /**
      * Livewire skips boot() on the lazy-load request, so always reach the
      * dependency through here rather than the property directly.
      */
-    private function viewsService(): ViewsService
-    {
-        return $this->viewsService ??= app(ViewsService::class);
-    }
-
     public string $applicationId = '';
 
     public string $applicationSecret = '';
@@ -238,14 +233,14 @@ final class LinnworksSettings extends Component
         $locations = LinnworksLocation::forUser($userId)->orderBy('name')->get();
 
         if ($locations->isEmpty() && $connection) {
-            $this->locationsService()->getLocations($userId);
+            $this->cacheLocationsAndViews()->cacheLocations($userId);
             $locations = LinnworksLocation::forUser($userId)->orderBy('name')->get();
         }
 
         $views = LinnworksView::forUser($userId)->orderBy('name')->get();
 
         if ($views->isEmpty() && $connection) {
-            $this->viewsService()->getOpenOrderViews($userId);
+            $this->cacheLocationsAndViews()->cacheViews($userId);
             $views = LinnworksView::forUser($userId)->orderBy('name')->get();
         }
 
@@ -294,8 +289,8 @@ final class LinnworksSettings extends Component
                 return;
             }
 
-            $this->locationsService()->getLocations($userId);
-            $this->viewsService()->getOpenOrderViews($userId);
+            $this->cacheLocationsAndViews()->cacheLocations($userId);
+            $this->cacheLocationsAndViews()->cacheViews($userId);
 
             $this->loadPreferences();
 

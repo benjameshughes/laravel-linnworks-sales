@@ -7,10 +7,8 @@ use App\Models\LinnworksConnection;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Linnworks\Core\RateLimiter;
 use App\Services\Linnworks\Auth\SessionManager;
-use App\Services\Linnworks\Orders\ViewsService;
 use App\ValueObjects\Linnworks\RateLimitConfig;
 use App\Services\Linnworks\Core\LinnworksClient;
-use App\Services\Linnworks\Orders\LocationsService;
 use App\Services\Linnworks\Auth\AuthenticationService;
 use BenHughes\Linnworks\LinnworksClient as PackageClient;
 use App\Services\Linnworks\Contracts\ProductSyncServiceInterface;
@@ -56,20 +54,6 @@ final class LinnworksServiceProvider extends ServiceProvider
         });
 
         // Register API services
-
-        $this->app->singleton(LocationsService::class, function ($app) {
-            return new LocationsService(
-                client: $app->make(LinnworksClient::class),
-                sessionManager: $app->make(SessionManager::class),
-            );
-        });
-
-        $this->app->singleton(ViewsService::class, function ($app) {
-            return new ViewsService(
-                client: $app->make(LinnworksClient::class),
-                sessionManager: $app->make(SessionManager::class),
-            );
-        });
 
         // Bind interfaces
         $this->app->bind(ProductSyncServiceInterface::class, ProductSyncService::class);
@@ -127,8 +111,6 @@ final class LinnworksServiceProvider extends ServiceProvider
             LinnworksClient::class,
             AuthenticationService::class,
             SessionManager::class,
-            LocationsService::class,
-            ViewsService::class,
             ProductSyncServiceInterface::class,
         ];
     }

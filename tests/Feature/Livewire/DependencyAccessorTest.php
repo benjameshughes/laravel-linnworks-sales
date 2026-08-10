@@ -4,6 +4,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    // some accessors resolve the Linnworks client, which needs credentials
+    \App\Models\LinnworksConnection::factory()->create([
+        'user_id' => \App\Models\User::factory()->create()->id,
+        'is_active' => true,
+    ]);
+});
+
 /**
  * Livewire skips boot() on the lazy-load request, so any component that takes
  * dependencies must still be able to reach them without boot() having run.
