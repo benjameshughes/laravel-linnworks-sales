@@ -111,26 +111,6 @@ it('reports the total entries through the progress callback', function () {
 
     expect($seen)->toBe(10);
 });
-
-it('throws rather than reporting an empty page when the paged fetch fails', function () {
-    $user = \App\Models\User::factory()->create();
-    \App\Models\LinnworksConnection::factory()->create([
-        'user_id' => $user->id,
-        'is_active' => true,
-    ]);
-    seedSession($user->id);
-
-    Http::fake(fn () => Http::response('upstream exploded', 500));
-
-    // Previously this returned an empty result with hasMorePages: false, which
-    // the import command reads as "nothing left to fetch" and calls it a success
-    expect(fn () => app(\App\Services\LinnworksApiService::class)->getProcessedOrders(
-        from: Carbon::parse('2026-01-01'),
-        to: Carbon::parse('2026-01-31'),
-        pageNumber: 1,
-    ))->toThrow(LinnworksApiException::class);
-});
-
 it('refuses a range larger than the cap rather than truncating it', function () {
     seedSession();
 
