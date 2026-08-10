@@ -26,15 +26,18 @@ final readonly class SyncProductParents
     ) {}
 
     /**
+     * @param  bool  $onlyUnlinked  Skip products that already have a parent. Cheap
+     *                              and self-healing, but blind to a product that
+     *                              has moved between groups in Linnworks.
      * @return SyncResult
      */
-    public function __invoke(): array
+    public function __invoke(bool $onlyUnlinked = true): array
     {
         $groups = $this->groups();
         $linked = 0;
         $unmatched = 0;
 
-        $groups->each(function (array $group) use (&$linked, &$unmatched): void {
+        $groups->each(function (array $group) use ($onlyUnlinked, &$linked, &$unmatched): void {
             $parent = ProductParent::updateOrCreate(
                 ['linnworks_id' => (string) $group['pkVariationItemId']],
                 [
@@ -51,12 +54,14 @@ final readonly class SyncProductParents
                 return;
             }
 
-            $matched = Product::query()
-                ->whereIn('linnworks_id', $childIds->all())
+            $known = Product::query()->whereIn('linnworks_id', $childIds->all());
+
+            $matched = (clone $known)
+                ->when($onlyUnlinked, fn ($query) => $query->whereNull('product_parent_id'))
                 ->update(['product_parent_id' => $parent->id]);
 
             $linked += $matched;
-            $unmatched += $childIds->count() - $matched;
+            $unmatched += $childIds->count() - $known->count();
         });
 
         return [

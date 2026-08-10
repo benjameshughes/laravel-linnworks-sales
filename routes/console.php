@@ -41,6 +41,14 @@ Schedule::command('sync:products')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/product-sync.log'));
 
+// Link products to their Linnworks variation group, after the catalogue sync
+// has had a chance to create any new ones. Only touches unlinked products.
+Schedule::command('sync:product-parents')
+    ->cron('30 */6 * * *')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/product-sync.log'));
+
 // Check and update processed orders status every 30 minutes (oldest first)
 Schedule::command('sync:check-processed')
     ->everyThirtyMinutes()

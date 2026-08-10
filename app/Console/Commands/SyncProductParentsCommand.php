@@ -9,7 +9,8 @@ use App\Actions\Linnworks\SyncProductParents;
 
 final class SyncProductParentsCommand extends Command
 {
-    protected $signature = 'sync:product-parents';
+    protected $signature = 'sync:product-parents
+                            {--all : Re-link every child, not just products without a parent}';
 
     protected $description = 'Sync Linnworks variation groups and link each child product to its parent';
 
@@ -17,7 +18,7 @@ final class SyncProductParentsCommand extends Command
     {
         $this->info('Syncing variation groups from Linnworks...');
 
-        $result = $syncProductParents();
+        $result = $syncProductParents(onlyUnlinked: ! $this->option('all'));
 
         $this->newLine();
         $this->table(

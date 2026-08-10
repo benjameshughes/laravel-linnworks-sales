@@ -127,6 +127,52 @@ describe('SyncProductParents', function () {
         expect($searches)->toHaveCount(3);
     });
 
+    it('leaves already linked products alone by default', function () {
+        $existing = ProductParent::factory()->create(['sku' => 'OLD']);
+        $product = Product::factory()->create([
+            'sku' => '005-001',
+            'linnworks_id' => 'si-005-001',
+            'product_parent_id' => $existing->id,
+        ]);
+
+        fakeVariationGroups([
+            ['id' => 'v-1', 'sku' => '005', 'children' => ['si-005-001']],
+        ]);
+
+        $result = app(SyncProductParents::class)();
+
+        expect($result['linked'])->toBe(0)
+            ->and($product->fresh()->product_parent_id)->toBe($existing->id);
+    });
+
+    it('re-links a product that moved group when passed all', function () {
+        $existing = ProductParent::factory()->create(['sku' => 'OLD']);
+        $product = Product::factory()->create([
+            'sku' => '005-001',
+            'linnworks_id' => 'si-005-001',
+            'product_parent_id' => $existing->id,
+        ]);
+
+        fakeVariationGroups([
+            ['id' => 'v-1', 'sku' => '005', 'children' => ['si-005-001']],
+        ]);
+
+        $result = app(SyncProductParents::class)(onlyUnlinked: false);
+
+        expect($result['linked'])->toBe(1)
+            ->and($product->fresh()->parent->sku)->toBe('005');
+    });
+
+    it('picks up a product created before its group existed', function () {
+        Product::factory()->create(['sku' => '005-001', 'linnworks_id' => 'si-005-001']);
+
+        fakeVariationGroups([
+            ['id' => 'v-1', 'sku' => '005', 'children' => ['si-005-001']],
+        ]);
+
+        expect(app(SyncProductParents::class)()['linked'])->toBe(1);
+    });
+
     it('skips malformed groups with no id or sku', function () {
         Http::fake(fn () => Http::response([
             'TotalPages' => 1,
