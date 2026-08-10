@@ -10,15 +10,16 @@ use App\Events\OrdersSynced;
 use App\Events\SyncCompleted;
 use Illuminate\Bus\Queueable;
 use App\Events\SyncProgressUpdated;
+use App\Models\LinnworksConnection;
 use Illuminate\Support\Facades\Log;
-use App\Services\LinnworksApiService;
 use Illuminate\Queue\SerializesModels;
+use BenHughes\Linnworks\LinnworksClient;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use App\Actions\Linnworks\FetchOrderDetails;
 use App\Actions\Sync\Orders\BulkImportOrders;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
-use App\DataTransferObjects\ProcessedOrderFilters;
 
 /**
  * Sync historical orders - one-time backfill for specific date range
@@ -36,10 +37,6 @@ use App\DataTransferObjects\ProcessedOrderFilters;
 final class SyncHistoricalOrdersJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    private const MAX_BATCH_RETRIES = 3;
-
-    private const BASE_BACKOFF_SECONDS = 5;
 
     /**
      * Historical imports write to the same tables and can run for hours, so
@@ -77,7 +74,8 @@ final class SyncHistoricalOrdersJob implements ShouldBeUnique, ShouldQueue
     }
 
     public function handle(
-        LinnworksApiService $api,
+        LinnworksClient $linnworks,
+        FetchOrderDetails $fetchOrderDetails,
         BulkImportOrders $importer
     ): void {
         $syncLog = SyncLog::startSync(SyncLog::TYPE_HISTORICAL_ORDERS, [
@@ -95,7 +93,7 @@ final class SyncHistoricalOrdersJob implements ShouldBeUnique, ShouldQueue
             'to' => $this->toDate->toDateString(),
         ]);
 
-        if (! $api->isConfigured()) {
+        if (! LinnworksConnection::query()->active()->exists()) {
             Log::error('Linnworks API is not configured');
             $syncLog->fail('Linnworks API not configured');
 
@@ -115,12 +113,11 @@ final class SyncHistoricalOrdersJob implements ShouldBeUnique, ShouldQueue
             ]);
 
             $totalOrdersExpected = null;
-            $processedOrderIdsStream = $api->streamProcessedOrderIds(
-                from: $this->fromDate,
-                to: $this->toDate,
-                filters: ProcessedOrderFilters::forHistoricalImport()->toArray(),
-                userId: null,
-                progressCallback: function ($page, $totalPages, $fetchedCount, $totalResults) use ($syncLog, &$totalOrdersExpected) {
+            $processedOrderIdsStream = $linnworks->orders()->streamProcessed(
+                dateType: 'PROCESSED',
+                from: $this->fromDate->toIso8601String(),
+                to: $this->toDate->toIso8601String(),
+                onPage: function (int $page, int $totalPages, int $totalResults) use ($syncLog, &$totalOrdersExpected): void {
                     if ($page === 1 && $totalResults > 0) {
                         $totalOrdersExpected = $totalResults;
                     }
@@ -151,7 +148,7 @@ final class SyncHistoricalOrdersJob implements ShouldBeUnique, ShouldQueue
                 }
 
                 $this->processBatch(
-                    $api,
+                    $fetchOrderDetails,
                     $importer,
                     $pageOrderIds,
                     $currentBatch,
@@ -322,72 +319,44 @@ final class SyncHistoricalOrdersJob implements ShouldBeUnique, ShouldQueue
      * Process a single batch with retry logic
      */
     private function processBatch(
-        LinnworksApiService $api,
+        FetchOrderDetails $fetchOrderDetails,
         BulkImportOrders $importer,
-        \Illuminate\Support\Collection $orderIds,
+        \Illuminate\Support\Collection $pageRows,
         int $currentBatch,
         int &$totalCreated,
         int &$totalUpdated,
         int &$totalProcessed,
         int &$totalFailed
     ): void {
-        $maxRetries = self::MAX_BATCH_RETRIES;
-        $baseBackoffSeconds = self::BASE_BACKOFF_SECONDS;
-        $attempt = 0;
+        // The search endpoint returns summaries; full detail needs a second
+        // call keyed on the ids it handed back.
+        $orderIds = $pageRows
+            ->map(fn (array $row): ?string => $row['pkOrderID'] ?? $row['pkOrderId'] ?? null)
+            ->filter()
+            ->values();
 
-        while ($attempt < $maxRetries) {
-            try {
-                $attempt++;
+        // Retries and backoff live in the API client now, so a failure that
+        // reaches here has already exhausted them and should fail the job.
+        $orders = $fetchOrderDetails($orderIds->all());
 
-                $orders = $api->getOrdersByIds($orderIds->toArray());
+        Log::debug('Fetched order batch', [
+            'batch' => $currentBatch,
+            'orders_in_batch' => $orders->count(),
+        ]);
 
-                Log::debug('Fetched order batch', [
-                    'batch' => $currentBatch,
-                    'orders_in_batch' => $orders->count(),
-                ]);
+        $result = $importer->import($orders);
 
-                $result = $importer->import($orders);
+        $totalCreated += $result->created;
+        $totalUpdated += $result->updated;
+        $totalProcessed += $result->processed;
+        $totalFailed += $result->failed;
 
-                $totalCreated += $result->created;
-                $totalUpdated += $result->updated;
-                $totalProcessed += $result->processed;
-                $totalFailed += $result->failed;
-
-                Log::debug('Imported order batch', [
-                    'batch' => $currentBatch,
-                    'processed' => $result->processed,
-                    'created' => $result->created,
-                    'updated' => $result->updated,
-                ]);
-
-                unset($orders, $result);
-
-                return;
-
-            } catch (\App\Exceptions\Linnworks\LinnworksApiException $e) {
-                if (! $e->isRetryable() || $attempt >= $maxRetries) {
-                    Log::error('Batch failed', [
-                        'batch' => $currentBatch,
-                        'attempt' => $attempt,
-                        'error' => $e->getUserMessage(),
-                    ]);
-
-                    throw $e;
-                }
-
-                $backoffSeconds = $e->isRateLimited() && $e->getRetryAfter()
-                    ? $e->getRetryAfter()
-                    : $baseBackoffSeconds * (2 ** ($attempt - 1));
-
-                Log::warning('Retrying batch after error', [
-                    'batch' => $currentBatch,
-                    'attempt' => $attempt,
-                    'backoff_seconds' => $backoffSeconds,
-                ]);
-
-                sleep($backoffSeconds);
-            }
-        }
+        Log::debug('Imported order batch', [
+            'batch' => $currentBatch,
+            'processed' => $result->processed,
+            'created' => $result->created,
+            'updated' => $result->updated,
+        ]);
     }
 
     /**
