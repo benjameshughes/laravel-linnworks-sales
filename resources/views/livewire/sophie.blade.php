@@ -53,7 +53,7 @@
             <div class="flex-1">
                 <flux:label>Subsources</flux:label>
                 <x-pill-selector
-                        :options="$this->availableSubsources->map(fn ($sub) => ['value' => $sub, 'label' => $sub])->toArray()"
+                        :options="$this->availableSubsources->map(fn ($sub) => ['value' => $sub, 'label' => \App\Enums\ChannelAccount::displayName($sub)])->toArray()"
                         :selected="$selectedSubsources"
                         :placeholder="'All Subsources (' . $this->availableSubsources->count() . ')'"
                         toggle-method="toggleSubsource"
@@ -221,7 +221,7 @@
                                 <td class="px-6 py-3 pl-12" colspan="2">
                                     <div class="flex items-center gap-2">
                                         <flux:icon name="arrow-turn-down-right" class="size-4 text-pink-500"/>
-                                        <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ $subsource->subsource }}</span>
+                                        <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ \App\Enums\ChannelAccount::displayName($subsource->subsource) }}</span>
                                     </div>
                                 </td>
                                 <td class="px-6 py-3 text-right">

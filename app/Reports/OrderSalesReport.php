@@ -50,8 +50,8 @@ final class OrderSalesReport extends AbstractReport
         return [
             'order_number' => ['label' => 'Order #', 'type' => 'string'],
             'order_date' => ['label' => 'Date', 'type' => 'datetime'],
-            'source' => ['label' => 'Channel', 'type' => 'string'],
-            'subsource' => ['label' => 'Subsource', 'type' => 'string'],
+            'source' => ['label' => 'Channel', 'type' => 'channel'],
+            'subsource' => ['label' => 'Account', 'type' => 'account'],
             'status' => ['label' => 'Status', 'type' => 'string'],
             'sku' => ['label' => 'SKU', 'type' => 'string'],
             'title' => ['label' => 'Product', 'type' => 'string'],

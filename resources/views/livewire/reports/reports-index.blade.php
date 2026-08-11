@@ -160,6 +160,10 @@
                                                 <span class="font-mono">{{ number_format((int)($value ?: 0)) }}</span>
                                             @elseif($type === 'percentage')
                                                 {{ number_format((float)($value ?: 0), 2) }}%
+                                            @elseif($type === 'channel')
+                                                {{ \App\Enums\Channel::displayName($value) }}
+                                            @elseif($type === 'account')
+                                                {{ \App\Enums\ChannelAccount::displayName($value) }}
                                             @else
                                                 {{ $value }}
                                             @endif

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Metrics;
 
 use Carbon\Carbon;
+use App\Enums\Channel;
 use Carbon\CarbonPeriod;
+use App\Enums\ChannelAccount;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -276,15 +278,16 @@ final readonly class ChunkedMetricsCalculator
                 $revenue = (float) $channel->revenue;
                 $orders = (int) $channel->orders;
 
+                $channelLabel = Channel::displayName($channel->source);
                 $displayName = $channel->subsource
-                    ? "{$channel->subsource} ({$channel->source})"
-                    : $channel->source;
+                    ? ChannelAccount::displayName($channel->subsource).' ('.$channelLabel.')'
+                    : $channelLabel;
 
                 // Wrap in collect() to match SalesMetrics format (blade template expects Collection)
                 return collect([
                     'name' => $displayName,
-                    'channel' => $channel->source,
-                    'subsource' => $channel->subsource ?: null,
+                    'channel' => $channelLabel,
+                    'subsource' => $channel->subsource ? ChannelAccount::displayName($channel->subsource) : null,
                     'orders' => $orders,
                     'revenue' => $revenue,
                     'avg_order_value' => $orders > 0 ? $revenue / $orders : 0,

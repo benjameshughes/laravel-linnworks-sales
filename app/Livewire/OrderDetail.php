@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Models\Order;
+use App\Enums\Channel;
 use Livewire\Component;
+use App\Enums\ChannelAccount;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Computed;
@@ -168,7 +170,7 @@ final class OrderDetail extends Component
         return $detail['related_orders']->map(fn ($order) => [
             'number' => $order->number,
             'date' => $order->received_at?->format('M j, Y'),
-            'channel' => $order->source,
+            'channel' => Channel::displayName($order->source),
             'total' => (float) $order->total_charge,
             'items' => (int) $order->num_items,
         ]);
@@ -182,8 +184,8 @@ final class OrderDetail extends Component
     {
         return [
             'number' => $this->order->number,
-            'channel' => $this->order->source ?? 'Unknown',
-            'subsource' => $this->order->subsource,
+            'channel' => Channel::displayName($this->order->source),
+            'subsource' => ChannelAccount::displayName($this->order->subsource),
             'status' => $this->order->isProcessed() ? 'Processed' : 'Open',
             'is_paid' => $this->order->is_paid,
             'is_cancelled' => $this->order->is_cancelled,

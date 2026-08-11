@@ -42,8 +42,8 @@ final class ChannelPerformanceReport extends AbstractReport
     public function columns(): array
     {
         return [
-            'source' => ['label' => 'Channel', 'type' => 'string'],
-            'subsource' => ['label' => 'Subsource', 'type' => 'string'],
+            'source' => ['label' => 'Channel', 'type' => 'channel'],
+            'subsource' => ['label' => 'Account', 'type' => 'account'],
             'orders' => ['label' => 'Orders', 'type' => 'integer'],
             'total_revenue' => ['label' => 'Revenue', 'type' => 'currency'],
             'avg_order_value' => ['label' => 'Avg Order Value', 'type' => 'currency'],

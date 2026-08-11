@@ -24,7 +24,7 @@
                         </div>
                     </flux:table.cell>
                     <flux:table.cell>
-                        <span>{{ $order->source ?? 'Direct' }}</span>
+                        <span>{{ \App\Enums\Channel::displayName($order->source) }}</span>
                         <div class="text-xs text-zinc-500">{{ $order->num_items ?? $order->orderItems->sum('quantity') }} items</div>
                     </flux:table.cell>
                     <flux:table.cell align="end" variant="strong">

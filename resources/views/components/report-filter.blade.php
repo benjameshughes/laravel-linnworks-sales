@@ -38,7 +38,12 @@
             // For dynamic options (SKUs, subsources, channels), use availableOptions
             // For static options (statuses), use filter->options()
             $options = !empty($availableOptions)
-                ? collect($availableOptions)->map(fn($opt) => ['value' => $opt, 'label' => $opt])->toArray()
+                ? collect($availableOptions)->map(fn($opt) => [
+                    'value' => $opt,
+                    'label' => \App\Enums\Channel::tryFrom($opt)?->label()
+                        ?? \App\Enums\ChannelAccount::tryFrom($opt)?->label()
+                        ?? $opt,
+                ])->toArray()
                 : collect($filter->options())->map(fn($opt) => ['value' => $opt, 'label' => ucfirst($opt)])->toArray();
 
             $selected = is_array($value) ? $value : [];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Models\Order;
+use App\Enums\Channel;
 use App\Models\Product;
 use Livewire\Component;
 use Livewire\Attributes\Title;
@@ -124,7 +125,7 @@ final class ProductDetail extends Component
         }
 
         return $performance->get('channel_breakdown')->map(fn ($channel) => [
-            'channel' => $channel->channel ?? 'Unknown',
+            'channel' => Channel::displayName($channel->channel),
             'quantity_sold' => (int) $channel->quantity,
             'revenue' => (float) $channel->revenue,
             'order_count' => (int) $channel->order_count,
@@ -188,7 +189,7 @@ final class ProductDetail extends Component
                 return [
                     'number' => $order->number,
                     'date' => $order->received_at->format('M j, Y'),
-                    'channel' => $order->source,
+                    'channel' => Channel::displayName($order->source),
                     'quantity' => $item?->quantity ?? 0,
                     'revenue' => $item?->line_total ?? 0,
                     'price_per_unit' => $item?->price_per_unit ?? 0,

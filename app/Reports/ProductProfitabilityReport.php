@@ -48,8 +48,8 @@ final class ProductProfitabilityReport extends AbstractReport
         return [
             'sku' => ['label' => 'SKU', 'type' => 'string'],
             'title' => ['label' => 'Product', 'type' => 'string'],
-            'source' => ['label' => 'Channel', 'type' => 'string'],
-            'subsource' => ['label' => 'Subsource', 'type' => 'string'],
+            'source' => ['label' => 'Channel', 'type' => 'channel'],
+            'subsource' => ['label' => 'Account', 'type' => 'account'],
             'orders' => ['label' => 'Orders', 'type' => 'integer'],
             'units_sold' => ['label' => 'Units', 'type' => 'integer'],
             'total_revenue' => ['label' => 'Revenue', 'type' => 'currency'],

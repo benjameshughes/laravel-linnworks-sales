@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Reports\Exports;
 
 use Carbon\Carbon;
+use App\Enums\Channel;
+use App\Enums\ChannelAccount;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -52,7 +54,7 @@ final class VariationGroupExport
         $colorIndex = 0;
 
         foreach ($allSubsources as $subsource) {
-            $label = strtolower($subsource['source']).' - '.$subsource['subsource'];
+            $label = Channel::displayName($subsource['source']).' - '.ChannelAccount::displayName($subsource['subsource']);
             $startCol = $colNum;
 
             $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colNum++).$rowNum, $label);
@@ -110,7 +112,7 @@ final class VariationGroupExport
 
             $subsourceMap = [];
             foreach ($subsources as $subsource) {
-                $key = strtolower($subsource->source).'-'.$subsource->subsource;
+                $key = Channel::displayName($subsource->source).'-'.ChannelAccount::displayName($subsource->subsource);
                 $subsourceMap[$key] = [
                     'orders' => $subsource->order_count,
                     'units' => $subsource->total_units,
@@ -128,7 +130,7 @@ final class VariationGroupExport
 
             $colorIndex = 0;
             foreach ($allSubsources as $subsource) {
-                $key = $subsource['source'].'-'.$subsource['subsource'];
+                $key = Channel::displayName($subsource['source']).'-'.ChannelAccount::displayName($subsource['subsource']);
                 $startCol = $colNum;
 
                 if (isset($subsourceMap[$key])) {
@@ -242,7 +244,7 @@ final class VariationGroupExport
 
         return $results->map(function ($row) {
             return [
-                'source' => strtolower($row->source),
+                'source' => $row->source,
                 'subsource' => $row->subsource,
                 'total_revenue' => (float) $row->total_revenue,
             ];

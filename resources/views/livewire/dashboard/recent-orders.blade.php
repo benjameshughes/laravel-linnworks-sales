@@ -29,9 +29,9 @@
                         <div class="text-sm text-zinc-500">{{ $order->received_at?->format('g:i A') }}</div>
                     </flux:table.cell>
                     <flux:table.cell>
-                        <flux:badge color="zinc" size="sm">{{ $order->source }}</flux:badge>
+                        <flux:badge color="zinc" size="sm">{{ \App\Enums\Channel::displayName($order->source) }}</flux:badge>
                         @if($order->subsource)
-                            <div class="text-xs text-zinc-500 mt-1">{{ $order->subsource }}</div>
+                            <div class="text-xs text-zinc-500 mt-1">{{ \App\Enums\ChannelAccount::displayName($order->subsource) }}</div>
                         @endif
                     </flux:table.cell>
                     <flux:table.cell>

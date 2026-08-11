@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Metrics\Orders;
 
 use App\Models\Order;
+use App\Enums\Channel;
 use Illuminate\Support\Collection;
 use App\Services\OrderBadgeService;
 use App\Repositories\Metrics\Orders\OrderRepository;
@@ -98,7 +99,7 @@ final readonly class OrderService
             $dates['end'],
             $limit
         )->map(fn ($row) => collect([
-            'channel' => $row->source,
+            'channel' => Channel::displayName($row->source),
             'reference' => $row->channel_reference_number,
             'order_count' => (int) $row->order_count,
             'total_spent' => (float) $row->total_spent,

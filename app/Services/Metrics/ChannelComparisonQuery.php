@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Metrics;
 
+use App\Enums\Channel;
 use Carbon\CarbonImmutable;
+use App\Enums\ChannelAccount;
 use App\Enums\ComparisonMode;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -365,10 +367,12 @@ final readonly class ChannelComparisonQuery
 
     private function displayName(string $source, ?string $subsource): string
     {
+        $channelLabel = Channel::displayName($source);
+
         if (! $this->includeSubsources || $subsource === null) {
-            return $source;
+            return $channelLabel;
         }
 
-        return "{$subsource} ({$source})";
+        return ChannelAccount::displayName($subsource).' ('.$channelLabel.')';
     }
 }

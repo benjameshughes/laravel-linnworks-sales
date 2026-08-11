@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use App\Enums\Channel;
+use App\Enums\ChannelAccount;
 use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
@@ -235,8 +237,15 @@ final class Order extends Model
      */
     protected function channelDisplay(): Attribute
     {
+        $channel = Channel::tryFrom($this->source ?? '');
+        $account = ChannelAccount::tryFrom($this->subsource ?? '');
+
         return Attribute::make(
-            get: fn () => $this->source ?? 'Unknown'
+            get: fn () => match (true) {
+                $channel !== null && $account !== null => $channel->label().' - '.$account->label(),
+                $channel !== null => $channel->label(),
+                default => $this->source ?? 'Unknown',
+            }
         );
     }
 

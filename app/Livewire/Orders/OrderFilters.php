@@ -7,6 +7,7 @@ namespace App\Livewire\Orders;
 use Carbon\Carbon;
 use Flux\DateRange;
 use App\Enums\Period;
+use App\Enums\Channel;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
@@ -167,7 +168,7 @@ final class OrderFilters extends Component
         return collect(['all' => 'All Channels'])
             ->merge(
                 $this->orderService()->getUniqueChannels()
-                    ->mapWithKeys(fn ($channel) => [$channel => $channel])
+                    ->mapWithKeys(fn ($channel) => [$channel => Channel::displayName($channel)])
             );
     }
 

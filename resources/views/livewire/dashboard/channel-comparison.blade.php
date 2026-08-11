@@ -28,7 +28,7 @@
                         <flux:select wire:model.live="source" size="sm" class="min-w-36">
                             <flux:select.option value="all">All sources</flux:select.option>
                             @foreach ($this->availableSources as $availableSource)
-                                <flux:select.option value="{{ $availableSource }}">{{ $availableSource }}</flux:select.option>
+                                <flux:select.option value="{{ $availableSource }}">{{ \App\Enums\Channel::displayName($availableSource) }}</flux:select.option>
                             @endforeach
                         </flux:select>
 

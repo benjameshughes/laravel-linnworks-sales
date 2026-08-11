@@ -6,6 +6,7 @@ namespace App\Livewire\Dashboard;
 
 use Carbon\Carbon;
 use Flux\DateRange;
+use App\Enums\Channel;
 use App\Models\SyncLog;
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -222,7 +223,7 @@ final class DashboardFilters extends Component
 
         return $channels->map(fn ($channel) => collect([
             'name' => $channel,
-            'label' => $channel,
+            'label' => Channel::displayName($channel),
         ]));
     }
 

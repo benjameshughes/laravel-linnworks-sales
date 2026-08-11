@@ -134,7 +134,7 @@ it('splits channels by subsource when the toggle is enabled', function () {
 
     $names = $component->instance()->channels->map(fn ($channel) => $channel->name);
 
-    expect($names)->toContain('Amazon UK (AMAZON)');
+    expect($names)->toContain('Amazon UK (Amazon)');
 });
 
 it('filters to a single source when requested', function () {
@@ -207,7 +207,7 @@ it('produces chart payloads for both visualisations', function () {
     expect($revenueChart['datasets'])->toHaveCount(2)
         ->and($revenueChart['datasets'][0]['label'])->toBe('June 2025')
         ->and($revenueChart['datasets'][1]['label'])->toBe('May 2025')
-        ->and($revenueChart['labels'])->toContain('AMAZON')
+        ->and($revenueChart['labels'])->toContain('Amazon')
         ->and($trendChart['datasets'])->toHaveCount(2);
 });
 

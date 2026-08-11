@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Factories\Metrics\Sales;
 
+use App\Enums\Channel;
+use App\Enums\ChannelAccount;
 use Illuminate\Support\Collection;
 
 final class SalesFactory
@@ -66,15 +68,15 @@ final class SalesFactory
                 $revenue = $sourceOrders->sum('total_charge');
                 $orders = $sourceOrders->count();
 
-                // Build display name like ChunkedMetricsCalculator
+                $channelLabel = Channel::displayName($source);
                 $displayName = $subsource
-                    ? "{$subsource} ({$source})"
-                    : $source;
+                    ? ChannelAccount::displayName($subsource).' ('.$channelLabel.')'
+                    : $channelLabel;
 
                 return collect([
                     'name' => $displayName,
-                    'channel' => $source,
-                    'subsource' => $subsource ?: null,
+                    'channel' => $channelLabel,
+                    'subsource' => $subsource ? ChannelAccount::displayName($subsource) : null,
                     'orders' => $orders,
                     'revenue' => $revenue,
                     'avg_order_value' => $orders > 0 ? $revenue / $orders : 0,
