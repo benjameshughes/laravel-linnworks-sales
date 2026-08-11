@@ -67,7 +67,7 @@ final class ProductAnalyticsService
 
         $cacheKey = $this->getCacheKey('top_products', $period, $search, $category, $limit);
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($search, $category, $limit) {
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($period, $search, $category, $limit) {
             // Get active products using repository - increased limit to capture more products
             $products = $this->productRepository->getActiveProducts($search, $category, 5000);
 
@@ -77,7 +77,7 @@ final class ProductAnalyticsService
 
             // Get bulk sales data for all products at once
             $skus = $products->pluck('sku')->toArray();
-            $salesData = $this->productRepository->getBulkProductSalesData($skus);
+            $salesData = $this->productRepository->getBulkProductSalesData($skus, $period);
 
             // Combine product info with sales data
             return $products->map(function ($product) use ($salesData) {
@@ -119,9 +119,8 @@ final class ProductAnalyticsService
 
         $cacheKey = $this->getCacheKey('top_categories', $period);
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () {
-            // Use repository's optimized query for category sales data
-            return $this->productRepository->getCategorySalesData()
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($period) {
+            return $this->productRepository->getCategorySalesData($period)
                 ->filter(fn ($cat) => $cat['total_revenue'] > 0)
                 ->take(10)
                 ->values();
@@ -152,20 +151,19 @@ final class ProductAnalyticsService
         });
     }
 
-    public function getProductDetails(string $sku): ?array
+    public function getProductDetails(string $sku, int $period = 30): ?array
     {
-        $cacheKey = $this->getCacheKey('product_details', $sku);
+        $cacheKey = $this->getCacheKey('product_details', $sku, $period);
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($sku) {
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($sku, $period) {
             $product = $this->productRepository->findBySku($sku);
 
             if (! $product) {
                 return null;
             }
 
-            // Calculate sales data and channel performance
-            $salesData = $this->productRepository->getProductSalesData($sku);
-            $channelPerformance = $this->productRepository->getProductChannelPerformance($sku);
+            $salesData = $this->productRepository->getProductSalesData($sku, $period);
+            $channelPerformance = $this->productRepository->getProductChannelPerformance($sku, $period);
 
             // Calculate profit analysis
             $totalCost = $salesData['total_sold'] * ($product->purchase_price ?? 0);

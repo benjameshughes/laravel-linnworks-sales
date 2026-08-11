@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Metrics\Products;
 
 use Illuminate\Support\Collection;
+use App\Repositories\ProductRepository;
 use App\Factories\Metrics\Products\ProductFactory;
 use App\Actions\Calculations\Sales\CalculatePeriodDates;
-use App\Repositories\Metrics\Products\ProductRepository;
 
 /**
  * Orchestration layer for product analytics.
@@ -166,7 +166,7 @@ final readonly class ProductService
             return null;
         }
 
-        $dailySales = $this->productRepo->getProductDailySales(
+        $dailySales = $this->productRepo->getProductDailySalesRange(
             $sku,
             $dates['start'],
             $dates['end']

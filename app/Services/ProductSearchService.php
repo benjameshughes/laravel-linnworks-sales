@@ -116,19 +116,7 @@ final readonly class ProductSearchService
      */
     public function getTrendingSearches(int $limit = 10): Collection
     {
-        $cacheKey = "product_search:trending:{$limit}";
-
-        return Cache::remember($cacheKey, $this->cacheTtl * 4, function () use ($limit) {
-            // This would ideally come from search analytics
-            // For now, return popular categories and brands
-            return collect([
-                ['term' => 'Electronics', 'type' => 'category', 'count' => 245],
-                ['term' => 'Clothing', 'type' => 'category', 'count' => 189],
-                ['term' => 'Books', 'type' => 'category', 'count' => 156],
-                ['term' => 'Home & Garden', 'type' => 'category', 'count' => 134],
-                ['term' => 'Sports', 'type' => 'category', 'count' => 98],
-            ])->take($limit);
-        });
+        return collect();
     }
 
     /**
@@ -266,38 +254,6 @@ final readonly class ProductSearchService
     {
         if ($pattern) {
             Cache::forget("product_search:{$pattern}");
-        } else {
-            // Clear all search cache (would need Redis SCAN in production)
-            Cache::flush();
-        }
-    }
-
-    /**
-     * Warm up search cache with common queries
-     */
-    public function warmUpCache(): void
-    {
-        $commonQueries = [
-            '',
-            'electronics',
-            'clothing',
-            'books',
-            'phone',
-            'laptop',
-        ];
-
-        foreach ($commonQueries as $query) {
-            $criteria = new SearchCriteria(
-                query: $query,
-                limit: $this->defaultLimit,
-            );
-
-            $this->search($criteria);
-        }
-
-        // Warm up autocomplete
-        foreach (['el', 'ph', 'la', 'bo'] as $prefix) {
-            $this->autocomplete($prefix);
         }
     }
 

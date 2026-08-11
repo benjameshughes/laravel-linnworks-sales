@@ -7,7 +7,6 @@ namespace App\Livewire\Products;
 use Livewire\Component;
 use App\Enums\SearchType;
 use Livewire\Attributes\On;
-use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
 use Illuminate\Contracts\View\View;
@@ -27,8 +26,6 @@ use App\Services\ProductAnalyticsService;
  */
 final class ProductsTable extends Component
 {
-    use WithPagination;
-
     private const TOP_PRODUCTS_LIMIT = 20;
 
     private ?ProductAnalyticsService $productAnalyticsService = null;
@@ -135,8 +132,6 @@ final class ProductsTable extends Component
         $this->exactMatch = $exactMatch;
         $this->fuzzySearch = $fuzzySearch;
 
-        $this->resetPage();
-
         // Clear cached computed properties
         unset($this->topSellingProducts);
         unset($this->products);
@@ -151,7 +146,6 @@ final class ProductsTable extends Component
             $this->sortDirection = 'desc';
         }
 
-        $this->resetPage();
     }
 
     public function selectProduct(string $sku): void
@@ -189,9 +183,13 @@ final class ProductsTable extends Component
         // Apply custom filters
         $products = $this->applyFilters($products);
 
-        // Add badges to each product
-        $products = $products->map(function ($item) {
-            $badges = $this->productBadgeService()->getProductBadges($item['product'], (int) $this->period);
+        $allBadges = $this->productBadgeService()->getBulkProductBadges(
+            $products->pluck('product'),
+            (int) $this->period
+        );
+
+        $products = $products->map(function ($item) use ($allBadges) {
+            $badges = $allBadges[$item['product']->sku] ?? collect();
             $item['badges'] = $badges->map(fn ($badge) => $badge->toArray());
 
             return $item;
@@ -239,9 +237,14 @@ final class ProductsTable extends Component
 
         $searchResults = $searchService->search($criteria);
 
-        $products = $searchResults->map(function ($product) {
+        $allBadges = $this->productBadgeService()->getBulkProductBadges(
+            $searchResults,
+            (int) $this->period
+        );
+
+        $products = $searchResults->map(function ($product) use ($allBadges) {
             $analytics = $product->getProfitAnalysis();
-            $badges = $this->productBadgeService()->getProductBadges($product, (int) $this->period);
+            $badges = $allBadges[$product->sku] ?? collect();
 
             return array_merge($analytics, [
                 'product' => $product,

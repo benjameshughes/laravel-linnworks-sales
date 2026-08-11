@@ -8,7 +8,7 @@
                         {{ $index + 1 }}
                     </div>
                     <div>
-                        <div class="font-medium text-zinc-900 dark:text-zinc-100 text-sm">{{ Str::limit($product->get('title'), 25) }}</div>
+                        <div class="font-medium text-zinc-900 dark:text-zinc-100 text-sm">{{ $product->get('title') }}</div>
                         <div class="text-xs text-zinc-500">{{ $product->get('sku') }}</div>
                     </div>
                 </div>

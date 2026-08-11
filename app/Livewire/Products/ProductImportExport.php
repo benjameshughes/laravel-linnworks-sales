@@ -24,8 +24,6 @@ final class ProductImportExport extends Component
 
     public bool $showResults = false;
 
-    public int $imported = 0;
-
     public int $updated = 0;
 
     public int $skipped = 0;
@@ -257,7 +255,6 @@ final class ProductImportExport extends Component
     public function resetImportState(): void
     {
         $this->showResults = false;
-        $this->imported = 0;
         $this->updated = 0;
         $this->skipped = 0;
         $this->importErrors = [];

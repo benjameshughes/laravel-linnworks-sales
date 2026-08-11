@@ -53,12 +53,16 @@ final class ProductRepository
             ->groupBy(fn ($product) => $product->category_name ?: 'Uncategorized');
     }
 
-    public function getProductSalesData(string $sku): array
+    public function getProductSalesData(string $sku, ?int $period = null): array
     {
-        // Use the normalized order_items table for better performance
-        $items = OrderItem::where('sku', $sku)
-            ->whereHas('order')
-            ->get();
+        $query = OrderItem::where('sku', $sku)
+            ->whereHas('order', function ($q) use ($period) {
+                if ($period !== null) {
+                    $q->whereBetween('received_at', [Carbon::now()->subDays($period), Carbon::now()]);
+                }
+            });
+
+        $items = $query->get();
 
         if ($items->isEmpty()) {
             return [
@@ -85,12 +89,15 @@ final class ProductRepository
         ];
     }
 
-    public function getProductChannelPerformance(string $sku): SupportCollection
+    public function getProductChannelPerformance(string $sku, ?int $period = null): SupportCollection
     {
-        // Use the normalized order_items table with eager loading
         $items = OrderItem::where('sku', $sku)
             ->with('order:id,source')
-            ->whereHas('order')
+            ->whereHas('order', function ($q) use ($period) {
+                if ($period !== null) {
+                    $q->whereBetween('received_at', [Carbon::now()->subDays($period), Carbon::now()]);
+                }
+            })
             ->get();
 
         return $items->groupBy('order.source')
@@ -139,18 +146,22 @@ final class ProductRepository
             });
     }
 
-    public function getCategorySalesData(): SupportCollection
+    public function getCategorySalesData(?int $period = null): SupportCollection
     {
-        // Use the normalized order_items table with proper aggregation
-        $categoryData = OrderItem::query()
+        $query = OrderItem::query()
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->leftJoin('products', 'order_items.sku', '=', 'products.sku')
-            ->select(
-                DB::raw('COALESCE(order_items.category_name, products.category_name, "Uncategorized") as category'),
-                DB::raw('COUNT(DISTINCT order_items.sku) as product_count'),
-                DB::raw('SUM(order_items.quantity) as total_quantity'),
-                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue')
-            )
+            ->leftJoin('products', 'order_items.sku', '=', 'products.sku');
+
+        if ($period !== null) {
+            $query->whereBetween('orders.received_at', [Carbon::now()->subDays($period), Carbon::now()]);
+        }
+
+        $categoryData = $query->select(
+            DB::raw('COALESCE(order_items.category_name, products.category_name, "Uncategorized") as category'),
+            DB::raw('COUNT(DISTINCT order_items.sku) as product_count'),
+            DB::raw('SUM(order_items.quantity) as total_quantity'),
+            DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue')
+        )
             ->groupByRaw('COALESCE(order_items.category_name, products.category_name, "Uncategorized")')
             ->orderByDesc('total_revenue')
             ->limit(10)
@@ -197,22 +208,26 @@ final class ProductRepository
         return $query->get();
     }
 
-    public function getBulkProductSalesData(array $skus): SupportCollection
+    public function getBulkProductSalesData(array $skus, ?int $period = null): SupportCollection
     {
         if (empty($skus)) {
             return collect();
         }
 
-        // Use the normalized order_items table for bulk operations
-        $salesData = OrderItem::whereIn('sku', $skus)
-            ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->select(
-                'order_items.sku',
-                DB::raw('SUM(order_items.quantity) as total_sold'),
-                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue'),
-                DB::raw('AVG(NULLIF(order_items.price_per_unit, 0)) as avg_selling_price'),
-                DB::raw('COUNT(DISTINCT order_items.order_id) as order_count')
-            )
+        $query = OrderItem::whereIn('sku', $skus)
+            ->join('orders', 'order_items.order_id', '=', 'orders.id');
+
+        if ($period !== null) {
+            $query->whereBetween('orders.received_at', [Carbon::now()->subDays($period), Carbon::now()]);
+        }
+
+        $salesData = $query->select(
+            'order_items.sku',
+            DB::raw('SUM(order_items.quantity) as total_sold'),
+            DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue'),
+            DB::raw('AVG(NULLIF(order_items.price_per_unit, 0)) as avg_selling_price'),
+            DB::raw('COUNT(DISTINCT order_items.order_id) as order_count')
+        )
             ->groupBy('order_items.sku')
             ->get()
             ->keyBy('sku');
@@ -257,6 +272,152 @@ final class ProductRepository
         }
 
         return $query->distinct('sku')->count('sku');
+    }
+
+    public function getOutOfStockProducts(int $limit = 20): Collection
+    {
+        return Product::query()
+            ->where('is_active', true)
+            ->where('stock_available', '<=', 0)
+            ->select(['id', 'sku', 'title', 'stock_available', 'stock_minimum', 'category_name'])
+            ->limit($limit)
+            ->get();
+    }
+
+    public function getCategories(): SupportCollection
+    {
+        return Product::query()
+            ->where('is_active', true)
+            ->whereNotNull('category_name')
+            ->distinct()
+            ->pluck('category_name')
+            ->filter();
+    }
+
+    public function getProductSalesAggregation(Carbon $start, Carbon $end, int $limit = 10): SupportCollection
+    {
+        return DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->leftJoin('products', 'order_items.sku', '=', 'products.sku')
+            ->whereBetween('orders.received_at', [$start, $end])
+            ->select(
+                'order_items.sku',
+                DB::raw('COALESCE(products.title, order_items.item_title, "Unknown Product") as title'),
+                DB::raw('products.purchase_price'),
+                DB::raw('SUM(order_items.quantity) as total_quantity'),
+                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue'),
+                DB::raw('SUM(order_items.unit_cost * order_items.quantity) as total_cost'),
+                DB::raw('COUNT(DISTINCT order_items.order_id) as order_count')
+            )
+            ->whereNotNull('order_items.sku')
+            ->groupBy('order_items.sku', 'products.title', 'order_items.item_title', 'products.purchase_price')
+            ->orderByDesc('total_quantity')
+            ->limit($limit)
+            ->get();
+    }
+
+    public function getCategoryPerformance(Carbon $start, Carbon $end): SupportCollection
+    {
+        return DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->leftJoin('products', 'order_items.sku', '=', 'products.sku')
+            ->whereBetween('orders.received_at', [$start, $end])
+            ->select(
+                DB::raw('COALESCE(order_items.category_name, products.category_name, "Uncategorized") as category'),
+                DB::raw('COUNT(DISTINCT order_items.sku) as product_count'),
+                DB::raw('SUM(order_items.quantity) as total_quantity'),
+                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue')
+            )
+            ->groupByRaw('COALESCE(order_items.category_name, products.category_name, "Uncategorized")')
+            ->orderByDesc('total_revenue')
+            ->get();
+    }
+
+    public function getProductPerformance(string $sku, Carbon $start, Carbon $end): ?object
+    {
+        return DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->leftJoin('products', 'order_items.sku', '=', 'products.sku')
+            ->where('order_items.sku', $sku)
+            ->whereBetween('orders.received_at', [$start, $end])
+            ->select(
+                'order_items.sku',
+                DB::raw('COALESCE(products.title, order_items.item_title, "Unknown Product") as title'),
+                DB::raw('products.purchase_price'),
+                DB::raw('products.retail_price'),
+                DB::raw('SUM(order_items.quantity) as total_quantity'),
+                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue'),
+                DB::raw('SUM(order_items.unit_cost * order_items.quantity) as total_cost'),
+                DB::raw('COUNT(DISTINCT order_items.order_id) as order_count'),
+                DB::raw('AVG(order_items.price_per_unit) as avg_selling_price')
+            )
+            ->groupBy('order_items.sku', 'products.title', 'order_items.item_title', 'products.purchase_price', 'products.retail_price')
+            ->first();
+    }
+
+    public function getProductDailySalesRange(string $sku, Carbon $start, Carbon $end): SupportCollection
+    {
+        return DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->where('order_items.sku', $sku)
+            ->whereBetween('orders.received_at', [$start, $end])
+            ->select(
+                DB::raw('DATE(orders.received_at) as date'),
+                DB::raw('SUM(order_items.quantity) as quantity'),
+                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as revenue')
+            )
+            ->groupByRaw('DATE(orders.received_at)')
+            ->orderBy('date')
+            ->get();
+    }
+
+    public function getProductChannelBreakdown(string $sku, Carbon $start, Carbon $end): SupportCollection
+    {
+        return DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->where('order_items.sku', $sku)
+            ->whereBetween('orders.received_at', [$start, $end])
+            ->select(
+                'orders.source as channel',
+                DB::raw('SUM(order_items.quantity) as quantity'),
+                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as revenue'),
+                DB::raw('COUNT(DISTINCT order_items.order_id) as order_count')
+            )
+            ->groupBy('orders.source')
+            ->orderByDesc('revenue')
+            ->get();
+    }
+
+    public function getProductsWithMargins(Carbon $start, Carbon $end, int $limit = 50): SupportCollection
+    {
+        return DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->leftJoin('products', 'order_items.sku', '=', 'products.sku')
+            ->whereBetween('orders.received_at', [$start, $end])
+            ->whereNotNull('products.purchase_price')
+            ->where('products.purchase_price', '>', 0)
+            ->select(
+                'order_items.sku',
+                DB::raw('COALESCE(products.title, order_items.item_title, "Unknown Product") as title'),
+                DB::raw('products.purchase_price'),
+                DB::raw('SUM(order_items.quantity) as total_quantity'),
+                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) as total_revenue'),
+                DB::raw('SUM(products.purchase_price * order_items.quantity) as total_cost'),
+                DB::raw('SUM(CASE WHEN order_items.line_total > 0 THEN order_items.line_total ELSE order_items.quantity * order_items.price_per_unit END) - SUM(products.purchase_price * order_items.quantity) as total_profit')
+            )
+            ->groupBy('order_items.sku', 'products.title', 'order_items.item_title', 'products.purchase_price')
+            ->orderByDesc('total_profit')
+            ->limit($limit)
+            ->get()
+            ->map(function ($row) {
+                $margin = $row->total_revenue > 0
+                    ? (($row->total_revenue - $row->total_cost) / $row->total_revenue) * 100
+                    : 0;
+
+                return (object) array_merge((array) $row, [
+                    'margin_percentage' => round($margin, 2),
+                ]);
+            });
     }
 
     private function calculateItemRevenue(OrderItem $item): float

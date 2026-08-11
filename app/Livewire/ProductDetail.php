@@ -166,6 +166,7 @@ final class ProductDetail extends Component
             'total_profit' => $totalProfit,
             'profit_margin' => $performance->get('margin_percentage') ?? 0,
             'total_sold' => $totalQuantity,
+            'order_count' => (int) $performance->get('order_count', 0),
             'avg_selling_price' => (float) $performance->get('avg_selling_price', 0),
             'avg_unit_cost' => $totalQuantity > 0 ? $totalCost / $totalQuantity : 0,
         ];
@@ -210,7 +211,7 @@ final class ProductDetail extends Component
     public function stockInfo(): array
     {
         return [
-            'current_stock' => $this->product->stock_level ?? 0,
+            'current_stock' => $this->product->stock_available ?? 0,
             'minimum_stock' => $this->product->stock_minimum ?? 0,
             'stock_status' => $this->getStockStatus(),
             'last_updated' => $this->product->updated_at?->format('M j, Y g:i A') ?? 'Never',
@@ -219,7 +220,6 @@ final class ProductDetail extends Component
 
     public function updatedPeriod(): void
     {
-        // Clear cached computed properties when period changes
         unset($this->performance, $this->salesTrend, $this->channelPerformance, $this->profitAnalysis, $this->recentOrders);
 
         $this->dispatch('period-changed');
@@ -227,7 +227,7 @@ final class ProductDetail extends Component
 
     private function getStockStatus(): string
     {
-        $currentStock = $this->product->stock_level ?? 0;
+        $currentStock = $this->product->stock_available ?? 0;
         $minimumStock = $this->product->stock_minimum ?? 0;
 
         if ($currentStock <= 0) {

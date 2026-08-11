@@ -65,7 +65,7 @@
                 {{-- Revenue --}}
                 <div class="text-center p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                     <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        {{ number_format($profit['total_revenue'], 2) }}
+                        £{{ number_format($profit['total_revenue'], 2) }}
                     </div>
                     <div class="text-sm text-blue-600/80 dark:text-blue-400/80">Total Revenue</div>
                 </div>
@@ -73,7 +73,7 @@
                 {{-- Profit --}}
                 <div class="text-center p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                     <div class="text-2xl font-bold text-green-600 dark:text-green-400">
-                        {{ number_format($profit['total_profit'], 2) }}
+                        £{{ number_format($profit['total_profit'], 2) }}
                     </div>
                     <div class="text-sm text-green-600/80 dark:text-green-400/80">Total Profit</div>
                 </div>
