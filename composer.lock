@@ -4,15 +4,21 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "41cbd3fc5b17964a4000db51edae7867",
+    "content-hash": "eacbba7a08aa3df5519396ba7f31b4ef",
     "packages": [
         {
             "name": "benhughes/linnworks-api",
             "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:benjameshughes/linnworks-api.git",
+                "reference": "c8496d7c6cb5f69b7ce413a02d7d7ebd26a9457f"
+            },
             "dist": {
-                "type": "path",
-                "url": "../linnworks-api",
-                "reference": "133d235b626931fbbc7d1e55921da070ea4dac4b"
+                "type": "zip",
+                "url": "https://api.github.com/repos/benjameshughes/linnworks-api/zipball/c8496d7c6cb5f69b7ce413a02d7d7ebd26a9457f",
+                "reference": "c8496d7c6cb5f69b7ce413a02d7d7ebd26a9457f",
+                "shasum": ""
             },
             "require": {
                 "illuminate/http": "^11.0|^12.0",
@@ -23,6 +29,7 @@
                 "orchestra/testbench": "^9.0|^10.0",
                 "pestphp/pest": "^3.0"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "laravel": {
@@ -54,10 +61,11 @@
                 }
             ],
             "description": "Laravel package for the Linnworks API",
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/benjameshughes/linnworks-api/tree/main",
+                "issues": "https://github.com/benjameshughes/linnworks-api/issues"
+            },
+            "time": "2026-08-10T10:24:35+00:00"
         },
         {
             "name": "brick/math",
