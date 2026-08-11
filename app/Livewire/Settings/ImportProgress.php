@@ -28,7 +28,7 @@ final class ImportProgress extends Component
     public function mount(): void
     {
         $this->dateRange = new DateRange(
-            now()->subDays(730),
+            now()->subDays(30),
             now()
         );
     }

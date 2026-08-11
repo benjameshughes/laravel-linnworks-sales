@@ -47,8 +47,6 @@ final class SyncHistoricalOrdersJob implements ShouldBeUnique, ShouldQueue
 
     private const GC_EVERY_BATCHES = 10;
 
-    public readonly int $tries;
-
     public readonly int $timeout;
 
     public readonly int $uniqueFor;
@@ -58,10 +56,14 @@ final class SyncHistoricalOrdersJob implements ShouldBeUnique, ShouldQueue
         public readonly Carbon $toDate,
         public readonly ?string $startedBy = null,
     ) {
-        $this->tries = 1;
-        $this->timeout = 0; // No timeout - historical imports can take hours
+        $this->timeout = 0;
         $this->uniqueFor = self::UNIQUE_LOCK_SECONDS;
-        $this->onQueue('low'); // Don't block recent syncs
+        $this->onQueue('low');
+    }
+
+    public function retryUntil(): \DateTimeInterface
+    {
+        return now()->addHours(24);
     }
 
     /**

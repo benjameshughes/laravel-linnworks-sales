@@ -65,17 +65,21 @@ final class SyncRecentOrdersJob implements ShouldBeUnique, ShouldQueue
 
     public readonly int $uniqueFor;
 
-    public readonly int $tries;
-
     public readonly int $timeout;
+
+    public array $backoff = [30, 60, 120];
 
     public function __construct(
         public readonly ?string $startedBy = null,
     ) {
-        $this->uniqueFor = 3600; // 1 hour
-        $this->tries = 1;
-        $this->timeout = 1800; // 30 minutes
+        $this->uniqueFor = 3600;
+        $this->timeout = 1800;
         $this->onQueue('high');
+    }
+
+    public function retryUntil(): \DateTimeInterface
+    {
+        return now()->addMinutes(55);
     }
 
     public function uniqueId(): string

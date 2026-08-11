@@ -31,6 +31,13 @@ it('holds the unique lock long enough for a multi-hour import', function () {
     expect(historicalJob()->uniqueFor)->toBeGreaterThanOrEqual(3600);
 });
 
+it('uses retryUntil instead of tries so Redis reservation expiry cannot kill it', function () {
+    $job = historicalJob();
+
+    expect($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class)
+        ->and($job->retryUntil()->getTimestamp())->toBeGreaterThan(now()->addHours(12)->getTimestamp());
+});
+
 it('runs on the low queue so it cannot block recent syncs', function () {
     expect(historicalJob()->queue)->toBe('low');
 });
