@@ -143,6 +143,112 @@
                 </div>
             </x-animations.fade-in-up>
 
+            {{-- Product Cache Status Section --}}
+            <x-animations.fade-in-up :delay="125" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                        <flux:icon.cube class="size-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div class="flex-1">
+                        <flux:heading size="lg">Product Cache Status</flux:heading>
+                        <flux:subheading>Product analytics and profitability cache</flux:subheading>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    @foreach(array_keys($this->productCacheStatus) as $period)
+                        @php
+                            $pStatus = $this->productCacheStatus[$period] ?? ['exists' => false];
+                            $pBgClass = $pStatus['exists']
+                                ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
+                                : 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800';
+                            $pTextClass = $pStatus['exists']
+                                ? 'text-green-900 dark:text-green-100'
+                                : 'text-blue-900 dark:text-blue-100';
+                            $pIcon = $pStatus['exists'] ? 'check-circle' : 'snowflake';
+                            $pIconClass = $pStatus['exists']
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-blue-400 dark:text-blue-500';
+                        @endphp
+
+                        <div class="relative p-4 rounded-lg border transition-all duration-500 {{ $pBgClass }}">
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <div class="flex items-center gap-2">
+                                    <flux:icon :name="$pIcon" class="size-5 {{ $pIconClass }}" />
+                                    <span class="font-semibold text-sm {{ $pTextClass }}">{{ $period }}</span>
+                                </div>
+                                @if(!$pStatus['exists'])
+                                    <span class="text-xs {{ $pTextClass }}">Cold</span>
+                                @endif
+                            </div>
+
+                            @if($pStatus['exists'])
+                                <div class="space-y-1.5 text-xs">
+                                    <div class="flex justify-between">
+                                        <span class="text-zinc-600 dark:text-zinc-400">Products:</span>
+                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ number_format($pStatus['products']) }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-zinc-600 dark:text-zinc-400">Revenue:</span>
+                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($pStatus['revenue'], 2) }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-zinc-600 dark:text-zinc-400">Categories:</span>
+                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $pStatus['categories'] }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-zinc-600 dark:text-zinc-400">Stock Alerts:</span>
+                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $pStatus['stock_alerts'] }}</span>
+                                    </div>
+                                    @if($pStatus['warmed_at'])
+                                        <div class="pt-1 mt-2 border-t border-green-200 dark:border-green-800">
+                                            <span class="text-zinc-500 dark:text-zinc-400">{{ \Carbon\Carbon::parse($pStatus['warmed_at'])->diffForHumans() }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+
+                <div>
+                    <flux:button
+                        wire:click="warmProductCache"
+                        variant="primary"
+                        size="sm"
+                        icon="fire"
+                    >
+                        Warm Product Cache
+                    </flux:button>
+                </div>
+
+                {{-- Product Batch Progress --}}
+                @if($this->productBatch && !$this->productBatch['finished'])
+                    <div class="p-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800/50 rounded-lg space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-purple-900 dark:text-purple-100">
+                                <flux:icon.fire class="size-4 inline animate-pulse" /> Warming Product Cache
+                            </span>
+                            <span class="text-sm text-purple-600 dark:text-purple-400">
+                                {{ $this->productBatch['processed_jobs'] }} / {{ $this->productBatch['total_jobs'] }} periods
+                            </span>
+                        </div>
+                        <div class="w-full bg-purple-200 dark:bg-purple-800 rounded-full h-2">
+                            <div class="bg-purple-600 dark:bg-purple-400 h-2 rounded-full transition-all duration-500 animate-pulse"
+                                 style="width: {{ $this->productBatch['progress'] }}%"></div>
+                        </div>
+                    </div>
+                @elseif($this->productBatch && $this->productBatch['finished'])
+                    <div class="p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/50 rounded-lg">
+                        <div class="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
+                            <flux:icon.check-circle class="size-4" />
+                            Last warmed in {{ \Carbon\Carbon::parse($this->productBatch['created_at'])->diffInSeconds(\Carbon\Carbon::parse($this->productBatch['finished_at'])) }}s
+                            ({{ \Carbon\Carbon::parse($this->productBatch['finished_at'])->diffForHumans() }})
+                        </div>
+                    </div>
+                @endif
+            </x-animations.fade-in-up>
+
             {{-- Batch Progress Section --}}
             @if($this->activeBatch)
                 <x-animations.fade-in-up

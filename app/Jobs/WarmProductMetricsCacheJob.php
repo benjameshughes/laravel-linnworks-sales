@@ -8,6 +8,7 @@ use App\Models\Product;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use App\Queries\ProductQueries;
+use App\Events\CachePeriodWarmed;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Queries\ProfitabilityQueries;
@@ -132,6 +133,13 @@ final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
             $topProducts->take(self::BADGE_PREWARM_LIMIT)->pluck('product'),
             $periodInt
         );
+
+        event(new CachePeriodWarmed(
+            period: "{$this->period}d",
+            orders: $topProducts->count(),
+            revenue: $topProducts->sum('total_revenue'),
+            items: $topProducts->sum('total_sold'),
+        ));
 
         Log::debug('Product cache warmed successfully', [
             'cache_key' => $cacheKey,

@@ -76,6 +76,54 @@ final class CacheManagement extends Component
     }
 
     #[Computed]
+    public function productCacheStatus(): array
+    {
+        $periods = \App\Enums\Period::cacheable();
+        $status = [];
+
+        foreach ($periods as $period) {
+            $cached = Cache::get("product_metrics_{$period->value}d");
+
+            $status["{$period->value}d"] = [
+                'exists' => $cached !== null,
+                'warmed_at' => $cached['warmed_at'] ?? null,
+                'products' => isset($cached['top_products']) ? count($cached['top_products']) : 0,
+                'revenue' => collect($cached['top_products'] ?? [])->sum('total_revenue'),
+                'categories' => isset($cached['categories']) ? count($cached['categories']) : 0,
+                'stock_alerts' => isset($cached['stock_alerts']) ? count($cached['stock_alerts']) : 0,
+            ];
+        }
+
+        return $status;
+    }
+
+    #[Computed]
+    public function productBatch(): ?array
+    {
+        $batch = DB::table('job_batches')
+            ->where('name', 'warm-product-cache')
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (! $batch) {
+            return null;
+        }
+
+        return [
+            'total_jobs' => $batch->total_jobs,
+            'pending_jobs' => $batch->pending_jobs,
+            'failed_jobs' => $batch->failed_jobs,
+            'processed_jobs' => $batch->total_jobs - $batch->pending_jobs,
+            'progress' => $batch->total_jobs > 0
+                ? round((($batch->total_jobs - $batch->pending_jobs) / $batch->total_jobs) * 100)
+                : 0,
+            'finished' => $batch->finished_at !== null,
+            'created_at' => $batch->created_at,
+            'finished_at' => $batch->finished_at,
+        ];
+    }
+
+    #[Computed]
     public function queuedJobs(): int
     {
         return DB::table('jobs')->where('queue', 'low')->count();
@@ -139,10 +187,33 @@ final class CacheManagement extends Component
         $this->isWarming = true;
         $this->currentlyWarmingPeriod = null;
 
-        // Dispatch the OrdersSynced event to trigger cache warming
         OrdersSynced::dispatch(0, 'manual_warm');
 
         $this->dispatch('cache-warming-triggered');
+    }
+
+    public function warmProductCache(): void
+    {
+        $periods = \App\Enums\Period::cacheable();
+
+        $jobs = collect($periods)->map(
+            fn (\App\Enums\Period $period) => new \App\Jobs\WarmProductMetricsCacheJob($period->value)
+        );
+
+        \Illuminate\Support\Facades\Bus::batch($jobs->all())
+            ->onQueue('low')
+            ->name('warm-product-cache')
+            ->then(function () {
+                event(new \App\Events\CacheWarmingCompleted(count(\App\Enums\Period::cacheable())));
+            })
+            ->dispatch();
+
+        event(new \App\Events\CacheWarmingStarted(
+            collect($periods)->map(fn ($p) => "{$p->value}d")->toArray()
+        ));
+
+        unset($this->productBatch);
+        unset($this->productCacheStatus);
     }
 
     public function clearCache(): void
@@ -182,9 +253,10 @@ final class CacheManagement extends Component
         // Period finished warming - clear the currently warming state
         $this->currentlyWarmingPeriod = null;
 
-        // Refresh cache status to pick up the newly written cache
         unset($this->cacheStatus);
+        unset($this->productCacheStatus);
         unset($this->activeBatch);
+        unset($this->productBatch);
         unset($this->recentCacheWarming);
 
         // Force Livewire to re-render to show updated cache status
@@ -197,12 +269,12 @@ final class CacheManagement extends Component
         $this->isWarming = false;
         $this->currentlyWarmingPeriod = null;
 
-        // Refresh all computed properties
         unset($this->cacheStatus);
+        unset($this->productCacheStatus);
         unset($this->activeBatch);
+        unset($this->productBatch);
         unset($this->recentCacheWarming);
 
-        // Force Livewire to re-render the component
         $this->dispatch('$refresh');
     }
 
