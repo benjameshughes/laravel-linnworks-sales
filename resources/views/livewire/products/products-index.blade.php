@@ -23,11 +23,19 @@
             </div>
         </div>
 
-        {{-- Parent Performance - lazy loaded --}}
-        <livewire:products.parent-performance lazy />
+        {{-- Parent Performance Drawer --}}
+        <flux:modal.trigger name="parent-performance">
+            <flux:button variant="ghost" icon="squares-2x2" size="sm">Product Ranges</flux:button>
+        </flux:modal.trigger>
 
-        {{-- Product Quick View Panel --}}
-        <livewire:products.product-quick-view />
+        <flux:modal name="parent-performance" variant="flyout" class="md:min-w-[40rem]">
+            <livewire:products.parent-performance lazy />
+        </flux:modal>
+
+        {{-- Product Quick View Flyout --}}
+        <flux:modal name="product-quick-view" variant="flyout" class="md:min-w-[40rem]">
+            <livewire:products.product-quick-view />
+        </flux:modal>
 
         {{-- Footer --}}
         <div class="flex justify-end items-center">

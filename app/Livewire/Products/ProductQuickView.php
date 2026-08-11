@@ -33,6 +33,8 @@ final class ProductQuickView extends Component
 
         unset($this->productDetails);
         unset($this->productSalesChart);
+
+        $this->dispatch('modal-show', name: 'product-quick-view');
     }
 
     #[On('product-selection-cleared')]
@@ -40,6 +42,8 @@ final class ProductQuickView extends Component
     {
         $this->selectedProduct = null;
         $this->showChart = false;
+
+        $this->dispatch('modal-close', name: 'product-quick-view');
     }
 
     #[On('products-filters-updated')]
@@ -152,6 +156,30 @@ final class ProductQuickView extends Component
         }
 
         return $salesData;
+    }
+
+    #[Computed]
+    public function product(): ?\App\Models\Product
+    {
+        return $this->productDetails['product'] ?? null;
+    }
+
+    #[Computed]
+    public function profit(): array
+    {
+        return $this->productDetails['profit_analysis'] ?? [];
+    }
+
+    #[Computed]
+    public function channels(): Collection
+    {
+        return collect($this->productDetails['channel_performance'] ?? []);
+    }
+
+    #[Computed]
+    public function stock(): array
+    {
+        return $this->productDetails['stock_info'] ?? [];
     }
 
     public function render(): View
