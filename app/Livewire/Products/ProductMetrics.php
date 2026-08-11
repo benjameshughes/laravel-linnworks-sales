@@ -6,39 +6,14 @@ namespace App\Livewire\Products;
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use App\Queries\ProductQueries;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
 use Illuminate\Contracts\View\View;
-use App\Services\ProductAnalyticsService;
+use Illuminate\Support\Facades\Cache;
 
-/**
- * Product Metrics Island
- *
- * Displays 4 KPI cards: Products Analyzed, Units Sold, Revenue, Avg Profit Margin.
- * Listens for 'products-filters-updated' event to refresh data.
- */
 final class ProductMetrics extends Component
 {
-    private ?ProductAnalyticsService $productAnalyticsService = null;
-
-    /**
-     * Livewire cannot inject through the constructor, so dependencies are
-     * resolved here - boot() runs on every request, mount and hydrate alike.
-     */
-    public function boot(ProductAnalyticsService $productAnalyticsService): void
-    {
-        $this->productAnalyticsService = $productAnalyticsService;
-    }
-
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
-    private function productAnalyticsService(): ProductAnalyticsService
-    {
-        return $this->productAnalyticsService ??= app(ProductAnalyticsService::class);
-    }
-
     public string $period = '30';
 
     public ?string $search = null;
@@ -65,18 +40,53 @@ final class ProductMetrics extends Component
         $this->search = $search ?: null;
         $this->selectedCategory = $selectedCategory;
 
-        // Clear cached computed properties
         unset($this->metrics);
     }
 
     #[Computed]
     public function metrics(): Collection
     {
-        return collect($this->productAnalyticsService()->getMetrics(
-            period: (int) $this->period,
-            search: $this->search,
-            category: $this->selectedCategory
-        ));
+        if ($this->search !== null || $this->selectedCategory !== null) {
+            return collect($this->filteredMetrics());
+        }
+
+        $cached = Cache::get("product_metrics_{$this->period}d");
+
+        if ($cached && isset($cached['metrics'])) {
+            return collect($cached['metrics']);
+        }
+
+        return collect([
+            'total_products' => 0,
+            'total_units_sold' => 0,
+            'total_revenue' => 0,
+            'avg_profit_margin' => 0,
+            'top_performing_sku' => null,
+            'categories_count' => 0,
+            'low_stock_count' => 0,
+        ]);
+    }
+
+    private function filteredMetrics(): array
+    {
+        $queries = app(ProductQueries::class);
+        $periodInt = (int) $this->period;
+
+        $products = $queries->activeProducts($this->search, $this->selectedCategory, 5000);
+        $skus = $products->pluck('sku')->toArray();
+        $salesData = $queries->bulkSalesData($skus, $periodInt);
+
+        $withSales = collect($skus)->filter(fn (string $sku) => ($salesData->get($sku)['total_sold'] ?? 0) > 0);
+
+        return [
+            'total_products' => $queries->countWithSales($periodInt, $this->search, $this->selectedCategory),
+            'total_units_sold' => $withSales->sum(fn (string $sku) => $salesData->get($sku)['total_sold']),
+            'total_revenue' => $withSales->sum(fn (string $sku) => $salesData->get($sku)['total_revenue']),
+            'avg_profit_margin' => 0,
+            'top_performing_sku' => null,
+            'categories_count' => 0,
+            'low_stock_count' => 0,
+        ];
     }
 
     public function render(): View
@@ -84,9 +94,6 @@ final class ProductMetrics extends Component
         return view('livewire.products.product-metrics');
     }
 
-    /**
-     * Skeleton loader shown while lazy loading
-     */
     public function placeholder(array $params = []): \Illuminate\Contracts\View\View
     {
         return view('livewire.placeholders.product-metrics', $params);

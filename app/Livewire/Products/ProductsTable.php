@@ -12,23 +12,16 @@ use Illuminate\Support\Collection;
 use Illuminate\Contracts\View\View;
 use App\ValueObjects\SearchCriteria;
 use App\Services\ProductBadgeService;
+use Illuminate\Support\Facades\Cache;
 use App\Services\ProductFilterService;
 use App\Services\ProductSearchService;
-use App\Services\ProductAnalyticsService;
 
 /**
- * Products Table Island
- *
- * Main product listing with sorting and pagination.
- * Listens for 'products-filters-updated' event to refresh data.
- *
  * @property-read Collection $topSellingProducts
  */
 final class ProductsTable extends Component
 {
     private const TOP_PRODUCTS_LIMIT = 20;
-
-    private ?ProductAnalyticsService $productAnalyticsService = null;
 
     private ?ProductBadgeService $productBadgeService = null;
 
@@ -36,49 +29,23 @@ final class ProductsTable extends Component
 
     private ?ProductSearchService $productSearchService = null;
 
-    /**
-     * Livewire cannot inject through the constructor, so dependencies are
-     * resolved here - boot() runs on every request, mount and hydrate alike.
-     */
-    public function boot(ProductAnalyticsService $productAnalyticsService, ProductBadgeService $productBadgeService, ProductFilterService $productFilterService, ProductSearchService $productSearchService): void
+    public function boot(ProductBadgeService $productBadgeService, ProductFilterService $productFilterService, ProductSearchService $productSearchService): void
     {
-        $this->productAnalyticsService = $productAnalyticsService;
         $this->productBadgeService = $productBadgeService;
         $this->productFilterService = $productFilterService;
         $this->productSearchService = $productSearchService;
     }
 
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
-    private function productAnalyticsService(): ProductAnalyticsService
-    {
-        return $this->productAnalyticsService ??= app(ProductAnalyticsService::class);
-    }
-
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
     private function productBadgeService(): ProductBadgeService
     {
         return $this->productBadgeService ??= app(ProductBadgeService::class);
     }
 
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
     private function productFilterService(): ProductFilterService
     {
         return $this->productFilterService ??= app(ProductFilterService::class);
     }
 
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
     private function productSearchService(): ProductSearchService
     {
         return $this->productSearchService ??= app(ProductSearchService::class);
@@ -132,7 +99,6 @@ final class ProductsTable extends Component
         $this->exactMatch = $exactMatch;
         $this->fuzzySearch = $fuzzySearch;
 
-        // Clear cached computed properties
         unset($this->topSellingProducts);
         unset($this->products);
     }
@@ -145,7 +111,6 @@ final class ProductsTable extends Component
             $this->sortBy = $column;
             $this->sortDirection = 'desc';
         }
-
     }
 
     public function selectProduct(string $sku): void
@@ -163,24 +128,23 @@ final class ProductsTable extends Component
     #[Computed]
     public function topSellingProducts(): Collection
     {
-        // Use enhanced search if there's a search query
         if (! empty($this->search)) {
             return $this->performEnhancedSearch();
         }
 
-        $products = $this->productAnalyticsService()->getTopSellingProducts(
-            period: (int) $this->period,
-            search: null,
-            category: $this->selectedCategory,
-            limit: 100
-        );
+        $cached = Cache::get("product_metrics_{$this->period}d");
+        $products = $cached && isset($cached['top_products'])
+            ? collect($cached['top_products'])
+            : collect();
 
-        // Filter products based on sales if needed
+        if ($products->isEmpty()) {
+            return collect();
+        }
+
         if ($this->showOnlyWithSales) {
             $products = $products->filter(fn ($item) => $item['total_sold'] > 0);
         }
 
-        // Apply custom filters
         $products = $this->applyFilters($products);
 
         $allBadges = $this->productBadgeService()->getBulkProductBadges(
@@ -195,19 +159,7 @@ final class ProductsTable extends Component
             return $item;
         });
 
-        // Apply sorting based on UI selection
-        return $products->sortBy(function ($item) {
-            return match ($this->sortBy) {
-                'quantity' => $item['total_sold'],
-                'revenue' => $item['total_revenue'],
-                'profit' => $item['total_profit'],
-                'margin' => $item['profit_margin_percent'],
-                'price' => $item['avg_selling_price'],
-                'name' => $item['product']->title,
-                default => $item['total_revenue'],
-            };
-        }, SORT_REGULAR, $this->sortDirection === 'desc')
-            ->values();
+        return $this->sortProducts($products);
     }
 
     private function performEnhancedSearch(): Collection
@@ -215,8 +167,6 @@ final class ProductsTable extends Component
         $searchService = $this->productSearchService();
         $searchType = SearchType::tryFrom($this->searchType) ?? SearchType::COMBINED;
 
-        // Only pass actual database column filters to SearchCriteria
-        // UI filters (profit-margin, sales-velocity, etc.) are applied post-search via applyFilters()
         $dbFilters = [];
         if ($this->selectedCategory) {
             $dbFilters['category_name'] = $this->selectedCategory;
@@ -229,10 +179,10 @@ final class ProductsTable extends Component
             exactMatch: $this->exactMatch,
             limit: 100,
             filters: $dbFilters,
-            sortBy: null, // Sort after filtering
+            sortBy: null,
             sortDirection: $this->sortDirection,
             includeInactive: false,
-            includeOutOfStock: true, // Get all, filter later
+            includeOutOfStock: true,
         );
 
         $searchResults = $searchService->search($criteria);
@@ -252,26 +202,9 @@ final class ProductsTable extends Component
             ]);
         });
 
-        // When explicitly searching, show ALL matching products regardless of sales
-        // The user is looking for something specific - don't hide it!
-        // UI filters are still applied but sales filter is skipped for search results
-
-        // Apply UI filters (profit-margin, sales-velocity, etc.) but NOT sales filter
         $products = $this->applyFilters($products);
 
-        // Apply sorting
-        return $products->sortBy(function ($item) {
-            return match ($this->sortBy) {
-                'quantity' => $item['total_sold'],
-                'revenue' => $item['total_revenue'],
-                'profit' => $item['total_profit'],
-                'margin' => $item['profit_margin_percent'],
-                'price' => $item['avg_selling_price'],
-                'name' => $item['product']->title,
-                default => $item['total_revenue'],
-            };
-        }, SORT_REGULAR, $this->sortDirection === 'desc')
-            ->values();
+        return $this->sortProducts($products);
     }
 
     private function applyFilters(Collection $products): Collection
@@ -280,6 +213,22 @@ final class ProductsTable extends Component
         $filterCriteria = $filterService->createFiltersFromArray($this->filters);
 
         return $filterService->applyFilters($products, $filterCriteria, (int) $this->period);
+    }
+
+    private function sortProducts(Collection $products): Collection
+    {
+        return $products->sortBy(function ($item) {
+            return match ($this->sortBy) {
+                'quantity' => $item['total_sold'],
+                'revenue' => $item['total_revenue'],
+                'profit' => $item['total_profit'],
+                'margin' => $item['profit_margin_percent'],
+                'price' => $item['avg_selling_price'],
+                'name' => $item['product']->title ?? $item['product']['title'] ?? '',
+                default => $item['total_revenue'],
+            };
+        }, SORT_REGULAR, $this->sortDirection === 'desc')
+            ->values();
     }
 
     #[Computed]
@@ -293,9 +242,6 @@ final class ProductsTable extends Component
         return view('livewire.products.products-table');
     }
 
-    /**
-     * Skeleton loader shown while lazy loading
-     */
     public function placeholder(array $params = []): \Illuminate\Contracts\View\View
     {
         return view('livewire.placeholders.products-table', $params);

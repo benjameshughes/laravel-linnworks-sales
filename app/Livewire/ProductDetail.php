@@ -9,12 +9,12 @@ use App\Enums\Channel;
 use App\Models\Product;
 use Livewire\Component;
 use Livewire\Attributes\Title;
+use App\Queries\ProductQueries;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
 use Illuminate\Contracts\View\View;
 use App\Services\ProductBadgeService;
-use App\Services\Metrics\Products\ProductService;
 
 /**
  * @property-read \Illuminate\Support\Collection|null $performance
@@ -33,34 +33,14 @@ final class ProductDetail extends Component
 
     private ?ProductBadgeService $productBadgeService = null;
 
-    private ?ProductService $productService = null;
-
-    /**
-     * Livewire cannot inject through the constructor, so dependencies are
-     * resolved here - boot() runs on every request, mount and hydrate alike.
-     */
-    public function boot(ProductBadgeService $productBadgeService, ProductService $productService): void
+    public function boot(ProductBadgeService $productBadgeService): void
     {
         $this->productBadgeService = $productBadgeService;
-        $this->productService = $productService;
     }
 
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
     private function productBadgeService(): ProductBadgeService
     {
         return $this->productBadgeService ??= app(ProductBadgeService::class);
-    }
-
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
-    private function productService(): ProductService
-    {
-        return $this->productService ??= app(ProductService::class);
     }
 
     public string $sku;
@@ -79,16 +59,46 @@ final class ProductDetail extends Component
         }
     }
 
-    /**
-     * Main performance data from ProductService - single query, all data.
-     */
     #[Computed]
     public function performance(): ?Collection
     {
-        return $this->productService()->getProductPerformance(
-            sku: $this->sku,
-            period: (string) $this->period
-        );
+        $queries = app(ProductQueries::class);
+        $start = now()->subDays($this->period);
+        $end = now();
+
+        $perf = $queries->productPerformance($this->sku, $start, $end);
+
+        if (! $perf) {
+            return null;
+        }
+
+        $dailySales = $queries->dailySales($this->sku, $start, $end);
+        $channelBreakdown = $queries->channelBreakdown($this->sku, $start, $end);
+
+        $margin = null;
+        if ($perf->purchase_price && $perf->purchase_price > 0) {
+            $avgSellingPrice = $perf->total_quantity > 0
+                ? $perf->total_revenue / $perf->total_quantity
+                : 0;
+            if ($avgSellingPrice > 0) {
+                $margin = (($avgSellingPrice - $perf->purchase_price) / $avgSellingPrice) * 100;
+            }
+        }
+
+        return collect([
+            'sku' => $perf->sku,
+            'title' => $perf->title,
+            'purchase_price' => $perf->purchase_price,
+            'retail_price' => $perf->retail_price,
+            'total_quantity' => (int) $perf->total_quantity,
+            'total_revenue' => (float) $perf->total_revenue,
+            'total_cost' => (float) $perf->total_cost,
+            'order_count' => (int) $perf->order_count,
+            'avg_selling_price' => (float) $perf->avg_selling_price,
+            'margin_percentage' => $margin ? round($margin, 2) : null,
+            'daily_sales' => $dailySales,
+            'channel_breakdown' => $channelBreakdown,
+        ]);
     }
 
     /**

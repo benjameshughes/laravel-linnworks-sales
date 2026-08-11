@@ -4,41 +4,16 @@ declare(strict_types=1);
 
 namespace App\Livewire\Products;
 
+use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\Attributes\On;
+use App\Queries\ProductQueries;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
 use Illuminate\Contracts\View\View;
-use App\Services\ProductAnalyticsService;
 
-/**
- * Product Quick View Island
- *
- * Displays detailed information about a selected product.
- * Listens for 'product-selected' and 'product-selection-cleared' events.
- */
 final class ProductQuickView extends Component
 {
-    private ?ProductAnalyticsService $productAnalyticsService = null;
-
-    /**
-     * Livewire cannot inject through the constructor, so dependencies are
-     * resolved here - boot() runs on every request, mount and hydrate alike.
-     */
-    public function boot(ProductAnalyticsService $productAnalyticsService): void
-    {
-        $this->productAnalyticsService = $productAnalyticsService;
-    }
-
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
-    private function productAnalyticsService(): ProductAnalyticsService
-    {
-        return $this->productAnalyticsService ??= app(ProductAnalyticsService::class);
-    }
-
     public ?string $selectedProduct = null;
 
     public string $period = '30';
@@ -55,7 +30,6 @@ final class ProductQuickView extends Component
     {
         $this->selectedProduct = $sku;
 
-        // Clear cached computed properties
         unset($this->productDetails);
         unset($this->productSalesChart);
     }
@@ -80,7 +54,6 @@ final class ProductQuickView extends Component
     ): void {
         $this->period = $period;
 
-        // Clear cached computed properties if product is selected
         if ($this->selectedProduct) {
             unset($this->productDetails);
             unset($this->productSalesChart);
@@ -106,7 +79,44 @@ final class ProductQuickView extends Component
             return null;
         }
 
-        return $this->productAnalyticsService()->getProductDetails($this->selectedProduct);
+        $queries = app(ProductQueries::class);
+        $product = $queries->findBySku($this->selectedProduct);
+
+        if (! $product) {
+            return null;
+        }
+
+        $periodInt = (int) $this->period;
+        $start = now()->subDays($periodInt);
+        $end = now();
+
+        $performance = $queries->productPerformance($this->selectedProduct, $start, $end);
+        $channelBreakdown = $queries->channelBreakdown($this->selectedProduct, $start, $end);
+
+        $totalCost = ($performance?->total_quantity ?? 0) * ($product->purchase_price ?? 0);
+        $totalRevenue = (float) ($performance?->total_revenue ?? 0);
+        $totalProfit = $totalRevenue - $totalCost;
+        $profitMargin = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;
+
+        return [
+            'product' => $product,
+            'profit_analysis' => [
+                'total_sold' => (int) ($performance?->total_quantity ?? 0),
+                'total_revenue' => $totalRevenue,
+                'total_cost' => $totalCost,
+                'total_profit' => $totalProfit,
+                'profit_margin_percent' => $profitMargin,
+                'avg_selling_price' => (float) ($performance?->avg_selling_price ?? 0),
+                'purchase_price' => $product->purchase_price,
+            ],
+            'channel_performance' => $channelBreakdown,
+            'stock_info' => [
+                'current_stock' => $product->stock_available ?? 0,
+                'minimum_stock' => $product->stock_minimum ?? 0,
+                'in_orders' => $product->stock_in_orders ?? 0,
+                'due_stock' => $product->stock_due ?? 0,
+            ],
+        ];
     }
 
     #[Computed]
@@ -116,10 +126,27 @@ final class ProductQuickView extends Component
             return [];
         }
 
-        return $this->productAnalyticsService()->getProductSalesChart(
-            $this->selectedProduct,
-            (int) $this->period
-        );
+        $queries = app(ProductQueries::class);
+        $periodInt = (int) $this->period;
+        $start = now()->subDays($periodInt - 1)->startOfDay();
+        $end = now();
+
+        $dailySales = $queries->dailySales($this->selectedProduct, $start, $end)->keyBy('date');
+
+        $salesData = [];
+        for ($i = $periodInt - 1; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i);
+            $dateKey = $date->format('Y-m-d');
+            $dayData = $dailySales->get($dateKey);
+
+            $salesData[] = [
+                'date' => $date->format('M j'),
+                'quantity' => $dayData ? (int) $dayData->quantity : 0,
+                'revenue' => $dayData ? (float) $dayData->revenue : 0,
+            ];
+        }
+
+        return $salesData;
     }
 
     public function render(): View

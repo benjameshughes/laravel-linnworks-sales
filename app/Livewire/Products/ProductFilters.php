@@ -15,7 +15,6 @@ use App\ValueObjects\FilterCriteria;
 use Illuminate\Support\Facades\Cache;
 use App\Services\ProductFilterService;
 use App\Services\ProductSearchService;
-use App\Services\ProductAnalyticsService;
 
 /**
  * Product Filters Component
@@ -25,30 +24,14 @@ use App\Services\ProductAnalyticsService;
  */
 final class ProductFilters extends Component
 {
-    private ?ProductAnalyticsService $productAnalyticsService = null;
-
     private ?ProductFilterService $productFilterService = null;
 
     private ?ProductSearchService $productSearchService = null;
 
-    /**
-     * Livewire cannot inject through the constructor, so dependencies are
-     * resolved here - boot() runs on every request, mount and hydrate alike.
-     */
-    public function boot(ProductAnalyticsService $productAnalyticsService, ProductFilterService $productFilterService, ProductSearchService $productSearchService): void
+    public function boot(ProductFilterService $productFilterService, ProductSearchService $productSearchService): void
     {
-        $this->productAnalyticsService = $productAnalyticsService;
         $this->productFilterService = $productFilterService;
         $this->productSearchService = $productSearchService;
-    }
-
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
-    private function productAnalyticsService(): ProductAnalyticsService
-    {
-        return $this->productAnalyticsService ??= app(ProductAnalyticsService::class);
     }
 
     /**
@@ -154,8 +137,6 @@ final class ProductFilters extends Component
 
     public function syncProducts(): void
     {
-        $this->productAnalyticsService()->invalidateCache();
-
         SyncProductsJob::dispatch(startedBy: 'products-page');
 
         session()->flash('message', 'Product sync dispatched. Data will refresh shortly.');

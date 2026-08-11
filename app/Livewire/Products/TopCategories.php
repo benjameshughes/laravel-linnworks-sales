@@ -9,36 +9,10 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
 use Illuminate\Contracts\View\View;
-use App\Services\ProductAnalyticsService;
+use Illuminate\Support\Facades\Cache;
 
-/**
- * Top Categories Island
- *
- * Displays top performing categories sidebar widget.
- * Listens for 'products-filters-updated' event to refresh data.
- */
 final class TopCategories extends Component
 {
-    private ?ProductAnalyticsService $productAnalyticsService = null;
-
-    /**
-     * Livewire cannot inject through the constructor, so dependencies are
-     * resolved here - boot() runs on every request, mount and hydrate alike.
-     */
-    public function boot(ProductAnalyticsService $productAnalyticsService): void
-    {
-        $this->productAnalyticsService = $productAnalyticsService;
-    }
-
-    /**
-     * Livewire skips boot() on the lazy-load request, so always reach the
-     * dependency through here rather than the property directly.
-     */
-    private function productAnalyticsService(): ProductAnalyticsService
-    {
-        return $this->productAnalyticsService ??= app(ProductAnalyticsService::class);
-    }
-
     public string $period = '30';
 
     public ?string $selectedCategory = null;
@@ -62,7 +36,6 @@ final class TopCategories extends Component
         $this->period = $period;
         $this->selectedCategory = $selectedCategory;
 
-        // Clear cached computed properties
         unset($this->topCategories);
     }
 
@@ -74,7 +47,13 @@ final class TopCategories extends Component
     #[Computed]
     public function topCategories(): Collection
     {
-        return $this->productAnalyticsService()->getTopCategories((int) $this->period);
+        $cached = Cache::get("product_metrics_{$this->period}d");
+
+        if ($cached && isset($cached['categories'])) {
+            return collect($cached['categories']);
+        }
+
+        return collect();
     }
 
     public function render(): View
@@ -82,9 +61,6 @@ final class TopCategories extends Component
         return view('livewire.products.top-categories');
     }
 
-    /**
-     * Skeleton loader shown while lazy loading
-     */
     public function placeholder(array $params = []): \Illuminate\Contracts\View\View
     {
         return view('livewire.placeholders.top-list', $params);

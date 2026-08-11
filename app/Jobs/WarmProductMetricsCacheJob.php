@@ -7,27 +7,17 @@ namespace App\Jobs;
 use App\Models\Product;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
+use App\Queries\ProductQueries;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Services\ProductBadgeService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
-use App\Services\ProductAnalyticsService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 
-/**
- * Job to warm product metrics cache for a specific period
- *
- * Calculates and caches:
- * - Top selling products
- * - Category analysis
- * - Product summary metrics
- * - Stock alerts
- * - Pre-warms badges for top 50 products
- */
 final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -40,25 +30,19 @@ final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
 
     public int $maxExceptions = 3;
 
-    /**
-     * Unique lock duration in seconds (5 minutes)
-     */
     public int $uniqueFor = 300;
 
     public function __construct(
         public readonly string $period
     ) {}
 
-    /**
-     * Unique ID to prevent duplicate jobs for same period
-     */
     public function uniqueId(): string
     {
         return 'warm-product-metrics-'.$this->period;
     }
 
     public function handle(
-        ProductAnalyticsService $analyticsService,
+        ProductQueries $queries,
         ProductBadgeService $badgeService
     ): void {
         if ($this->batch()?->cancelled()) {
@@ -72,21 +56,77 @@ final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
 
         $periodInt = (int) $this->period;
 
-        $metrics = $analyticsService->getMetrics($periodInt);
-        $topProducts = $analyticsService->getTopSellingProducts($periodInt, null, null, 100);
-        $categories = $analyticsService->getTopCategories($periodInt);
-        $stockAlerts = $analyticsService->getStockAlerts();
+        $products = $queries->activeProducts(limit: 5000);
+        $skus = $products->pluck('sku')->toArray();
+        $salesData = $queries->bulkSalesData($skus, $periodInt);
+
+        $topProducts = $products->map(function (Product $product) use ($salesData) {
+            $sales = $salesData->get($product->sku, [
+                'total_sold' => 0,
+                'total_revenue' => 0,
+                'avg_selling_price' => 0,
+                'order_count' => 0,
+            ]);
+
+            $totalCost = $sales['total_sold'] * ($product->purchase_price ?? 0);
+            $totalProfit = $sales['total_revenue'] - $totalCost;
+            $profitMargin = $sales['total_revenue'] > 0
+                ? ($totalProfit / $sales['total_revenue']) * 100
+                : 0;
+
+            return [
+                'product' => $product,
+                'total_sold' => $sales['total_sold'],
+                'total_revenue' => $sales['total_revenue'],
+                'total_profit' => $totalProfit,
+                'profit_margin_percent' => $profitMargin,
+                'avg_selling_price' => $sales['avg_selling_price'],
+                'purchase_price' => $product->purchase_price,
+                'order_count' => $sales['order_count'],
+            ];
+        })
+            ->sortByDesc('total_revenue')
+            ->take(100)
+            ->values();
+
+        $totalProducts = $queries->countWithSales($periodInt);
+        $categories = $queries->categorySalesData($periodInt)
+            ->filter(fn (array $cat) => $cat['total_revenue'] > 0)
+            ->take(10)
+            ->values();
+
+        $stockAlerts = $queries->lowStock(10)->map(fn (Product $product) => [
+            'product' => $product,
+            'stock_level' => $product->stock_available,
+            'stock_minimum' => $product->stock_minimum,
+            'percentage' => $product->stock_minimum > 0
+                ? ($product->stock_available / $product->stock_minimum) * 100
+                : 0,
+        ]);
+
+        $metrics = [
+            'total_products' => $totalProducts,
+            'total_units_sold' => $topProducts->sum('total_sold'),
+            'total_revenue' => $topProducts->sum('total_revenue'),
+            'avg_profit_margin' => $topProducts->where('total_revenue', '>', 0)->avg('profit_margin_percent') ?? 0,
+            'top_performing_sku' => $topProducts->first()['product']->sku ?? null,
+            'categories_count' => $categories->count(),
+            'low_stock_count' => $stockAlerts->count(),
+        ];
 
         $cacheKey = "product_metrics_{$this->period}d";
         Cache::forever($cacheKey, [
             'metrics' => $metrics,
-            'top_products' => $topProducts->toArray(),
-            'categories' => $categories->toArray(),
-            'stock_alerts' => $stockAlerts->toArray(),
+            'top_products' => $topProducts->all(),
+            'categories' => $categories->all(),
+            'stock_alerts' => $stockAlerts->all(),
             'warmed_at' => now()->toISOString(),
         ]);
 
-        $this->prewarmBadges($topProducts->take(self::BADGE_PREWARM_LIMIT), $badgeService, $periodInt);
+        $badgeService->getBulkProductBadges(
+            $topProducts->take(self::BADGE_PREWARM_LIMIT)->pluck('product'),
+            $periodInt
+        );
 
         Log::debug('Product cache warmed successfully', [
             'cache_key' => $cacheKey,
@@ -94,20 +134,6 @@ final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
             'categories_count' => $categories->count(),
             'duration_seconds' => round(microtime(true) - $startTime, 2),
         ]);
-    }
-
-    private function prewarmBadges(
-        \Illuminate\Support\Collection $topProducts,
-        ProductBadgeService $badgeService,
-        int $period
-    ): void {
-        foreach ($topProducts as $item) {
-            $product = $item['product'] ?? null;
-
-            if ($product instanceof Product) {
-                $badgeService->getProductBadges($product, $period);
-            }
-        }
     }
 
     public function failed(\Throwable $exception): void

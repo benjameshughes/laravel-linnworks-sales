@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Queries\ProductQueries;
 use App\Services\ProductBadgeService;
 use Illuminate\Support\Facades\Cache;
 use App\Jobs\WarmProductMetricsCacheJob;
-use App\Services\ProductAnalyticsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -33,7 +33,7 @@ describe('WarmProductMetricsCacheJob', function () {
         $job = new WarmProductMetricsCacheJob('7');
 
         $job->handle(
-            app(ProductAnalyticsService::class),
+            app(ProductQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -60,7 +60,7 @@ describe('WarmProductMetricsCacheJob', function () {
         $job = new WarmProductMetricsCacheJob('30');
 
         $job->handle(
-            app(ProductAnalyticsService::class),
+            app(ProductQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -78,7 +78,7 @@ describe('WarmProductMetricsCacheJob', function () {
         $job = new WarmProductMetricsCacheJob('7');
 
         $job->handle(
-            app(ProductAnalyticsService::class),
+            app(ProductQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -97,7 +97,7 @@ describe('WarmProductMetricsCacheJob', function () {
         $job = new WarmProductMetricsCacheJob('7');
 
         $job->handle(
-            app(ProductAnalyticsService::class),
+            app(ProductQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -119,7 +119,7 @@ describe('WarmProductMetricsCacheJob', function () {
         $job = new WarmProductMetricsCacheJob('30');
 
         $job->handle(
-            app(ProductAnalyticsService::class),
+            app(ProductQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -148,7 +148,7 @@ describe('WarmProductMetricsCacheJob', function () {
 
         // Test without a cancelled batch - should complete normally
         $job->handle(
-            app(ProductAnalyticsService::class),
+            app(ProductQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -162,7 +162,7 @@ describe('WarmProductMetricsCacheJob', function () {
         $job = new WarmProductMetricsCacheJob('7');
 
         $job->handle(
-            app(ProductAnalyticsService::class),
+            app(ProductQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -178,7 +178,7 @@ describe('WarmProductMetricsCacheJob', function () {
         $job = new WarmProductMetricsCacheJob('7');
 
         $job->handle(
-            app(ProductAnalyticsService::class),
+            app(ProductQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -195,7 +195,7 @@ describe('WarmProductMetricsCacheJob', function () {
         $job = new WarmProductMetricsCacheJob('30');
 
         $job->handle(
-            app(ProductAnalyticsService::class),
+            app(ProductQueries::class),
             app(ProductBadgeService::class)
         );
 
