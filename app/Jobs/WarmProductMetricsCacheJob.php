@@ -10,6 +10,7 @@ use Illuminate\Bus\Queueable;
 use App\Queries\ProductQueries;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Queries\ProfitabilityQueries;
 use App\Services\ProductBadgeService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Queue\SerializesModels;
@@ -43,6 +44,7 @@ final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(
         ProductQueries $queries,
+        ProfitabilityQueries $profitQueries,
         ProductBadgeService $badgeService
     ): void {
         if ($this->batch()?->cancelled()) {
@@ -59,8 +61,9 @@ final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
         $products = $queries->activeProducts(limit: 5000);
         $skus = $products->pluck('sku')->toArray();
         $salesData = $queries->bulkSalesData($skus, $periodInt);
+        $profitData = $profitQueries->bulkProfitabilityData($skus, $periodInt);
 
-        $topProducts = $products->map(function (Product $product) use ($salesData) {
+        $topProducts = $products->map(function (Product $product) use ($salesData, $profitData) {
             $sales = $salesData->get($product->sku, [
                 'total_sold' => 0,
                 'total_revenue' => 0,
@@ -68,11 +71,10 @@ final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
                 'order_count' => 0,
             ]);
 
-            $totalCost = $sales['total_sold'] * ($product->purchase_price ?? 0);
-            $totalProfit = $sales['total_revenue'] - $totalCost;
-            $profitMargin = $sales['total_revenue'] > 0
-                ? ($totalProfit / $sales['total_revenue']) * 100
-                : 0;
+            $profit = $profitData->get($product->sku);
+            $totalProfit = (float) ($profit->profit ?? 0);
+            $revenue = (float) ($profit->revenue ?? $sales['total_revenue']);
+            $profitMargin = $revenue > 0 ? ($totalProfit / $revenue) * 100 : 0;
 
             return [
                 'product' => $product,
@@ -83,6 +85,9 @@ final class WarmProductMetricsCacheJob implements ShouldBeUnique, ShouldQueue
                 'avg_selling_price' => $sales['avg_selling_price'],
                 'purchase_price' => $product->purchase_price,
                 'order_count' => $sales['order_count'],
+                'cogs' => (float) ($profit->cogs ?? 0),
+                'channel_fees' => (float) ($profit->channel_fees ?? 0),
+                'shipping_cost' => (float) ($profit->shipping_cost ?? 0),
             ];
         })
             ->sortByDesc('total_revenue')

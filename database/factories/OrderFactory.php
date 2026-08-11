@@ -135,12 +135,23 @@ class OrderFactory extends Factory
     {
         return $this->afterCreating(function (Order $order) use ($items) {
             foreach ($items as $item) {
-                \App\Models\OrderItem::factory()->create([
+                $attrs = [
                     'order_id' => $order->id,
                     'sku' => $item['sku'] ?? fake()->regexify('[A-Z]{3}-[0-9]{6}'),
                     'quantity' => $item['quantity'] ?? 1,
                     'item_title' => $item['item_title'] ?? fake()->words(3, true),
-                ]);
+                ];
+
+                if (isset($item['price_per_unit'])) {
+                    $attrs['price_per_unit'] = $item['price_per_unit'];
+                    $attrs['line_total'] = $item['price_per_unit'] * ($item['quantity'] ?? 1);
+                }
+
+                if (isset($item['unit_cost'])) {
+                    $attrs['unit_cost'] = $item['unit_cost'];
+                }
+
+                \App\Models\OrderItem::factory()->create($attrs);
             }
         });
     }

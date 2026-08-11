@@ -11,6 +11,7 @@ use App\Queries\ProductQueries;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
 use Illuminate\Contracts\View\View;
+use App\Queries\ProfitabilityQueries;
 
 final class ProductQuickView extends Component
 {
@@ -90,22 +91,26 @@ final class ProductQuickView extends Component
         $start = now()->subDays($periodInt);
         $end = now();
 
+        $profitQueries = app(ProfitabilityQueries::class);
         $performance = $queries->productPerformance($this->selectedProduct, $start, $end);
+        $profitability = $profitQueries->productProfitability($this->selectedProduct, $start, $end);
         $channelBreakdown = $queries->channelBreakdown($this->selectedProduct, $start, $end);
 
-        $totalCost = ($performance?->total_quantity ?? 0) * ($product->purchase_price ?? 0);
-        $totalRevenue = (float) ($performance?->total_revenue ?? 0);
-        $totalProfit = $totalRevenue - $totalCost;
-        $profitMargin = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;
+        $revenue = (float) ($profitability?->revenue ?? $performance?->total_revenue ?? 0);
+        $profit = (float) ($profitability?->profit ?? 0);
+        $profitMargin = $revenue > 0 ? ($profit / $revenue) * 100 : 0;
 
         return [
             'product' => $product,
             'profit_analysis' => [
                 'total_sold' => (int) ($performance?->total_quantity ?? 0),
-                'total_revenue' => $totalRevenue,
-                'total_cost' => $totalCost,
-                'total_profit' => $totalProfit,
+                'total_revenue' => $revenue,
+                'total_cost' => (float) ($profitability?->total_cost ?? 0),
+                'total_profit' => $profit,
                 'profit_margin_percent' => $profitMargin,
+                'cogs' => (float) ($profitability?->cogs ?? 0),
+                'channel_fees' => (float) ($profitability?->channel_fees ?? 0),
+                'shipping_cost' => (float) ($profitability?->shipping_cost ?? 0),
                 'avg_selling_price' => (float) ($performance?->avg_selling_price ?? 0),
                 'purchase_price' => $product->purchase_price,
             ],

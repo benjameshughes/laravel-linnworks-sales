@@ -34,6 +34,7 @@ describe('WarmProductMetricsCacheJob', function () {
 
         $job->handle(
             app(ProductQueries::class),
+            app(\App\Queries\ProfitabilityQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -61,6 +62,7 @@ describe('WarmProductMetricsCacheJob', function () {
 
         $job->handle(
             app(ProductQueries::class),
+            app(\App\Queries\ProfitabilityQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -79,6 +81,7 @@ describe('WarmProductMetricsCacheJob', function () {
 
         $job->handle(
             app(ProductQueries::class),
+            app(\App\Queries\ProfitabilityQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -98,6 +101,7 @@ describe('WarmProductMetricsCacheJob', function () {
 
         $job->handle(
             app(ProductQueries::class),
+            app(\App\Queries\ProfitabilityQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -120,6 +124,7 @@ describe('WarmProductMetricsCacheJob', function () {
 
         $job->handle(
             app(ProductQueries::class),
+            app(\App\Queries\ProfitabilityQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -149,6 +154,7 @@ describe('WarmProductMetricsCacheJob', function () {
         // Test without a cancelled batch - should complete normally
         $job->handle(
             app(ProductQueries::class),
+            app(\App\Queries\ProfitabilityQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -163,6 +169,7 @@ describe('WarmProductMetricsCacheJob', function () {
 
         $job->handle(
             app(ProductQueries::class),
+            app(\App\Queries\ProfitabilityQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -179,6 +186,7 @@ describe('WarmProductMetricsCacheJob', function () {
 
         $job->handle(
             app(ProductQueries::class),
+            app(\App\Queries\ProfitabilityQueries::class),
             app(ProductBadgeService::class)
         );
 
@@ -196,6 +204,7 @@ describe('WarmProductMetricsCacheJob', function () {
 
         $job->handle(
             app(ProductQueries::class),
+            app(\App\Queries\ProfitabilityQueries::class),
             app(ProductBadgeService::class)
         );
 

@@ -26,6 +26,16 @@ enum Channel: string
         return self::tryFrom($raw ?? '')?->label() ?? $raw ?? 'Unknown';
     }
 
+    public function feePercentage(): float
+    {
+        return (float) config("channel-fees.{$this->value}", 0.0);
+    }
+
+    public static function feePercentageFor(?string $source): float
+    {
+        return self::tryFrom($source ?? '')?->feePercentage() ?? 0.0;
+    }
+
     public function label(): string
     {
         return match ($this) {

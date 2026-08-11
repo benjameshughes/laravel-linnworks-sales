@@ -14,6 +14,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
 use Illuminate\Contracts\View\View;
+use App\Queries\ProfitabilityQueries;
 use App\Services\ProductBadgeService;
 
 /**
@@ -63,6 +64,7 @@ final class ProductDetail extends Component
     public function performance(): ?Collection
     {
         $queries = app(ProductQueries::class);
+        $profitQueries = app(ProfitabilityQueries::class);
         $start = now()->subDays($this->period);
         $end = now();
 
@@ -72,18 +74,13 @@ final class ProductDetail extends Component
             return null;
         }
 
+        $profitability = $profitQueries->productProfitability($this->sku, $start, $end);
         $dailySales = $queries->dailySales($this->sku, $start, $end);
         $channelBreakdown = $queries->channelBreakdown($this->sku, $start, $end);
 
-        $margin = null;
-        if ($perf->purchase_price && $perf->purchase_price > 0) {
-            $avgSellingPrice = $perf->total_quantity > 0
-                ? $perf->total_revenue / $perf->total_quantity
-                : 0;
-            if ($avgSellingPrice > 0) {
-                $margin = (($avgSellingPrice - $perf->purchase_price) / $avgSellingPrice) * 100;
-            }
-        }
+        $revenue = (float) ($profitability?->revenue ?? $perf->total_revenue);
+        $profit = (float) ($profitability?->profit ?? 0);
+        $margin = $revenue > 0 ? ($profit / $revenue) * 100 : null;
 
         return collect([
             'sku' => $perf->sku,
@@ -91,8 +88,11 @@ final class ProductDetail extends Component
             'purchase_price' => $perf->purchase_price,
             'retail_price' => $perf->retail_price,
             'total_quantity' => (int) $perf->total_quantity,
-            'total_revenue' => (float) $perf->total_revenue,
-            'total_cost' => (float) $perf->total_cost,
+            'total_revenue' => $revenue,
+            'total_cost' => (float) ($profitability?->total_cost ?? $perf->total_cost),
+            'cogs' => (float) ($profitability?->cogs ?? 0),
+            'channel_fees' => (float) ($profitability?->channel_fees ?? 0),
+            'shipping_cost' => (float) ($profitability?->shipping_cost ?? 0),
             'order_count' => (int) $perf->order_count,
             'avg_selling_price' => (float) $perf->avg_selling_price,
             'margin_percentage' => $margin ? round($margin, 2) : null,
