@@ -13,6 +13,42 @@
     </div>
 
     <div class="space-y-8">
+        {{-- Cost Data Coverage --}}
+        <x-animations.fade-in-up :delay="50" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6">
+            <div class="flex items-start gap-3 mb-4">
+                <div class="flex-shrink-0 w-10 h-10 bg-emerald-100 dark:bg-emerald-900/20 rounded-lg flex items-center justify-center">
+                    <flux:icon.chart-pie class="size-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div class="flex-1">
+                    <flux:heading size="lg">Cost Data Coverage</flux:heading>
+                    <flux:subheading>How much cost data is available for profitability calculations</flux:subheading>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                    <div class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{{ $this->costCoverage['products_cost_percent'] }}%</div>
+                    <div class="text-sm text-zinc-500 dark:text-zinc-400">Products with cost price</div>
+                    <div class="text-xs text-zinc-400 dark:text-zinc-500 mt-1">{{ number_format($this->costCoverage['products_with_cost']) }} of {{ number_format($this->costCoverage['products_total']) }}</div>
+                </div>
+                <div class="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                    <div class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{{ $this->costCoverage['products_shipping_percent'] }}%</div>
+                    <div class="text-sm text-zinc-500 dark:text-zinc-400">Products with shipping cost</div>
+                    <div class="text-xs text-zinc-400 dark:text-zinc-500 mt-1">{{ number_format($this->costCoverage['products_with_shipping']) }} of {{ number_format($this->costCoverage['products_total']) }}</div>
+                </div>
+                <div class="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                    <div class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{{ $this->costCoverage['items_cost_percent'] }}%</div>
+                    <div class="text-sm text-zinc-500 dark:text-zinc-400">Order items with unit cost</div>
+                    <div class="text-xs text-zinc-400 dark:text-zinc-500 mt-1">{{ number_format($this->costCoverage['items_with_cost']) }} of {{ number_format($this->costCoverage['items_total']) }}</div>
+                </div>
+                <div class="p-4 rounded-lg {{ $this->costCoverage['revenue_coverage_percent'] > 50 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800' }} border">
+                    <div class="text-2xl font-bold {{ $this->costCoverage['revenue_coverage_percent'] > 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400' }}">{{ $this->costCoverage['revenue_coverage_percent'] }}%</div>
+                    <div class="text-sm text-zinc-500 dark:text-zinc-400">Revenue with cost data</div>
+                    <div class="text-xs text-zinc-400 dark:text-zinc-500 mt-1">£{{ number_format($this->costCoverage['revenue_covered'], 2) }} of £{{ number_format($this->costCoverage['revenue_total'], 2) }}</div>
+                </div>
+            </div>
+        </x-animations.fade-in-up>
+
         {{-- Export Section --}}
         <x-animations.fade-in-up :delay="100" class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
             <div class="flex items-start gap-3">

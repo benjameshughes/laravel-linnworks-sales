@@ -243,4 +243,42 @@ final class ProductQueries
                 ]);
             });
     }
+
+    public function parentPerformance(?int $period = null, int $limit = 20): SupportCollection
+    {
+        $query = DB::table('order_items as oi')
+            ->join('orders as o', 'oi.order_id', '=', 'o.id')
+            ->join('products as p', 'oi.sku', '=', 'p.sku')
+            ->join('product_parents as pp', 'p.product_parent_id', '=', 'pp.id');
+
+        if ($period !== null) {
+            $query->whereBetween('o.received_at', [now()->subDays($period), now()]);
+        }
+
+        return $query->select(
+            'pp.id',
+            'pp.sku as parent_sku',
+            'pp.title as parent_title',
+            DB::raw('COUNT(DISTINCT p.sku) as variant_count'),
+            DB::raw('SUM(oi.quantity) as total_quantity'),
+            DB::raw('COUNT(DISTINCT oi.order_id) as order_count'),
+            DB::raw('SUM(CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END) as total_revenue'),
+            DB::raw('SUM(COALESCE(NULLIF(oi.unit_cost, 0), p.purchase_price, 0) * oi.quantity) as total_cost'),
+        )
+            ->groupBy('pp.id', 'pp.sku', 'pp.title')
+            ->orderByDesc('total_revenue')
+            ->limit($limit)
+            ->get()
+            ->map(function ($row) {
+                $profit = (float) $row->total_revenue - (float) $row->total_cost;
+                $margin = $row->total_revenue > 0
+                    ? ($profit / $row->total_revenue) * 100
+                    : 0;
+
+                return (object) array_merge((array) $row, [
+                    'total_profit' => $profit,
+                    'margin_percentage' => round($margin, 2),
+                ]);
+            });
+    }
 }

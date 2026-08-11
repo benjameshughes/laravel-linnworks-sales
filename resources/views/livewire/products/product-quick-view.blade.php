@@ -95,6 +95,33 @@
                 </div>
             </div>
 
+            {{-- Cost Breakdown --}}
+            <div class="mb-8 p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100 mb-3">Profit Breakdown</flux:heading>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-zinc-500 dark:text-zinc-400">Revenue</span>
+                        <span class="font-medium text-emerald-600 dark:text-emerald-400">£{{ number_format($profit['total_revenue'], 2) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-zinc-500 dark:text-zinc-400">Cost of Goods</span>
+                        <span class="font-medium text-red-500 dark:text-red-400">-£{{ number_format($profit['cogs'] ?? 0, 2) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-zinc-500 dark:text-zinc-400">Channel Fees</span>
+                        <span class="font-medium text-red-500 dark:text-red-400">-£{{ number_format($profit['channel_fees'] ?? 0, 2) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-zinc-500 dark:text-zinc-400">Shipping</span>
+                        <span class="font-medium text-red-500 dark:text-red-400">-£{{ number_format($profit['shipping_cost'] ?? 0, 2) }}</span>
+                    </div>
+                    <div class="flex justify-between pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                        <span class="font-semibold text-zinc-700 dark:text-zinc-300">True Profit</span>
+                        <span class="font-bold {{ ($profit['total_profit'] ?? 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">£{{ number_format($profit['total_profit'], 2) }}</span>
+                    </div>
+                </div>
+            </div>
+
             {{-- Channel Performance --}}
             @if($channels->isNotEmpty())
                 <div>

@@ -20,7 +20,7 @@ final class ProductProfitabilityReport extends AbstractReport
 
     public function description(): string
     {
-        return 'Comprehensive profitability analysis by product and channel. Shows revenue, cost, tax, profit, and margin breakdown for each SKU per channel.';
+        return 'True profitability by product and channel, including cost of goods, channel fees, and shipping.';
     }
 
     public function icon(): string
@@ -53,13 +53,13 @@ final class ProductProfitabilityReport extends AbstractReport
             'orders' => ['label' => 'Orders', 'type' => 'integer'],
             'units_sold' => ['label' => 'Units', 'type' => 'integer'],
             'total_revenue' => ['label' => 'Revenue', 'type' => 'currency'],
-            'total_cost' => ['label' => 'Cost', 'type' => 'currency'],
-            'total_tax' => ['label' => 'Tax', 'type' => 'currency'],
-            'avg_tax_rate' => ['label' => 'Avg Tax %', 'type' => 'percentage'],
-            'total_profit' => ['label' => 'Profit', 'type' => 'currency'],
-            'margin_percent' => ['label' => 'Margin %', 'type' => 'percentage'],
+            'cogs' => ['label' => 'COGS', 'type' => 'currency'],
+            'channel_fees' => ['label' => 'Channel Fees', 'type' => 'currency'],
+            'shipping_cost' => ['label' => 'Shipping', 'type' => 'currency'],
+            'total_cost' => ['label' => 'Total Cost', 'type' => 'currency'],
+            'true_profit' => ['label' => 'True Profit', 'type' => 'currency'],
+            'true_margin' => ['label' => 'True Margin %', 'type' => 'percentage'],
             'avg_unit_price' => ['label' => 'Avg Price', 'type' => 'currency'],
-            'avg_unit_cost' => ['label' => 'Avg Cost', 'type' => 'currency'],
             'profit_per_unit' => ['label' => 'Profit/Unit', 'type' => 'currency'],
         ];
     }
@@ -68,9 +68,11 @@ final class ProductProfitabilityReport extends AbstractReport
     {
         $dateStart = Carbon::parse($filters['date_range']['start'])->startOfDay();
         $dateEnd = Carbon::parse($filters['date_range']['end'])->endOfDay();
+        $feeCase = $this->buildFeeCase();
 
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
+            ->leftJoin('products as p', 'oi.sku', '=', 'p.sku')
             ->whereBetween('o.received_at', [$dateStart, $dateEnd])
             ->where('o.status', '!=', 'cancelled');
 
@@ -97,24 +99,60 @@ final class ProductProfitabilityReport extends AbstractReport
 
         $query->select([
             'oi.sku',
-            DB::raw('MAX(oi.item_title) as title'),
+            DB::raw('MAX(COALESCE(p.title, oi.item_title)) as title'),
             'o.source',
             DB::raw("COALESCE(NULLIF(o.subsource, ''), 'N/A') as subsource"),
             DB::raw('COUNT(DISTINCT o.id) as orders'),
             DB::raw('SUM(oi.quantity) as units_sold'),
-            DB::raw('SUM(oi.line_total) as total_revenue'),
-            DB::raw('SUM(COALESCE(oi.unit_cost, 0) * oi.quantity) as total_cost'),
-            DB::raw('SUM(COALESCE(oi.tax, 0)) as total_tax'),
-            DB::raw('ROUND(AVG(COALESCE(oi.tax_rate, 0)), 2) as avg_tax_rate'),
-            DB::raw('SUM(oi.line_total) - SUM(COALESCE(oi.unit_cost, 0) * oi.quantity) as total_profit'),
-            DB::raw('ROUND(CASE WHEN SUM(oi.line_total) > 0 THEN ((SUM(oi.line_total) - SUM(COALESCE(oi.unit_cost, 0) * oi.quantity)) / SUM(oi.line_total)) * 100 ELSE 0 END, 2) as margin_percent'),
-            DB::raw('ROUND(SUM(oi.line_total) / SUM(oi.quantity), 2) as avg_unit_price'),
-            DB::raw('ROUND(AVG(COALESCE(oi.unit_cost, 0)), 2) as avg_unit_cost'),
-            DB::raw('ROUND((SUM(oi.line_total) - SUM(COALESCE(oi.unit_cost, 0) * oi.quantity)) / SUM(oi.quantity), 2) as profit_per_unit'),
+            DB::raw('SUM(CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END) as total_revenue'),
+            DB::raw('SUM(COALESCE(NULLIF(oi.unit_cost, 0), p.purchase_price, 0) * oi.quantity) as cogs'),
+            DB::raw("SUM((CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END) * {$feeCase}) as channel_fees"),
+            DB::raw('SUM(COALESCE(NULLIF(oi.shipping_cost, 0), p.shipping_cost, 0)) as shipping_cost'),
+            DB::raw("SUM(
+                (COALESCE(NULLIF(oi.unit_cost, 0), p.purchase_price, 0) * oi.quantity)
+                + COALESCE(NULLIF(oi.shipping_cost, 0), p.shipping_cost, 0)
+                + ((CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END) * {$feeCase})
+            ) as total_cost"),
+            DB::raw("SUM(
+                (CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END)
+                - (COALESCE(NULLIF(oi.unit_cost, 0), p.purchase_price, 0) * oi.quantity)
+                - COALESCE(NULLIF(oi.shipping_cost, 0), p.shipping_cost, 0)
+                - ((CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END) * {$feeCase})
+            ) as true_profit"),
+            DB::raw("ROUND(CASE WHEN SUM(CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END) > 0 THEN (
+                (SUM(CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END)
+                - SUM((COALESCE(NULLIF(oi.unit_cost, 0), p.purchase_price, 0) * oi.quantity)
+                    + COALESCE(NULLIF(oi.shipping_cost, 0), p.shipping_cost, 0)
+                    + ((CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END) * {$feeCase})))
+                / SUM(CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END) * 100
+            ) ELSE 0 END, 2) as true_margin"),
+            DB::raw('ROUND(SUM(CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END) / NULLIF(SUM(oi.quantity), 0), 2) as avg_unit_price'),
+            DB::raw("ROUND((SUM(
+                (CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END)
+                - (COALESCE(NULLIF(oi.unit_cost, 0), p.purchase_price, 0) * oi.quantity)
+                - COALESCE(NULLIF(oi.shipping_cost, 0), p.shipping_cost, 0)
+                - ((CASE WHEN oi.line_total > 0 THEN oi.line_total ELSE oi.quantity * oi.price_per_unit END) * {$feeCase})
+            )) / NULLIF(SUM(oi.quantity), 0), 2) as profit_per_unit"),
         ])
             ->groupBy('oi.sku', 'o.source', 'o.subsource')
-            ->orderByRaw('total_profit DESC');
+            ->orderByRaw('true_profit DESC');
 
         return $query;
+    }
+
+    private function buildFeeCase(): string
+    {
+        $fees = config('channel-fees', []);
+        $cases = collect($fees)
+            ->filter(fn (float $fee) => $fee > 0)
+            ->map(fn (float $fee, string $source) => 'WHEN o.source = '.DB::getPdo()->quote($source).' THEN '.($fee / 100))
+            ->values()
+            ->implode(' ');
+
+        if (empty($cases)) {
+            return '0';
+        }
+
+        return "(CASE {$cases} ELSE 0 END)";
     }
 }

@@ -23,6 +23,9 @@
             </div>
         </div>
 
+        {{-- Parent Performance - lazy loaded --}}
+        <livewire:products.parent-performance lazy />
+
         {{-- Product Quick View Panel --}}
         <livewire:products.product-quick-view />
 

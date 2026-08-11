@@ -179,6 +179,10 @@ final class ProductDetail extends Component
             'order_count' => (int) $performance->get('order_count', 0),
             'avg_selling_price' => (float) $performance->get('avg_selling_price', 0),
             'avg_unit_cost' => $totalQuantity > 0 ? $totalCost / $totalQuantity : 0,
+            'cogs' => (float) $performance->get('cogs', 0),
+            'channel_fees' => (float) $performance->get('channel_fees', 0),
+            'shipping_cost' => (float) $performance->get('shipping_cost', 0),
+            'has_cost_data' => (float) $performance->get('cogs', 0) > 0,
         ];
     }
 

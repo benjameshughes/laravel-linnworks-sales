@@ -155,16 +155,29 @@
                 >
                     <div class="flex justify-between text-sm">
                         <span class="text-zinc-500 dark:text-zinc-400">Revenue:</span>
-                        <span class="font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($this->profitAnalysis['total_revenue'], 2) }}</span>
+                        <span class="font-medium text-emerald-600 dark:text-emerald-400">£{{ number_format($this->profitAnalysis['total_revenue'], 2) }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-zinc-500 dark:text-zinc-400">Cost:</span>
-                        <span class="font-medium text-zinc-900 dark:text-zinc-100">£{{ number_format($this->profitAnalysis['total_cost'], 2) }}</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">Cost of Goods:</span>
+                        <span class="font-medium text-red-500 dark:text-red-400">-£{{ number_format($this->profitAnalysis['cogs'], 2) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-zinc-500 dark:text-zinc-400">Channel Fees:</span>
+                        <span class="font-medium text-red-500 dark:text-red-400">-£{{ number_format($this->profitAnalysis['channel_fees'], 2) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-zinc-500 dark:text-zinc-400">Shipping:</span>
+                        <span class="font-medium text-red-500 dark:text-red-400">-£{{ number_format($this->profitAnalysis['shipping_cost'], 2) }}</span>
                     </div>
                     <div class="flex justify-between text-sm border-t border-zinc-200 dark:border-zinc-700 pt-2">
-                        <span class="text-zinc-500 dark:text-zinc-400">Profit:</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">True Profit:</span>
                         <span class="font-bold {{ $this->profitAnalysis['total_profit'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">£{{ number_format($this->profitAnalysis['total_profit'], 2) }}</span>
                     </div>
+                    @if(!$this->profitAnalysis['has_cost_data'])
+                        <div class="mt-2 p-2 bg-amber-50 dark:bg-amber-900/10 rounded text-xs text-amber-700 dark:text-amber-300">
+                            No cost data — import via /products-import
+                        </div>
+                    @endif
                 </div>
             </div>
 

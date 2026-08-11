@@ -9,10 +9,12 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Actions\Calculations\Profitability\CalculateCostDataCoverage;
 
 #[Layout('components.layouts.app')]
 #[Title('Product Import/Export')]
@@ -258,6 +260,12 @@ final class ProductImportExport extends Component
         $this->updated = 0;
         $this->skipped = 0;
         $this->importErrors = [];
+    }
+
+    #[Computed]
+    public function costCoverage(): array
+    {
+        return app(CalculateCostDataCoverage::class)();
     }
 
     public function render(): View
