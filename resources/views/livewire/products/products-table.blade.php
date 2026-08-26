@@ -57,13 +57,12 @@
 
         <flux:table.rows>
             @forelse($this->products as $item)
-                @php $product = $item['product']; @endphp
-                <flux:table.row :key="$product->id" class="{{ $selectedProduct === $product->sku ? 'bg-blue-50 dark:bg-blue-900/20' : '' }}">
+                <flux:table.row :key="$item['sku']" class="{{ $selectedProduct === $item['sku'] ? 'bg-blue-50 dark:bg-blue-900/20' : '' }}">
                     <flux:table.cell>
-                        <div class="font-medium">{{ Str::limit($product->title, 30) }}</div>
-                        <div class="text-sm text-zinc-500">{{ $product->sku }}</div>
-                        @if($product->category_name)
-                            <div class="text-xs text-zinc-500">{{ $product->category_name }}</div>
+                        <div class="font-medium">{{ Str::limit($item['title'], 30) }}</div>
+                        <div class="text-sm text-zinc-500">{{ $item['sku'] }}</div>
+                        @if($item['category_name'] ?? null)
+                            <div class="text-xs text-zinc-500">{{ $item['category_name'] }}</div>
                         @endif
                         @if(isset($item['badges']) && $item['badges'] && $item['badges']->isNotEmpty())
                             <div class="flex flex-wrap gap-1 mt-2">
@@ -101,12 +100,12 @@
                             <flux:button
                                 variant="primary"
                                 size="sm"
-                                href="{{ route('products.detail', $product->sku) }}"
+                                href="{{ route('products.detail', $item['sku']) }}"
                                 icon="arrow-top-right-on-square"
                             >
                                 Detail
                             </flux:button>
-                            <flux:button variant="ghost" size="sm" wire:click="selectProduct('{{ $product->sku }}')">
+                            <flux:button variant="ghost" size="sm" wire:click="selectProduct('{{ $item['sku'] }}')">
                                 Quick View
                             </flux:button>
                         </div>

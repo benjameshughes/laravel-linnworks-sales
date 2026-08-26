@@ -2,13 +2,12 @@
     <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100 mb-3">Stock Alerts</flux:heading>
     <div class="space-y-2">
         @forelse($this->stockAlerts as $alert)
-            @php $product = $alert['product']; @endphp
             <div class="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600">
                 <div>
                     <div class="font-medium text-zinc-900 dark:text-zinc-100 text-sm">
-                        {{ Str::limit($product->title, 20) }}
+                        {{ Str::limit($alert['title'], 20) }}
                     </div>
-                    <div class="text-xs text-zinc-600 dark:text-zinc-400">{{ $product->sku }}</div>
+                    <div class="text-xs text-zinc-600 dark:text-zinc-400">{{ $alert['sku'] }}</div>
                 </div>
                 <div class="text-right">
                     <flux:badge color="red" size="sm">

@@ -8,26 +8,25 @@
 
                 {{-- Date picker inline with title --}}
                 <div wire:loading.class="opacity-50 pointer-events-none">
-                <flux:date-picker
-                    wire:model.live="dateRange"
-                    wire:change="applyCustomRange"
-                    mode="range"
-                    with-presets
-                    with-inputs
-                    selectable-header
-                    value="{{ $this->pickerValue }}"
-                    max="{{ now()->format('Y-m-d') }}"
-                >
-                    <x-slot name="trigger">
-                        <flux:button variant="ghost" size="sm" class="gap-1.5 font-normal text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">
-                            <flux:icon name="calendar-days" variant="outline" class="size-4" />
-                            <span>{{ $this->formattedDateRange }}</span>
-                            @if($period === 'custom')
+                    <flux:date-picker
+                        wire:model.live="dateRange"
+                        wire:change="applyCustomRange"
+                        mode="range"
+                        with-presets
+                        with-inputs
+                        selectable-header
+                        value="{{ $this->pickerValue }}"
+                        max="{{ now()->format('Y-m-d') }}">
+                        <x-slot name="trigger">
+                            <flux:button variant="ghost" size="sm" class="gap-1.5 font-normal text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">
+                                <flux:icon name="calendar-days" variant="outline" class="size-4" />
+                                <span>{{ $this->formattedDateRange }}</span>
+                                @if($period === 'custom')
                                 <flux:badge color="blue" size="sm">Custom</flux:badge>
-                            @endif
-                        </flux:button>
-                    </x-slot>
-                </flux:date-picker>
+                                @endif
+                            </flux:button>
+                        </x-slot>
+                    </flux:date-picker>
                 </div>
             </div>
 
@@ -44,8 +43,8 @@
 
                 {{-- Sync timer --}}
                 <span class="flex items-center gap-1"
-                      wire:ignore
-                      x-data="{
+                    wire:ignore
+                    x-data="{
                           elapsed: {{ $this->lastSyncInfo->get('elapsed_seconds', 0) }},
                           interval: null,
                           displayText: '{{ $this->lastSyncInfo->get('time_human') }}',
@@ -109,9 +108,9 @@
 
                 {{-- Success rate badge --}}
                 @if($this->lastSyncInfo->get('status') === 'success')
-                    <flux:badge color="green" size="sm">
-                        {{ number_format($this->lastSyncInfo->get('success_rate'), 1) }}%
-                    </flux:badge>
+                <flux:badge color="green" size="sm">
+                    {{ number_format($this->lastSyncInfo->get('success_rate'), 1) }}%
+                </flux:badge>
                 @endif
             </div>
         </div>
@@ -127,20 +126,31 @@
 
             <flux:select wire:model.live.debounce.300ms="period" wire:key="period-{{ $period }}" size="sm" class="!w-auto">
                 @foreach($period === 'custom' ? \App\Enums\Period::allWithCustom() : \App\Enums\Period::all() as $periodOption)
-                    <flux:select.option value="{{ $periodOption->value }}">
-                        {{ $periodOption->label() }}
-                    </flux:select.option>
+                <flux:select.option value="{{ $periodOption->value }}">
+                    {{ $periodOption->label() }}
+                </flux:select.option>
                 @endforeach
             </flux:select>
 
             <flux:select wire:model.live.debounce.300ms="channel" size="sm" class="!w-auto">
                 <flux:select.option value="all">All Channels</flux:select.option>
                 @foreach($this->availableChannels as $channelOption)
-                    <flux:select.option value="{{ $channelOption->get('name') }}">
-                        {{ $channelOption->get('label') }}
-                    </flux:select.option>
+                <flux:select.option value="{{ $channelOption->get('name') }}">
+                    {{ $channelOption->get('label') }}
+                </flux:select.option>
                 @endforeach
             </flux:select>
+
+            @if($this->subsources->isNotEmpty())
+            <flux:select wire:model.live.debounce.300ms="subsource" size="sm" class="!w-auto">
+                <flux:select.option value="all">All Accounts</flux:select.option>
+                @foreach($this->subsources as $account)
+                <flux:select.option value="{{ $account['value'] }}">
+                    {{ $account['label'] }}
+                </flux:select.option>
+                @endforeach
+            </flux:select>
+            @endif
 
             <div class="flex-1"></div>
 
@@ -156,15 +166,14 @@
                     }
                 }
             }"
-            x-init="setInterval(() => countdown(), 1000)">
+                x-init="setInterval(() => countdown(), 1000)">
                 <flux:button
                     variant="primary"
                     size="sm"
                     wire:click="syncOrders"
                     wire:target="syncOrders"
                     ::disabled="$wire.isSyncing || rateLimitSeconds > 0"
-                    icon="cloud-arrow-down"
-                >
+                    icon="cloud-arrow-down">
                     <span x-show="!$wire.isSyncing && rateLimitSeconds === 0">Sync</span>
                     <span x-show="$wire.isSyncing">Syncing</span>
                     <span x-show="!$wire.isSyncing && rateLimitSeconds > 0" x-text="`Wait ${rateLimitSeconds}s`"></span>
@@ -193,8 +202,7 @@
         x-show="showIndicator"
         x-transition
         class="mt-3 flex items-center gap-2 px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm text-zinc-600 dark:text-zinc-400"
-        style="display: none;"
-    >
+        style="display: none;">
         <svg class="animate-spin size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>

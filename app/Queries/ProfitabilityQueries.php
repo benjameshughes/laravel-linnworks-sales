@@ -126,6 +126,11 @@ final class ProfitabilityQueries
         ];
     }
 
+    public function feeCase(): string
+    {
+        return $this->buildFeeCase();
+    }
+
     private function buildFeeCase(): string
     {
         $fees = config('channel-fees', []);

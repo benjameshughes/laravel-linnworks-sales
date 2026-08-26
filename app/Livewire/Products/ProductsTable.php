@@ -148,12 +148,13 @@ final class ProductsTable extends Component
         $products = $this->applyFilters($products);
 
         $allBadges = $this->productBadgeService()->getBulkProductBadges(
-            $products->pluck('product'),
+            $products,
             (int) $this->period
         );
 
         $products = $products->map(function ($item) use ($allBadges) {
-            $badges = $allBadges[$item['product']->sku] ?? collect();
+            $sku = $item['sku'] ?? ($item['product']->sku ?? null);
+            $badges = $allBadges[$sku] ?? collect();
             $item['badges'] = $badges->map(fn ($badge) => $badge->toArray());
 
             return $item;
@@ -197,7 +198,11 @@ final class ProductsTable extends Component
             $badges = $allBadges[$product->sku] ?? collect();
 
             return array_merge($analytics, [
-                'product' => $product,
+                'sku' => $product->sku,
+                'title' => $product->title,
+                'category_name' => $product->category_name,
+                'stock_available' => $product->stock_available,
+                'stock_minimum' => $product->stock_minimum,
                 'badges' => $badges->map(fn ($badge) => $badge->toArray()),
             ]);
         });
@@ -224,7 +229,7 @@ final class ProductsTable extends Component
                 'profit' => $item['total_profit'],
                 'margin' => $item['profit_margin_percent'],
                 'price' => $item['avg_selling_price'],
-                'name' => $item['product']->title ?? $item['product']['title'] ?? '',
+                'name' => $item['title'] ?? ($item['product']->title ?? ''),
                 default => $item['total_revenue'],
             };
         }, SORT_REGULAR, $this->sortDirection === 'desc')

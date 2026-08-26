@@ -39,6 +39,8 @@ final class MetricsSummary extends Component
 
     public string $channel = 'all';
 
+    public string $subsource = 'all';
+
     public string $status = 'all';
 
     public ?string $customFrom = null;
@@ -56,12 +58,14 @@ final class MetricsSummary extends Component
     public function updateFilters(
         string $period,
         string $channel,
+        string $subsource = 'all',
         string $status = 'all',
         ?string $customFrom = null,
         ?string $customTo = null
     ): void {
         $this->period = $period;
         $this->channel = $channel;
+        $this->subsource = $subsource;
         $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
@@ -87,14 +91,14 @@ final class MetricsSummary extends Component
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Custom periods: Use ChunkedMetricsCalculator (memory-safe DB aggregation)
-        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+        if ($this->shouldQueryLive($periodEnum)) {
             $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
                 channel: $this->channel,
                 status: $this->status,
                 customFrom: $this->customFrom,
-                customTo: $this->customTo
+                customTo: $this->customTo,
+                subsource: $this->subsource,
             );
 
             $data = $calculator->calculate();
@@ -107,7 +111,6 @@ final class MetricsSummary extends Component
             ]);
         }
 
-        // Check cache for standard periods
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 
@@ -144,14 +147,14 @@ final class MetricsSummary extends Component
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Custom periods: Use ChunkedMetricsCalculator (memory-safe DB aggregation)
-        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+        if ($this->shouldQueryLive($periodEnum)) {
             $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
                 channel: $this->channel,
                 status: $this->status,
                 customFrom: $this->customFrom,
-                customTo: $this->customTo
+                customTo: $this->customTo,
+                subsource: $this->subsource,
             );
 
             $data = $calculator->calculate();
@@ -159,7 +162,6 @@ final class MetricsSummary extends Component
             return $data['best_day'];
         }
 
-        // Check cache for standard periods
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 
@@ -169,6 +171,14 @@ final class MetricsSummary extends Component
 
         // Cache miss - return empty array to prevent OOM
         return [];
+    }
+
+    private function shouldQueryLive(?\App\Enums\Period $periodEnum): bool
+    {
+        return $this->customFrom
+            || $this->customTo
+            || ! $periodEnum?->isCacheable()
+            || $this->subsource !== 'all';
     }
 
     public function render(): View

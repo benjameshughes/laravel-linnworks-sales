@@ -10,6 +10,7 @@ use App\Enums\ProductBadgeType;
 use App\ValueObjects\DateRange;
 use App\ValueObjects\ProductBadge;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use App\ValueObjects\ProductMetrics;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Builder;
@@ -47,39 +48,34 @@ final readonly class ProductBadgeService
         $dateRange = $this->createDateRange($period);
         $previousRange = new DateRange(from: now()->subDays($period * 2), to: now()->subDays($period));
 
-        $salesByProduct = OrderItem::query()
-            ->whereIn('sku', $skus)
-            ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_at', [$dateRange->from, $dateRange->to]))
-            ->with('order:id,received_at')
+        $metricsData = DB::table('order_items as oi')
+            ->join('orders as o', 'oi.order_id', '=', 'o.id')
+            ->whereIn('oi.sku', $skus)
+            ->whereBetween('o.received_at', [$dateRange->from, $dateRange->to])
+            ->selectRaw('oi.sku, SUM(oi.line_total) as total_revenue, SUM(oi.quantity) as total_quantity, SUM(oi.unit_cost * oi.quantity) as total_cost, COUNT(DISTINCT oi.order_id) as order_count')
+            ->groupBy('oi.sku')
             ->get()
-            ->groupBy('sku');
+            ->keyBy('sku');
 
-        $currentQuantities = OrderItem::query()
-            ->whereIn('sku', $skus)
-            ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_at', [$dateRange->from, $dateRange->to]))
-            ->selectRaw('sku, SUM(quantity) as total_quantity')
-            ->groupBy('sku')
+        $previousQuantities = DB::table('order_items as oi')
+            ->join('orders as o', 'oi.order_id', '=', 'o.id')
+            ->whereIn('oi.sku', $skus)
+            ->whereBetween('o.received_at', [$previousRange->from, $previousRange->to])
+            ->selectRaw('oi.sku, SUM(oi.quantity) as total_quantity')
+            ->groupBy('oi.sku')
             ->pluck('total_quantity', 'sku');
 
-        $previousQuantities = OrderItem::query()
-            ->whereIn('sku', $skus)
-            ->whereHas('order', fn (Builder $query) => $query->whereBetween('received_at', [$previousRange->from, $previousRange->to]))
-            ->selectRaw('sku, SUM(quantity) as total_quantity')
-            ->groupBy('sku')
-            ->pluck('total_quantity', 'sku');
+        $weekExpr = DB::getDriverName() === 'sqlite'
+            ? "strftime('%Y-%W', o.received_at)"
+            : 'YEARWEEK(o.received_at, 1)';
 
-        $weeklyData = OrderItem::query()
-            ->whereIn('order_items.sku', $skus)
-            ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->where('orders.received_at', '>=', now()->subDays($period))
-            ->selectRaw('order_items.sku, orders.received_at')
-            ->get()
-            ->groupBy('sku')
-            ->map(fn (Collection $items) => $items
-                ->map(fn ($item) => \Carbon\Carbon::parse($item->received_at)->startOfWeek()->format('Y-W'))
-                ->unique()
-                ->count()
-            );
+        $weeklyData = DB::table('order_items as oi')
+            ->join('orders as o', 'oi.order_id', '=', 'o.id')
+            ->whereIn('oi.sku', $skus)
+            ->where('o.received_at', '>=', now()->subDays($period))
+            ->selectRaw("oi.sku, COUNT(DISTINCT {$weekExpr}) as weeks_with_sales")
+            ->groupBy('oi.sku')
+            ->pluck('weeks_with_sales', 'sku');
 
         $volumeThreshold = Cache::remember(
             "high_volume_threshold:{$period}",
@@ -91,38 +87,47 @@ final readonly class ProductBadgeService
         $result = [];
 
         foreach ($products as $product) {
-            $cacheKey = "product_badges:{$product->sku}:{$period}";
+            $isArray = is_array($product);
+            $sku = $isArray ? $product['sku'] : $product->sku;
+            $cacheKey = "product_badges:{$sku}:{$period}";
             $cached = Cache::get($cacheKey);
 
             if ($cached !== null) {
-                $result[$product->sku] = $cached;
+                $result[$sku] = $cached;
 
                 continue;
             }
 
-            $salesData = $salesByProduct->get($product->sku, collect());
+            $data = $metricsData->get($sku);
             $badges = collect();
 
-            if ($salesData->isEmpty()) {
+            if (! $data) {
                 $badges->push(new ProductBadge(ProductBadgeType::NO_SALES));
                 Cache::put($cacheKey, $badges, now()->addHour());
-                $result[$product->sku] = $badges;
+                $result[$sku] = $badges;
 
                 continue;
             }
 
-            $metrics = $this->calculateProductMetrics($salesData, $period);
+            $metrics = new ProductMetrics(
+                totalRevenue: (float) $data->total_revenue,
+                totalQuantity: (int) $data->total_quantity,
+                totalCost: (float) $data->total_cost,
+                period: $period,
+                orderCount: (int) $data->order_count,
+            );
 
-            $prev = (int) ($previousQuantities->get($product->sku, 0));
-            $curr = (int) ($currentQuantities->get($product->sku, 0));
+            $prev = (int) ($previousQuantities->get($sku, 0));
+            $curr = (int) $data->total_quantity;
             $growthRate = $prev > 0 ? (($curr - $prev) / $prev) * 100 : 0.0;
 
             $badges = $this->getPerformanceBadges($metrics, $growthRate);
 
-            if ($product->created_at?->isAfter(now()->subDays($this->newProductDays))) {
+            $createdAt = $isArray ? ($product['created_at'] ?? null) : $product->created_at;
+            if ($createdAt && \Carbon\Carbon::parse($createdAt)->isAfter(now()->subDays($this->newProductDays))) {
                 $badges->push(new ProductBadge(
                     type: ProductBadgeType::NEW_PRODUCT,
-                    metadata: ['days_old' => $product->created_at->diffInDays(now())]
+                    metadata: ['days_old' => \Carbon\Carbon::parse($createdAt)->diffInDays(now())]
                 ));
             }
 
@@ -133,14 +138,14 @@ final readonly class ProductBadgeService
                 ));
             }
 
-            $weeksWithSales = $weeklyData->get($product->sku, 0);
+            $weeksWithSales = (int) $weeklyData->get($sku, 0);
             if ($weeks >= 2 && ($weeksWithSales / $weeks) >= $this->consistentThreshold) {
                 $badges->push(new ProductBadge(ProductBadgeType::CONSISTENT));
             }
 
             $badges = $badges->sortBy('priority')->values();
             Cache::put($cacheKey, $badges, now()->addHour());
-            $result[$product->sku] = $badges;
+            $result[$sku] = $badges;
         }
 
         return $result;

@@ -29,7 +29,8 @@ final readonly class ChunkedMetricsCalculator
         private string $channel = 'all',
         private string $status = 'all',
         private ?string $customFrom = null,
-        private ?string $customTo = null
+        private ?string $customTo = null,
+        private string $subsource = 'all',
     ) {}
 
     /**
@@ -108,10 +109,9 @@ final readonly class ChunkedMetricsCalculator
     private function calculateSimpleAggregates(Carbon $start, Carbon $end): array
     {
         $query = DB::table('orders')
-            ->whereBetween('received_at', [$start, $end])
-            ->where('source', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn ($q) => $q->where('source', $this->channel));
+            ->whereBetween('received_at', [$start, $end]);
 
+        $this->applyChannelFilters($query);
         $this->applyStatusFilter($query);
 
         $result = $query->selectRaw('
@@ -123,13 +123,11 @@ final readonly class ChunkedMetricsCalculator
             ')
             ->first();
 
-        // Count items from order_items table (more efficient than JSON parsing)
         $itemsQuery = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->whereBetween('orders.received_at', [$start, $end])
-            ->where('orders.source', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn ($q) => $q->where('orders.source', $this->channel));
+            ->whereBetween('orders.received_at', [$start, $end]);
 
+        $this->applyChannelFilters($itemsQuery, 'orders');
         $this->applyStatusFilter($itemsQuery);
 
         $itemsCount = $itemsQuery->sum('order_items.quantity');
@@ -184,10 +182,9 @@ final readonly class ChunkedMetricsCalculator
         $queryEnd = ($this->period === '0' || $this->period === '1') ? $actualEnd : $end;
 
         $orderStatsQuery = DB::table('orders')
-            ->whereBetween('received_at', [$queryStart, $queryEnd])
-            ->where('source', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn ($q) => $q->where('source', $this->channel));
+            ->whereBetween('received_at', [$queryStart, $queryEnd]);
 
+        $this->applyChannelFilters($orderStatsQuery);
         $this->applyStatusFilter($orderStatsQuery);
 
         $orderStats = $orderStatsQuery
@@ -207,10 +204,9 @@ final readonly class ChunkedMetricsCalculator
         // Aggregate items by date (use actualStart/actualEnd for single-day periods to only fetch real data)
         $itemStatsQuery = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->whereBetween('orders.received_at', [$queryStart, $queryEnd])
-            ->where('orders.source', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn ($q) => $q->where('orders.source', $this->channel));
+            ->whereBetween('orders.received_at', [$queryStart, $queryEnd]);
 
+        $this->applyChannelFilters($itemStatsQuery, 'orders');
         $this->applyStatusFilter($itemStatsQuery);
 
         $itemStats = $itemStatsQuery
@@ -249,19 +245,17 @@ final readonly class ChunkedMetricsCalculator
     private function calculateTopChannels(Carbon $start, Carbon $end): Collection
     {
         $totalRevenueQuery = DB::table('orders')
-            ->whereBetween('received_at', [$start, $end])
-            ->where('source', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn ($q) => $q->where('source', $this->channel));
+            ->whereBetween('received_at', [$start, $end]);
 
+        $this->applyChannelFilters($totalRevenueQuery);
         $this->applyStatusFilter($totalRevenueQuery);
 
         $totalRevenue = $totalRevenueQuery->sum('total_charge');
 
         $channelsQuery = DB::table('orders')
-            ->whereBetween('received_at', [$start, $end])
-            ->where('source', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn ($q) => $q->where('source', $this->channel));
+            ->whereBetween('received_at', [$start, $end]);
 
+        $this->applyChannelFilters($channelsQuery);
         $this->applyStatusFilter($channelsQuery);
 
         return $channelsQuery
@@ -279,15 +273,17 @@ final readonly class ChunkedMetricsCalculator
                 $orders = (int) $channel->orders;
 
                 $channelLabel = Channel::displayName($channel->source);
-                $displayName = $channel->subsource
-                    ? ChannelAccount::displayName($channel->subsource).' ('.$channelLabel.')'
+                $subsourceLabel = $channel->subsource
+                    ? ChannelAccount::displayName($channel->subsource, $channel->source)
+                    : null;
+                $displayName = $subsourceLabel
+                    ? $subsourceLabel.' ('.$channelLabel.')'
                     : $channelLabel;
 
-                // Wrap in collect() to match SalesMetrics format (blade template expects Collection)
                 return collect([
                     'name' => $displayName,
                     'channel' => $channelLabel,
-                    'subsource' => $channel->subsource ? ChannelAccount::displayName($channel->subsource) : null,
+                    'subsource' => $subsourceLabel,
                     'orders' => $orders,
                     'revenue' => $revenue,
                     'avg_order_value' => $orders > 0 ? $revenue / $orders : 0,
@@ -307,10 +303,9 @@ final readonly class ChunkedMetricsCalculator
     {
         $productStatsQuery = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->whereBetween('orders.received_at', [$start, $end])
-            ->where('orders.source', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn ($q) => $q->where('orders.source', $this->channel));
+            ->whereBetween('orders.received_at', [$start, $end]);
 
+        $this->applyChannelFilters($productStatsQuery, 'orders');
         $this->applyStatusFilter($productStatsQuery);
 
         $productStats = $productStatsQuery
@@ -372,12 +367,10 @@ final readonly class ChunkedMetricsCalculator
                 'total_charge',
                 'is_paid',
                 'status',
-                // 'items' column does NOT exist - removed
             ])
-            ->whereBetween('received_at', [$start, $end])
-            ->where('source', '!=', 'DIRECT')
-            ->when($this->channel !== 'all', fn ($q) => $q->where('source', $this->channel));
+            ->whereBetween('received_at', [$start, $end]);
 
+        $this->applyChannelFilters($query);
         $this->applyStatusFilter($query);
 
         return $query
@@ -674,13 +667,11 @@ final readonly class ChunkedMetricsCalculator
             $this->customFrom,
             $this->customTo,
             $this->channel,
+            $this->subsource,
             $this->status,
         ]));
     }
 
-    /**
-     * Apply status filter to query builder
-     */
     private function applyStatusFilter(Builder $query): Builder
     {
         return $query->when($this->status !== 'all', function ($q) {
@@ -692,6 +683,17 @@ final readonly class ChunkedMetricsCalculator
                 $q->where('status', 1)->where('is_paid', true);
             }
         });
+    }
+
+    private function applyChannelFilters(Builder $query, string $tablePrefix = ''): Builder
+    {
+        $sourceCol = $tablePrefix ? "{$tablePrefix}.source" : 'source';
+        $subsourceCol = $tablePrefix ? "{$tablePrefix}.subsource" : 'subsource';
+
+        return $query
+            ->where($sourceCol, '!=', 'DIRECT')
+            ->when($this->channel !== 'all', fn ($q) => $q->where($sourceCol, $this->channel))
+            ->when($this->subsource !== 'all', fn ($q) => $q->where($subsourceCol, $this->subsource));
     }
 
     /**

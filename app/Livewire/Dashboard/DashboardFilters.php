@@ -10,9 +10,11 @@ use App\Enums\Channel;
 use App\Models\SyncLog;
 use Livewire\Component;
 use Livewire\Attributes\On;
+use App\Enums\ChannelAccount;
 use App\Jobs\SyncRecentOrdersJob;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
@@ -33,6 +35,8 @@ final class DashboardFilters extends Component
     public string $period;
 
     public string $channel = 'all';
+
+    public string $subsource = 'all';
 
     public string $status = 'all';
 
@@ -96,26 +100,17 @@ final class DashboardFilters extends Component
             $this->customTo = null;
         }
 
-        // Don't auto-dispatch for custom date changes - wait for Apply button
-        if (in_array($property, ['period', 'channel', 'status']) && $this->period !== 'custom') {
-            $this->dispatch('filters-updated',
-                period: $this->period,
-                channel: $this->channel,
-                status: $this->status,
-                customFrom: null,
-                customTo: null
-            );
+        if ($property === 'channel') {
+            $this->subsource = 'all';
+            unset($this->subsources);
         }
 
-        // For non-custom periods, dispatch immediately on change
-        if (in_array($property, ['channel', 'status']) && $this->period === 'custom' && $this->customFrom && $this->customTo) {
-            $this->dispatch('filters-updated',
-                period: $this->period,
-                channel: $this->channel,
-                status: $this->status,
-                customFrom: $this->customFrom,
-                customTo: $this->customTo
-            );
+        if (in_array($property, ['period', 'channel', 'subsource', 'status']) && $this->period !== 'custom') {
+            $this->dispatchFilters(clearDates: true);
+        }
+
+        if (in_array($property, ['channel', 'subsource', 'status']) && $this->period === 'custom' && $this->customFrom && $this->customTo) {
+            $this->dispatchFilters();
         }
     }
 
@@ -134,16 +129,9 @@ final class DashboardFilters extends Component
         // Sync the DateRange to our string properties
         $this->syncDateRangeToProperties();
 
-        // Switch to custom period mode
         $this->period = 'custom';
 
-        $this->dispatch('filters-updated',
-            period: 'custom',
-            channel: $this->channel,
-            status: $this->status,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
+        $this->dispatchFilters();
 
         // Clear loading after components have processed (next tick)
         $this->dispatch('data-loaded')->self();
@@ -225,6 +213,53 @@ final class DashboardFilters extends Component
             'name' => $channel,
             'label' => Channel::displayName($channel),
         ]));
+    }
+
+    #[Computed]
+    public function subsources(): Collection
+    {
+        $allSubsources = Cache::get('analytics:available_subsources');
+
+        if (! $allSubsources) {
+            $allSubsources = $this->loadSubsourcesFromDb();
+            Cache::forever('analytics:available_subsources', $allSubsources);
+        }
+
+        if ($this->channel === 'all') {
+            return collect();
+        }
+
+        return collect($allSubsources->get($this->channel, []));
+    }
+
+    private function loadSubsourcesFromDb(): Collection
+    {
+        return DB::table('orders')
+            ->select('source', 'subsource')
+            ->where('source', '!=', 'DIRECT')
+            ->whereNotNull('subsource')
+            ->where('subsource', '!=', '')
+            ->where('received_at', '>=', now()->subDays(90))
+            ->distinct()
+            ->get()
+            ->groupBy('source')
+            ->map(fn ($rows, $source) => $rows->pluck('subsource')->sort()->values()->map(fn ($sub) => [
+                'value' => $sub,
+                'label' => ChannelAccount::displayName($sub, $source),
+            ]));
+    }
+
+    private function dispatchFilters(bool $clearDates = false): void
+    {
+        $this->dispatch(
+            'filters-updated',
+            period: $this->period,
+            channel: $this->channel,
+            subsource: $this->subsource,
+            status: $this->status,
+            customFrom: $clearDates ? null : $this->customFrom,
+            customTo: $clearDates ? null : $this->customTo,
+        );
     }
 
     #[Computed]
@@ -369,14 +404,7 @@ final class DashboardFilters extends Component
         unset($this->lastSyncInfo);
         unset($this->totalOrders);
 
-        // Notify other components
-        $this->dispatch('filters-updated',
-            period: $this->period,
-            channel: $this->channel,
-            status: $this->status,
-            customFrom: $this->customFrom,
-            customTo: $this->customTo
-        );
+        $this->dispatchFilters();
     }
 
     public function render(): View

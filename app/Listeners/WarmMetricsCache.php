@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Events\OrdersSynced;
+use App\Enums\ChannelAccount;
 use App\Jobs\WarmPeriodCacheJob;
 use Illuminate\Support\Facades\DB;
 use App\Events\CacheWarmingStarted;
@@ -37,8 +38,23 @@ final class WarmMetricsCache
             ->sort()
             ->values();
 
-        // Populate the available channels cache for the dashboard filter dropdown
         Cache::forever('analytics:available_channels', $channelSources);
+
+        $subsourcesBySource = DB::table('orders')
+            ->select('source', 'subsource')
+            ->where('source', '!=', 'DIRECT')
+            ->whereNotNull('subsource')
+            ->where('subsource', '!=', '')
+            ->where('received_at', '>=', now()->subDays(90))
+            ->distinct()
+            ->get()
+            ->groupBy('source')
+            ->map(fn ($rows, $source) => $rows->pluck('subsource')->sort()->values()->map(fn ($sub) => [
+                'value' => $sub,
+                'label' => ChannelAccount::displayName($sub, $source),
+            ]));
+
+        Cache::forever('analytics:available_subsources', $subsourcesBySource);
 
         $channels = $channelSources->prepend('all')->toArray();
 

@@ -28,35 +28,49 @@ enum ChannelAccount: string
     case Rma = 'RMA';
     case Ebay0 = 'EBAY0';
 
-    public static function displayName(?string $raw): string
+    public static function displayName(?string $raw, ?string $source = null): string
     {
-        return self::tryFrom($raw ?? '')?->label() ?? $raw ?? 'Unknown';
+        $account = self::tryFrom($raw ?? '');
+
+        if (! $account) {
+            return $raw ?? 'Unknown';
+        }
+
+        return $account->labelForSource($source);
+    }
+
+    public function labelForSource(?string $source): string
+    {
+        return match (true) {
+            $this === self::BlindsOutlet && $source === 'Mirakl MP' => 'B&Q',
+            default => $this->label(),
+        };
     }
 
     public function label(): string
     {
         return match ($this) {
             self::BlindsOutlet => 'Blinds Outlet',
-            self::FiftyfiveCausewayRoad => '55CausewayRoad',
-            self::TheBlindsOutlet => 'theblindsoutlet',
-            self::Ebay1 => 'EBAY1',
-            self::BlindsCurtainMegastore => 'blindscurtainmegastore',
-            self::CorbieHomeProducts => 'corbiehomeproducts',
-            self::Range => 'range',
-            self::TheRange => 'therange',
+            self::FiftyfiveCausewayRoad => '55 Causeway Road',
+            self::TheBlindsOutlet => 'The Blinds Outlet',
+            self::Ebay1 => '55 Causeway Road',
+            self::BlindsCurtainMegastore => 'Blinds Curtain Megastore',
+            self::CorbieHomeProducts => 'Corbie Home Products',
+            self::Range => 'The Range',
+            self::TheRange => 'The Range',
             self::Wilko => 'Wilko',
-            self::BandQ => 'BANDQ',
+            self::BandQ => 'B&Q',
             self::Debenhams => 'Debenhams',
             self::Freemans => 'Freemans',
             self::Tesco => 'Tesco',
-            self::BlindsOutletShopify => 'BlindsOutlet',
+            self::BlindsOutletShopify => 'Blinds Outlet',
             self::TheBlindsOutletTemu => 'The Blinds Outlet',
-            self::OnBuy => 'onbuy',
-            self::CaecusBlindsCo => 'https://caecusblinds.co.uk',
-            self::BlindsOutletCo => 'https://www.blindsoutlet.co.uk',
-            self::CaecusBlindsEtsy => 'CaecusBlinds',
+            self::OnBuy => 'OnBuy',
+            self::CaecusBlindsCo => 'Caecus Blinds',
+            self::BlindsOutletCo => 'Blinds Outlet',
+            self::CaecusBlindsEtsy => 'Caecus Blinds',
             self::Rma => 'RMA',
-            self::Ebay0 => 'EBAY0',
+            self::Ebay0 => 'eBay Store 0',
         };
     }
 }

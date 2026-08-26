@@ -40,6 +40,8 @@ final class RecentOrders extends Component
 
     public string $channel = 'all';
 
+    public string $subsource = 'all';
+
     public string $status = 'all';
 
     public ?string $customFrom = null;
@@ -57,12 +59,14 @@ final class RecentOrders extends Component
     public function updateFilters(
         string $period,
         string $channel,
+        string $subsource = 'all',
         string $status = 'all',
         ?string $customFrom = null,
         ?string $customTo = null
     ): void {
         $this->period = $period;
         $this->channel = $channel;
+        $this->subsource = $subsource;
         $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
@@ -73,12 +77,19 @@ final class RecentOrders extends Component
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        // Can't cache custom periods - use repository for limited query
-        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
-            return $this->salesRepository()->getRecentOrders(limit: self::RECENT_ORDER_LIMIT);
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable() || $this->subsource !== 'all') {
+            $calculator = new \App\Services\Metrics\ChunkedMetricsCalculator(
+                period: $this->period,
+                channel: $this->channel,
+                status: $this->status,
+                customFrom: $this->customFrom,
+                customTo: $this->customTo,
+                subsource: $this->subsource,
+            );
+
+            return $calculator->calculate()['recent_orders'];
         }
 
-        // Check cache
         $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
         $cached = Cache::get($cacheKey);
 
@@ -86,7 +97,6 @@ final class RecentOrders extends Component
             return $cached['recent_orders'];
         }
 
-        // Cache miss - return empty collection to prevent OOM
         return collect();
     }
 

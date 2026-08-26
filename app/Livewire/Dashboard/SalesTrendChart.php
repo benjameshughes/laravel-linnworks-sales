@@ -23,6 +23,8 @@ final class SalesTrendChart extends Component
 
     public string $channel = 'all';
 
+    public string $subsource = 'all';
+
     public string $status = 'all';
 
     public ?string $customFrom = null;
@@ -42,12 +44,14 @@ final class SalesTrendChart extends Component
     public function updateFilters(
         string $period,
         string $channel,
+        string $subsource = 'all',
         string $status = 'all',
         ?string $customFrom = null,
         ?string $customTo = null
     ): void {
         $this->period = $period;
         $this->channel = $channel;
+        $this->subsource = $subsource;
         $this->status = $status;
         $this->customFrom = $customFrom;
         $this->customTo = $customTo;
@@ -103,13 +107,14 @@ final class SalesTrendChart extends Component
     {
         $periodEnum = Period::tryFrom($this->period);
 
-        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable() || $this->subsource !== 'all') {
             $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
                 channel: $this->channel,
                 status: $this->status,
                 customFrom: $this->customFrom,
-                customTo: $this->customTo
+                customTo: $this->customTo,
+                subsource: $this->subsource,
             );
 
             return $calculator->calculate()['daily_breakdown'];
