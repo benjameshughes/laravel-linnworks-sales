@@ -141,7 +141,7 @@
                 @endforeach
             </flux:select>
 
-            @if($this->subsources->isNotEmpty())
+            @if($this->subsources->count() > 1)
             <flux:select wire:model.live.debounce.300ms="subsource" size="sm" class="!w-auto">
                 <flux:select.option value="all">All Accounts</flux:select.option>
                 @foreach($this->subsources as $account)
