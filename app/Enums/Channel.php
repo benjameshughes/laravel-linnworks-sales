@@ -43,16 +43,16 @@ enum Channel: string
             self::AmazonFba => 'Amazon FBA',
             self::Ebay => 'eBay',
             self::Shopify => 'Website',
-            self::WooCommerce => 'WOOCOMMERCE',
-            self::Etsy => 'ETSY',
-            self::MiraklMp => 'Mirakl MP',
+            self::WooCommerce => 'WooCommerce',
+            self::Etsy => 'Etsy',
+            self::MiraklMp => 'Mirakl',
             self::VirtualStock => 'Wilko',
             self::TheRange => 'The Range',
-            self::Tesco => 'TESCO',
+            self::Tesco => 'Tesco',
             self::TemuEu => 'TEMU',
             self::OnBuy => 'OnBuy',
-            self::Direct => 'DIRECT',
-            self::DataImportExport => 'DATAIMPORTEXPORT',
+            self::Direct => 'Direct',
+            self::DataImportExport => 'Imported',
         };
     }
 }
