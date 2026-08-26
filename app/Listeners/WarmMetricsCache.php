@@ -56,20 +56,40 @@ final class WarmMetricsCache
 
         Cache::forever('analytics:available_subsources', $subsourcesBySource);
 
-        $channels = $channelSources->prepend('all')->toArray();
+        $activeSubsources = DB::table('orders')
+            ->select('source', 'subsource')
+            ->where('source', '!=', 'DIRECT')
+            ->whereNotNull('subsource')
+            ->where('subsource', '!=', '')
+            ->where('received_at', '>=', now()->subDays(90))
+            ->distinct()
+            ->get()
+            ->groupBy('source')
+            ->map(fn ($rows) => $rows->pluck('subsource')->sort()->values()->toArray());
 
         $statuses = ['all', 'open', 'processed', 'open_paid'];
 
-        // Broadcast start - UI shows "Crunching numbers..."
         CacheWarmingStarted::dispatch(
             collect($periods)->map(fn ($p) => "{$p->value}d")->toArray()
         );
 
-        // Build jobs for each period/channel/status combination
-        $jobs = collect($periods)->flatMap(function (\App\Enums\Period $period) use ($channels, $statuses) {
-            return collect($channels)->flatMap(function (string $channel) use ($period, $statuses) {
-                return collect($statuses)->map(function (string $status) use ($period, $channel) {
-                    return new WarmPeriodCacheJob($period->value, $channel, $status);
+        $channelSubsourceCombos = collect([['channel' => 'all', 'subsource' => 'all']]);
+
+        $channelSources->each(function (string $channel) use ($channelSubsourceCombos, $activeSubsources) {
+            $channelSubsourceCombos->push(['channel' => $channel, 'subsource' => 'all']);
+
+            $subs = $activeSubsources->get($channel, []);
+            if (count($subs) > 1) {
+                foreach ($subs as $sub) {
+                    $channelSubsourceCombos->push(['channel' => $channel, 'subsource' => $sub]);
+                }
+            }
+        });
+
+        $jobs = collect($periods)->flatMap(function (\App\Enums\Period $period) use ($channelSubsourceCombos, $statuses) {
+            return $channelSubsourceCombos->flatMap(function (array $combo) use ($period, $statuses) {
+                return collect($statuses)->map(function (string $status) use ($period, $combo) {
+                    return new WarmPeriodCacheJob($period->value, $combo['channel'], $combo['subsource'], $status);
                 });
             });
         });

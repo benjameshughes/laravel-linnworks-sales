@@ -107,7 +107,7 @@ final class SalesTrendChart extends Component
     {
         $periodEnum = Period::tryFrom($this->period);
 
-        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable() || $this->subsource !== 'all') {
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
             $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
                 channel: $this->channel,
@@ -120,7 +120,7 @@ final class SalesTrendChart extends Component
             return $calculator->calculate()['daily_breakdown'];
         }
 
-        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->subsource, $this->status);
         $cached = Cache::get($cacheKey);
 
         return $cached['daily_breakdown'] ?? [];

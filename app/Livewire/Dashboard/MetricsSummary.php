@@ -111,7 +111,7 @@ final class MetricsSummary extends Component
             ]);
         }
 
-        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->subsource, $this->status);
         $cached = Cache::get($cacheKey);
 
         if ($cached) {
@@ -162,7 +162,7 @@ final class MetricsSummary extends Component
             return $data['best_day'];
         }
 
-        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->subsource, $this->status);
         $cached = Cache::get($cacheKey);
 
         if ($cached && isset($cached['best_day'])) {
@@ -177,8 +177,7 @@ final class MetricsSummary extends Component
     {
         return $this->customFrom
             || $this->customTo
-            || ! $periodEnum?->isCacheable()
-            || $this->subsource !== 'all';
+            || ! $periodEnum?->isCacheable();
     }
 
     public function render(): View

@@ -30,6 +30,7 @@ final class WarmPeriodCacheJob implements ShouldQueue
     public function __construct(
         public readonly string $period,
         public readonly string $channel = 'all',
+        public readonly string $subsource = 'all',
         public readonly string $status = 'all'
     ) {}
 
@@ -43,11 +44,17 @@ final class WarmPeriodCacheJob implements ShouldQueue
 
         DB::connection()->disableQueryLog();
 
-        $calculator = new ChunkedMetricsCalculator($this->period, $this->channel, $this->status);
+        $calculator = new ChunkedMetricsCalculator(
+            period: $this->period,
+            channel: $this->channel,
+            status: $this->status,
+            subsource: $this->subsource,
+        );
         $cacheData = $calculator->calculate();
 
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
-        $cacheKey = $periodEnum?->cacheKey($this->channel, $this->status) ?? "metrics_{$this->period}d_{$this->channel}_{$this->status}";
+        $cacheKey = $periodEnum?->cacheKey($this->channel, $this->subsource, $this->status)
+            ?? "metrics_{$this->period}d_{$this->channel}_{$this->subsource}_{$this->status}";
         Cache::forever($cacheKey, $cacheData);
 
         Log::debug('Cache warmed', [
@@ -68,6 +75,7 @@ final class WarmPeriodCacheJob implements ShouldQueue
         Log::error('WarmPeriodCacheJob failed', [
             'period' => $this->period,
             'channel' => $this->channel,
+            'subsource' => $this->subsource,
             'status' => $this->status,
             'error' => $exception->getMessage(),
         ]);

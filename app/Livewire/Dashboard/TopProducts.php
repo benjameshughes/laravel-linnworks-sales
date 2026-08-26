@@ -55,7 +55,7 @@ final class TopProducts extends Component
     {
         $periodEnum = \App\Enums\Period::tryFrom($this->period);
 
-        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable() || $this->subsource !== 'all') {
+        if ($this->customFrom || $this->customTo || ! $periodEnum?->isCacheable()) {
             $calculator = new ChunkedMetricsCalculator(
                 period: $this->period,
                 channel: $this->channel,
@@ -70,7 +70,7 @@ final class TopProducts extends Component
             return $data['top_products'];
         }
 
-        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->subsource, $this->status);
         $cached = Cache::get($cacheKey);
 
         if ($cached && isset($cached['top_products'])) {

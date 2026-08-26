@@ -343,7 +343,7 @@ final class DashboardFilters extends Component
             return 0;
         }
 
-        $cacheKey = $periodEnum->cacheKey($this->channel, $this->status);
+        $cacheKey = $periodEnum->cacheKey($this->channel, $this->subsource, $this->status);
         $cached = Cache::get($cacheKey);
 
         if (! $cached) {
